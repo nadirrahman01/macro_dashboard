@@ -1,312 +1,584 @@
-// Cordoba Capital – Macro Dashboard Logic
-// =======================================
+const COUNTRY_DATA = {
+  US: {
+    code: "US",
+    name: "United States",
+    region: "G-20 · DM",
+    dotClass: "bg-emerald-400",
+    engines: {
+      growthScore: 63,
+      growthPercentile: "78th percentile vs 10-year history",
+      growthZ: "+0.8σ",
+      growthDesc: "Above trend",
+      inflationScore: 54,
+      inflationPercentile: "61st percentile vs 10-year history",
+      inflationZ: "+0.3σ",
+      inflationDesc: "Disinflating",
+      liquidityScore: 41,
+      liquidityPercentile: "32nd percentile vs 10-year history",
+      liquidityZ: "−0.7σ",
+      liquidityDesc: "Restrictive",
+      externalScore: 58,
+      externalPercentile: "67th percentile vs 10-year history",
+      externalZ: "+0.1σ",
+      externalDesc: "Balanced",
+      overallScore: 64
+    },
+    regime: {
+      title: "Late-cycle disinflation",
+      summary:
+        "Growth is still above trend but losing momentum, inflation is cooling, and policy remains tight in real terms. The curve is inverted and the risk is that cuts come into a slowdown rather than a soft landing.",
+      confidence: 0.72,
+      analogs: [2000, 2007, 2018],
+      risks: {
+        growth: "Growth risk: medium",
+        inflation: "Inflation risk: low",
+        policy: "Policy error risk: medium",
+        external: "External risk: low"
+      }
+    },
+    inflections: [
+      {
+        title: "ISM new orders",
+        direction: "down",
+        conviction: "medium",
+        text: "New orders rolled over from expansion, pointing to softer manufacturing momentum ahead."
+      },
+      {
+        title: "Core services CPI (3m annualised)",
+        direction: "down",
+        conviction: "medium",
+        text: "Services disinflation is finally broadening, easing the risk of a second inflation wave."
+      },
+      {
+        title: "Fed-dated OIS curve",
+        direction: "up",
+        conviction: "low",
+        text: "Market is slowly adding back cuts, reducing the risk of an overtightening error."
+      }
+    ],
+    signals: [
+      {
+        indicator: "OECD CLI",
+        engine: "Growth",
+        bucket: "Leading",
+        tone: "positive",
+        signalLabel: "Expansion",
+        last: "100.8",
+        zScore: "+0.9",
+        comment: "Momentum remains positive but rolling over at the margin."
+      },
+      {
+        indicator: "Core CPI (YoY)",
+        engine: "Inflation",
+        bucket: "Coincident",
+        tone: "mixed",
+        signalLabel: "Cooling",
+        last: "2.7%",
+        zScore: "+0.3",
+        comment: "Still above target but trending lower; pressure shifting to services."
+      },
+      {
+        indicator: "10s–2s UST slope",
+        engine: "Liquidity",
+        bucket: "Leading",
+        tone: "caution",
+        signalLabel: "Late-cycle",
+        last: "−35 bps",
+        zScore: "−1.2",
+        comment: "Curve remains inverted; recession risk priced but not realised yet."
+      },
+      {
+        indicator: "Current account / GDP",
+        engine: "External",
+        bucket: "Lagging",
+        tone: "neutral",
+        signalLabel: "Neutral",
+        last: "−2.1%",
+        zScore: "−0.3",
+        comment: "Deficit contained; no immediate funding stress flagged by reserves."
+      }
+    ],
+    chart: buildToyChartData(24, 0.6) // 24 obs, slightly above-trend
+  },
 
-let ccData = null;
-let ccCurrentCountry = "US";
-let ccChartMode = "level";
-let ccGrowthChart = null;
-let ccRankingSortKey = "overall"; // currently only one sort, but ready for extension
+  UK: {
+    code: "UK",
+    name: "United Kingdom",
+    region: "G-20 · DM",
+    dotClass: "bg-amber-300",
+    engines: {
+      growthScore: 49,
+      growthPercentile: "45th percentile vs 10-year history",
+      growthZ: "−0.1σ",
+      growthDesc: "Near trend",
+      inflationScore: 51,
+      inflationPercentile: "55th percentile vs 10-year history",
+      inflationZ: "+0.1σ",
+      inflationDesc: "Sticky",
+      liquidityScore: 44,
+      liquidityPercentile: "38th percentile vs 10-year history",
+      liquidityZ: "−0.4σ",
+      liquidityDesc: "Tight-ish",
+      externalScore: 52,
+      externalPercentile: "57th percentile vs 10-year history",
+      externalZ: "+0.2σ",
+      externalDesc: "Stable",
+      overallScore: 55
+    },
+    regime: {
+      title: "Sluggish disinflation",
+      summary:
+        "Growth has stabilised around trend after a shallow slowdown. Inflation is drifting back towards target but remains sensitive to energy and wage shocks.",
+      confidence: 0.63,
+      analogs: [2013, 2016],
+      risks: {
+        growth: "Growth risk: medium",
+        inflation: "Inflation risk: medium",
+        policy: "Policy error risk: low",
+        external: "External risk: low"
+      }
+    },
+    inflections: [
+      {
+        title: "Labour market cooling",
+        direction: "down",
+        conviction: "medium",
+        text: "Vacancy-to-unemployment ratios keep normalising, pointing to weaker wage pressure ahead."
+      },
+      {
+        title: "Gilts term premium",
+        direction: "up",
+        conviction: "low",
+        text: "Long-end term premia are rebuilding slowly after last year’s stress episode."
+      }
+    ],
+    signals: [
+      {
+        indicator: "Composite PMI",
+        engine: "Growth",
+        bucket: "Coincident",
+        tone: "neutral",
+        signalLabel: "Sideways",
+        last: "50.3",
+        zScore: "0.0",
+        comment: "Activity hovering around the 50 line with services offsetting weak manufacturing."
+      },
+      {
+        indicator: "Core CPI (YoY)",
+        engine: "Inflation",
+        bucket: "Coincident",
+        tone: "mixed",
+        signalLabel: "Sticky",
+        last: "2.8%",
+        zScore: "+0.4",
+        comment: "headline relief is there, but core still above target with broad-based services strength."
+      }
+    ],
+    chart: buildToyChartData(24, 0.1)
+  },
 
-document.addEventListener("DOMContentLoaded", async () => {
-  try {
-    await loadCountryData();
-  } catch (e) {
-    console.error("Failed to load country data", e);
+  DE: {
+    code: "DE",
+    name: "Germany",
+    region: "G-20 · DM",
+    dotClass: "bg-sky-400",
+    engines: {
+      growthScore: 42,
+      growthPercentile: "28th percentile vs 10-year history",
+      growthZ: "−0.6σ",
+      growthDesc: "Below trend",
+      inflationScore: 45,
+      inflationPercentile: "39th percentile vs 10-year history",
+      inflationZ: "−0.2σ",
+      inflationDesc: "Cooling",
+      liquidityScore: 52,
+      liquidityPercentile: "59th percentile vs 10-year history",
+      liquidityZ: "+0.2σ",
+      liquidityDesc: "Neutral",
+      externalScore: 60,
+      externalPercentile: "70th percentile vs 10-year history",
+      externalZ: "+0.4σ",
+      externalDesc: "Resilient",
+      overallScore: 53
+    },
+    regime: {
+      title: "External-led soft patch",
+      summary:
+        "Weak external demand and tighter credit conditions keep growth below trend, but external balances and pricing power remain relatively resilient.",
+      confidence: 0.68,
+      analogs: [2012, 2019],
+      risks: {
+        growth: "Growth risk: high",
+        inflation: "Inflation risk: low",
+        policy: "Policy error risk: low",
+        external: "External risk: medium"
+      }
+    },
+    inflections: [
+      {
+        title: "IFO expectations",
+        direction: "up",
+        conviction: "low",
+        text: "Sentiment has stopped deteriorating, hinting that the worst of the drag may be behind us."
+      }
+    ],
+    signals: [
+      {
+        indicator: "IFO expectations",
+        engine: "Growth",
+        bucket: "Leading",
+        tone: "positive",
+        signalLabel: "Stabilising",
+        last: "88.2",
+        zScore: "+0.2",
+        comment: "First consistent improvement after a long downturn in manufacturing-heavy sectors."
+      }
+    ],
+    chart: buildToyChartData(24, -0.3)
   }
+};
 
-  setupCountryDropdown();
-  setupLiveToggle();
-  setupChartTabs();
-  setupFocusCountries(); // stub for future watchlist-style UI
-
-  if (ccData) {
-    applyCountry(ccCurrentCountry);
-    buildRankingTable();
-  } else {
-    console.warn("No data available; dashboard will stay in placeholder mode.");
+// Fallback for other codes (CN, IN etc.) – reuse US template with slight tweaks
+["CN", "IN"].forEach((code) => {
+  if (!COUNTRY_DATA[code]) {
+    const base = JSON.parse(JSON.stringify(COUNTRY_DATA.US));
+    base.code = code;
+    base.name = code === "CN" ? "China" : "India";
+    base.region = "G-20 · EM";
+    base.engines.overallScore = code === "CN" ? 59 : 66;
+    base.chart = buildToyChartData(24, code === "CN" ? 0.2 : 0.7);
+    COUNTRY_DATA[code] = base;
   }
 });
 
-// ---------------------------
-// Data loading / helpers
-// ---------------------------
-async function loadCountryData() {
-  const resp = await fetch("data/countries.json");
-  if (!resp.ok) {
-    throw new Error("HTTP " + resp.status);
+// -----------------------------
+// 2. Helpers / toy chart data
+// -----------------------------
+
+function buildToyChartData(n, bias) {
+  const dates = [];
+  const composite = [];
+  const leading = [];
+  const coincident = [];
+  const lagging = [];
+  let level = 0;
+
+  for (let i = n - 1; i >= 0; i--) {
+    const d = new Date();
+    d.setMonth(d.getMonth() - i);
+    const label = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(
+      2,
+      "0"
+    )}`;
+    dates.push(label);
+
+    // simple random walk with bias
+    const shock = (Math.random() - 0.5) * 0.4;
+    level = level * 0.7 + bias * 0.3 + shock;
+
+    composite.push((level + 0.2).toFixed(2));
+    leading.push((level + 0.4).toFixed(2));
+    coincident.push(level.toFixed(2));
+    lagging.push((level - 0.2).toFixed(2));
   }
-  ccData = await resp.json();
+
+  return { dates, composite, leading, coincident, lagging };
 }
 
-function getCountryByCode(code) {
-  if (!ccData || !ccData.countries) return null;
-  return ccData.countries.find((c) => c.code === code) || null;
+// Basic stance logic from engine scores
+function computeStanceFromEngines(countryCode) {
+  const d = COUNTRY_DATA[countryCode] || COUNTRY_DATA.US;
+  const g = d.engines.growthScore;
+  const i = d.engines.inflationScore;
+  const l = d.engines.liquidityScore;
+
+  let equities, duration, fx, explanation;
+
+  if (g >= 60 && l > 35) {
+    equities = "OW Equities";
+  } else if (g <= 45) {
+    equities = "UW Equities";
+  } else {
+    equities = "Neutral Equities";
+  }
+
+  if (l <= 40 && i <= 50) {
+    duration = "Long Duration";
+  } else if (l >= 55) {
+    duration = "Short Duration";
+  } else {
+    duration = "Duration Neutral";
+  }
+
+  if (countryCode === "US") {
+    fx = "Long USD vs basket";
+  } else if (countryCode === "UK" || countryCode === "DE") {
+    fx = "Mild USD OW";
+  } else {
+    fx = "FX Neutral";
+  }
+
+  explanation =
+    "high growth scores " +
+    (g >= 60 ? "and above-median liquidity " : "with mixed liquidity ") +
+    "feed into the equity stance; duration leans off the liquidity and inflation mix, " +
+    "while FX takes into account the relative growth/inflation profile vs the US.";
+
+  return { equities, duration, fx, explanation };
 }
 
-// ---------------------------
-// Core apply function
-// ---------------------------
-function applyCountry(code) {
-  const country = getCountryByCode(code);
-  if (!country) {
-    console.warn("Country not found:", code);
-    return;
-  }
-  ccCurrentCountry = code;
+// ----------------------------------
+// 3. DOM update functions
+// ----------------------------------
 
-  // 1) Country labels
+function setCountry(countryCode) {
+  const data = COUNTRY_DATA[countryCode] || COUNTRY_DATA.US;
+
+  // Country labels
   const labelEl = document.querySelector("[data-cc-country-label]");
   const regionEl = document.querySelector("[data-cc-country-region]");
-  const signalsCountryEl = document.querySelector("[data-cc-signals-country]");
-  const tsCountryEl = document.querySelector("[data-cc-timeseries-country]");
-  const regimeCountryEl = document.querySelector("[data-cc-regime-country]");
-  const dot = document.getElementById("cc-country-dot");
+  const dotEl = document.getElementById("cc-country-dot");
 
-  if (labelEl) labelEl.textContent = country.name;
-  if (regionEl) regionEl.textContent = country.region;
-  if (signalsCountryEl) signalsCountryEl.textContent = country.name;
-  if (tsCountryEl) tsCountryEl.textContent = country.name;
-  if (regimeCountryEl) regimeCountryEl.textContent = country.name;
-
-  if (dot) {
-    dot.classList.remove("bg-emerald-400", "bg-amber-400");
-    if (country.regionType === "EM") {
-      dot.classList.add("bg-amber-400");
-    } else {
-      dot.classList.add("bg-emerald-400");
-    }
+  if (labelEl) labelEl.textContent = data.name;
+  if (regionEl) regionEl.textContent = data.region;
+  if (dotEl) {
+    dotEl.className =
+      "h-2 w-2 rounded-full " + (data.dotClass || "bg-emerald-400");
   }
 
-  // 2) Latest view text
-  const viewEl = document.querySelector("[data-cc-latest-view]");
-  if (viewEl) {
-    viewEl.textContent = country.latestView || "";
-  }
+  // Copy name across the page
+  const regimeCountryEls = document.querySelectorAll(
+    "[data-cc-regime-country], [data-cc-signals-country], [data-cc-timeseries-country]"
+  );
+  regimeCountryEls.forEach((el) => {
+    el.textContent = data.name;
+  });
 
-  // 3) Regime summary card
-  updateRegimeSummary(country);
+  // Engines & regime tiles
+  updateEngines(data);
+  updateRegimeSummary(data);
+  updateInflections(data);
+  updateSignalsTable(data);
+  updateRankingsTable();
+  updateModelStance(countryCode);
+  updateChart(countryCode);
+}
 
-  // 4) Engine cards & regime z-scores
-  updateEngineCard("growth", country.engines?.growth);
-  updateEngineCard("inflation", country.engines?.inflation);
-  updateEngineCard("liquidity", country.engines?.liquidity);
-  updateEngineCard("external", country.engines?.external);
+function updateEngines(data) {
+  const e = data.engines;
 
-  updateRegimeBadge("growth", country.engines?.growth);
-  updateRegimeBadge("inflation", country.engines?.inflation);
-  updateRegimeBadge("liquidity", country.engines?.liquidity);
-  updateRegimeBadge("external", country.engines?.external);
+  // Growth
+  setText("cc-growth-score", e.growthScore);
+  setText("cc-growth-percentile", e.growthPercentile);
+  setText("cc-reg-growth-z", e.growthZ);
+  setText("cc-reg-growth-desc", e.growthDesc);
+  setText("cc-growth-regime-text", e.growthDesc);
 
-  // 5) Systematic stance
-  updateModelStance(country);
+  // Inflation
+  setText("cc-inflation-score", e.inflationScore);
+  setText("cc-inflation-percentile", e.inflationPercentile);
+  setText("cc-reg-inflation-z", e.inflationZ);
+  setText("cc-reg-inflation-desc", e.inflationDesc);
+  setText("cc-inflation-regime-text", e.inflationDesc);
 
-  // 6) Inflection monitor
-  updateInflections(country);
+  // Liquidity
+  setText("cc-liquidity-score", e.liquidityScore);
+  setText("cc-liquidity-percentile", e.liquidityPercentile);
+  setText("cc-reg-liquidity-z", e.liquidityZ);
+  setText("cc-reg-liquidity-desc", e.liquidityDesc);
+  setText("cc-liquidity-regime-text", e.liquidityDesc);
 
-  // 7) Signals table
-  updateSignalsTable(country);
+  // External
+  setText("cc-external-score", e.externalScore);
+  setText("cc-external-percentile", e.externalPercentile);
+  setText("cc-reg-external-z", e.externalZ);
+  setText("cc-reg-external-desc", e.externalDesc);
+  setText("cc-external-regime-text", e.externalDesc);
 
-  // 8) Growth chart
-  updateGrowthChart(country);
-
-  // 9) Last update
-  const lastUpdateEl = document.querySelector("[data-cc-last-update]");
-  if (lastUpdateEl && country.timeseries?.dates?.length) {
-    lastUpdateEl.textContent = country.timeseries.dates.slice(-1)[0];
+  // Latest view explainer
+  const latestView = document.querySelector("[data-cc-latest-view]");
+  if (latestView) {
+    latestView.textContent =
+      "Composite engine output for " +
+      data.name +
+      ". Growth sits at " +
+      e.growthZ +
+      ", inflation at " +
+      e.inflationZ +
+      ", liquidity at " +
+      e.liquidityZ +
+      " and external balance at " +
+      e.externalZ +
+      ".";
   }
 }
 
-// ---------------------------
-// Regime summary
-// ---------------------------
-function updateRegimeSummary(country) {
+function updateRegimeSummary(data) {
+  const r = data.regime;
+
   const titleEl = document.querySelector("[data-cc-regime-title]");
-  const summaryEl = document.querySelector("[data-cc-regime-summary]");
+  const countryEl = document.querySelector("[data-cc-regime-country]");
   const confEl = document.querySelector("[data-cc-regime-confidence]");
-  const analogsContainer = document.getElementById("cc-regime-analogs");
+  const summaryEl = document.querySelector("[data-cc-regime-summary]");
+  const analogsEl = document.getElementById("cc-regime-analogs");
 
-  const meta = country.regimeMeta || {};
-  if (titleEl) titleEl.textContent = meta.title || country.macroRegime || "";
-  if (summaryEl) summaryEl.textContent = meta.summary || country.latestView || "";
+  if (titleEl) titleEl.textContent = r.title;
+  if (countryEl) countryEl.textContent = data.name;
+  if (confEl) confEl.textContent = Math.round(r.confidence * 100) + "%";
+  if (summaryEl) summaryEl.textContent = r.summary;
 
-  if (confEl && typeof meta.confidence === "number") {
-    confEl.textContent = Math.round(meta.confidence * 100) + "%";
-  }
-
-  if (analogsContainer) {
-    analogsContainer.innerHTML = "";
-    if (Array.isArray(meta.analogs) && meta.analogs.length) {
-      meta.analogs.forEach((yr) => {
-        const span = document.createElement("span");
-        span.className =
-          "rounded-full border border-slate-700 px-2 py-0.5";
-        span.textContent = yr;
-        analogsContainer.appendChild(span);
-      });
-    }
+  if (analogsEl) {
+    analogsEl.innerHTML = "";
+    (r.analogs || []).forEach((year) => {
+      const span = document.createElement("span");
+      span.className =
+        "rounded-full border border-slate-700 px-2 py-0.5 mr-1 mb-1";
+      span.textContent = year;
+      analogsEl.appendChild(span);
+    });
   }
 
   // Risk flags
-  const rf = country.riskFlags || {};
-  const growthFlag = document.getElementById("cc-risk-growth");
-  const inflFlag = document.getElementById("cc-risk-inflation");
-  const policyFlag = document.getElementById("cc-risk-policy");
-  const extFlag = document.getElementById("cc-risk-external");
+  setText("cc-risk-growth", r.risks.growth);
+  setText("cc-risk-inflation", r.risks.inflation);
+  setText("cc-risk-policy", r.risks.policy);
+  setText("cc-risk-external", r.risks.external);
+}
 
-  if (growthFlag) {
-    growthFlag.textContent = "Growth risk: " + (rf.growth || "n/a");
-  }
-  if (inflFlag) {
-    inflFlag.textContent = "Inflation risk: " + (rf.inflation || "n/a");
-  }
-  if (policyFlag) {
-    policyFlag.textContent = "Policy error risk: " + (rf.policyError || "n/a");
-  }
-  if (extFlag) {
-    extFlag.textContent = "External risk: " + (rf.external || "n/a");
+function updateInflections(data) {
+  const container = document.getElementById("cc-inflection-list");
+  if (!container) return;
+
+  container.innerHTML = "";
+
+  (data.inflections || []).forEach((item) => {
+    const row = document.createElement("div");
+    row.className =
+      "border border-slate-800 rounded-xl px-3 py-2 bg-slate-900/60";
+
+    const arrow =
+      item.direction === "up" ? "↑" : item.direction === "down" ? "↓" : "•";
+    const arrowColor =
+      item.direction === "up"
+        ? "text-emerald-400"
+        : item.direction === "down"
+        ? "text-amber-300"
+        : "text-slate-400";
+
+    const convColor =
+      item.conviction === "high"
+        ? "border-emerald-500/60 text-emerald-200"
+        : item.conviction === "medium"
+        ? "border-amber-500/60 text-amber-200"
+        : "border-slate-600 text-slate-300";
+
+    row.innerHTML = `
+      <div class="flex items-center justify-between mb-1">
+        <div class="flex items-center gap-2">
+          <span class="${arrowColor} text-xs">${arrow}</span>
+          <span class="text-[11px] font-medium text-slate-200">${item.title}</span>
+        </div>
+        <span class="text-[10px] uppercase tracking-[0.16em] rounded-full px-2 py-0.5 border ${convColor}">
+          ${item.conviction || "low"}
+        </span>
+      </div>
+      <div class="text-[11px] text-slate-400 leading-snug">
+        ${item.text}
+      </div>
+    `;
+    container.appendChild(row);
+  });
+
+  if (!data.inflections || data.inflections.length === 0) {
+    container.innerHTML =
+      '<div class="text-[11px] text-slate-500">No major inflection signals flagged this month.</div>';
   }
 }
 
-// ---------------------------
-// Engine cards
-// ---------------------------
-function updateEngineCard(key, obj) {
-  if (!obj) return;
+function updateSignalsTable(data) {
+  const tbody = document.getElementById("cc-signals-tbody");
+  if (!tbody) return;
 
-  const scoreId = {
-    growth: "cc-growth-score",
-    inflation: "cc-inflation-score",
-    liquidity: "cc-liquidity-score",
-    external: "cc-external-score"
-  }[key];
+  tbody.innerHTML = "";
 
-  const pctId = {
-    growth: "cc-growth-percentile",
-    inflation: "cc-inflation-percentile",
-    liquidity: "cc-liquidity-percentile",
-    external: "cc-external-percentile"
-  }[key];
+  (data.signals || []).forEach((s) => {
+    const tr = document.createElement("tr");
+    tr.className = "hover:bg-slate-900/70";
 
-  const regimeTextId = {
-    growth: "cc-growth-regime-text",
-    inflation: "cc-inflation-regime-text",
-    liquidity: "cc-liquidity-regime-text",
-    external: "cc-external-regime-text"
-  }[key];
+    const pill = buildSignalPillHTML(s.tone, s.signalLabel);
 
-  if (scoreId) {
-    const el = document.getElementById(scoreId);
-    if (el && typeof obj.score === "number") {
-      el.textContent = Math.round(obj.score);
-    }
-  }
+    tr.innerHTML = `
+      <td class="py-2 pr-3 text-slate-100">${s.indicator}</td>
+      <td class="py-2 pr-3 text-slate-300">${s.engine}</td>
+      <td class="py-2 pr-3 text-slate-300">${s.bucket}</td>
+      <td class="py-2 pr-3">${pill}</td>
+      <td class="py-2 pr-3 text-right text-slate-100">${s.last}</td>
+      <td class="py-2 pr-3 text-right text-slate-200">${s.zScore}</td>
+      <td class="py-2 text-slate-400">${s.comment}</td>
+    `;
+    tbody.appendChild(tr);
+  });
 
-  if (pctId) {
-    const el = document.getElementById(pctId);
-    if (el && typeof obj.percentile === "number") {
-      el.textContent = `${Math.round(
-        obj.percentile
-      )}th percentile vs 10-year history`;
-    }
-  }
-
-  if (regimeTextId) {
-    const el = document.getElementById(regimeTextId);
-    if (el && obj.regime) {
-      el.textContent = obj.regime;
-    }
+  if (!data.signals || data.signals.length === 0) {
+    const tr = document.createElement("tr");
+    tr.innerHTML =
+      '<td colspan="7" class="py-3 text-center text-[11px] text-slate-500">No indicator set wired yet for this country.</td>';
+    tbody.appendChild(tr);
   }
 }
 
-function updateRegimeBadge(key, obj) {
-  if (!obj) return;
+function buildSignalPillHTML(tone, label) {
+  let baseColor =
+    "bg-slate-700/40 border border-slate-500 text-slate-200"; // neutral
 
-  const zId = {
-    growth: "cc-reg-growth-z",
-    inflation: "cc-reg-inflation-z",
-    liquidity: "cc-reg-liquidity-z",
-    external: "cc-reg-external-z"
-  }[key];
-
-  const descId = {
-    growth: "cc-reg-growth-desc",
-    inflation: "cc-reg-inflation-desc",
-    liquidity: "cc-reg-liquidity-desc",
-    external: "cc-reg-external-desc"
-  }[key];
-
-  if (zId) {
-    const el = document.getElementById(zId);
-    if (el && typeof obj.z === "number") {
-      const sign = obj.z > 0 ? "+" : "";
-      el.textContent = `${sign}${obj.z.toFixed(1)}σ`;
-    }
+  if (tone === "positive") {
+    baseColor =
+      "bg-emerald-500/10 border border-emerald-500/40 text-emerald-200";
+  } else if (tone === "negative") {
+    baseColor = "bg-rose-500/10 border border-rose-500/40 text-rose-200";
+  } else if (tone === "mixed" || tone === "caution") {
+    baseColor = "bg-amber-500/10 border border-amber-500/40 text-amber-100";
   }
 
-  if (descId) {
-    const el = document.getElementById(descId);
-    if (el && obj.descriptor) {
-      el.textContent = obj.descriptor;
-    }
-  }
+  return `
+    <span class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] ${baseColor}">
+      ${label}
+    </span>
+  `;
 }
 
-// ---------------------------
-// Model stance (rule-based)
-// ---------------------------
-function computeStanceFromEngines(country) {
-  const g = country.engines?.growth?.z ?? 0;
-  const i = country.engines?.inflation?.z ?? 0;
-  const l = country.engines?.liquidity?.z ?? 0;
+function updateRankingsTable() {
+  const tbody = document.getElementById("cc-ranking-tbody");
+  if (!tbody) return;
 
-  // Very simple but explicit rule set
-  let equities, duration, fx;
-  let explanationBits = [];
+  const entries = Object.values(COUNTRY_DATA).slice();
 
-  // Equities
-  if (g > 0.7 && l > -0.2) {
-    equities = "OW Equities";
-    explanationBits.push("growth is well above trend and liquidity is not deeply restrictive");
-  } else if (g < -0.3) {
-    equities = "UW Equities";
-    explanationBits.push("growth is below trend");
-  } else {
-    equities = "Neutral Equities";
-    explanationBits.push("growth sits near trend with mixed liquidity");
-  }
+  entries.sort((a, b) => b.engines.overallScore - a.engines.overallScore);
 
-  // Duration
-  if (g < 0 && i < 0) {
-    duration = "OW Duration";
-    explanationBits.push("growth and inflation are both softening vs history");
-  } else if (g > 0.5 && i > 0.3) {
-    duration = "UW Duration";
-    explanationBits.push("growth and inflation are elevated");
-  } else {
-    duration = "Neutral Duration";
-    explanationBits.push("signals on the growth/inflation mix are balanced");
-  }
+  tbody.innerHTML = "";
 
-  // FX – very rough DM bias logic
-  if (country.code === "US" && (g > 0 || l < 0)) {
-    fx = "Long USD";
-    explanationBits.push("US offers strong growth or tighter real policy vs peers");
-  } else if (country.regionType === "EM" && g > 0.8 && i <= 0.3) {
-    fx = "Mildly Long FX";
-    explanationBits.push("high growth with contained inflation supports local FX carry");
-  } else {
-    fx = "Neutral FX";
-    explanationBits.push("no clear FX risk premium edge from the macro scores alone");
-  }
+  entries.forEach((d, idx) => {
+    const tr = document.createElement("tr");
+    tr.className = "hover:bg-slate-900/70";
 
-  return {
-    equities,
-    duration,
-    fx,
-    explanation: explanationBits.join("; ") + "."
-  };
+    tr.innerHTML = `
+      <td class="py-1.5 pr-3 text-slate-400">${idx + 1}</td>
+      <td class="py-1.5 pr-3 text-slate-100">${d.name}</td>
+      <td class="py-1.5 pr-3 text-slate-300 text-[11px]">${d.regime.title}</td>
+      <td class="py-1.5 pr-3 text-right text-slate-200">${d.engines.growthScore}</td>
+      <td class="py-1.5 pr-3 text-right text-slate-200">${d.engines.inflationScore}</td>
+      <td class="py-1.5 pr-3 text-right text-slate-200">${d.engines.liquidityScore}</td>
+      <td class="py-1.5 pr-3 text-right text-slate-200">${d.engines.externalScore}</td>
+      <td class="py-1.5 pr-3 text-right text-cordobaGold font-medium">${d.engines.overallScore}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  const sortLabel = document.getElementById("cc-ranking-sort-label");
+  if (sortLabel) sortLabel.textContent = "Overall Macro Score";
 }
 
+// Model stance – fixed to avoid layout breakage
 function updateModelStance(country) {
   const stance = computeStanceFromEngines(country);
 
@@ -315,18 +587,16 @@ function updateModelStance(country) {
   const fx = document.getElementById("cc-stance-fx");
   const expl = document.getElementById("cc-stance-explainer");
 
-  if (eq && stance.equities) {
-    const textNode = eq.querySelector("span:last-child");
-    if (textNode) textNode.textContent = " " + stance.equities;
-  }
-  if (dur && stance.duration) {
-    const textNode = dur.querySelector("span:last-child");
-    if (textNode) textNode.textContent = " " + stance.duration;
-  }
-  if (fx && stance.fx) {
-    const textNode = fx.querySelector("span:last-child");
-    if (textNode) textNode.textContent = " " + stance.fx;
-  }
+  const setPillLabel = (pillEl, label) => {
+    if (!pillEl) return;
+    const labelSpan = pillEl.querySelector(".cc-stance-label");
+    if (labelSpan) labelSpan.textContent = label;
+  };
+
+  setPillLabel(eq, stance.equities || "Equities");
+  setPillLabel(dur, stance.duration || "Duration");
+  setPillLabel(fx, stance.fx || "FX");
+
   if (expl && stance.explanation) {
     expl.textContent =
       "Stance is derived from growth, inflation and liquidity scores vs history: " +
@@ -334,359 +604,245 @@ function updateModelStance(country) {
   }
 }
 
-// ---------------------------
-// Inflection Monitor
-// ---------------------------
-function updateInflections(country) {
-  const container = document.getElementById("cc-inflection-list");
-  if (!container) return;
+// -------------------------------
+// 4. Chart.js integration
+// -------------------------------
 
-  const list = country.inflections || [];
-  container.innerHTML = "";
+let growthChart = null;
+let currentChartTab = "level";
 
-  if (!list.length) {
-    const p = document.createElement("p");
-    p.className = "text-xs text-slate-500";
-    p.textContent = "No recent inflection signals recorded for this country yet.";
-    container.appendChild(p);
-    return;
-  }
+function initChart() {
+  const ctx = document.getElementById("cc-growth-chart");
+  if (!ctx) return;
 
-  list.forEach((inf) => {
-    const row = document.createElement("div");
-    row.className =
-      "border border-slate-800 rounded-lg px-3 py-2 bg-slate-950/70";
+  const baseData = COUNTRY_DATA.US.chart;
 
-    const sevColour =
-      inf.severity === "high"
-        ? "text-rose-300"
-        : inf.severity === "medium"
-        ? "text-amber-300"
-        : "text-emerald-300";
-
-    const dirLabel = inf.direction === "up" ? "↑" : "↓";
-
-    row.innerHTML = `
-      <div class="flex items-center justify-between mb-1">
-        <div class="flex items-center gap-2">
-          <span class="text-[11px] uppercase tracking-[0.16em] text-slate-500">${inf.indicator}</span>
-        </div>
-        <div class="text-[11px] ${sevColour}">
-          ${dirLabel} · ${inf.severity || "n/a"}
-        </div>
-      </div>
-      <div class="text-[11px] text-slate-300 leading-snug">
-        ${inf.comment || ""}
-      </div>
-    `;
-    container.appendChild(row);
+  growthChart = new Chart(ctx, {
+    type: "line",
+    data: {
+      labels: baseData.dates,
+      datasets: [
+        {
+          label: "Composite",
+          data: baseData.composite,
+          borderWidth: 1.5,
+          tension: 0.3
+        },
+        {
+          label: "Leading",
+          data: baseData.leading,
+          borderWidth: 1,
+          borderDash: [4, 3],
+          tension: 0.3
+        },
+        {
+          label: "Coincident",
+          data: baseData.coincident,
+          borderWidth: 1,
+          borderDash: [2, 3],
+          tension: 0.3
+        },
+        {
+          label: "Lagging",
+          data: baseData.lagging,
+          borderWidth: 1,
+          borderDash: [6, 3],
+          tension: 0.3
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          display: false
+        },
+        tooltip: {
+          callbacks: {
+            label: function (ctx) {
+              return `${ctx.dataset.label}: ${ctx.parsed.y}`;
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          ticks: {
+            maxTicksLimit: 6,
+            color: "#64748b",
+            font: { size: 10 }
+          },
+          grid: {
+            display: false
+          }
+        },
+        y: {
+          ticks: {
+            color: "#64748b",
+            font: { size: 10 }
+          },
+          grid: {
+            color: "#1e293b"
+          }
+        }
+      }
+    }
   });
 }
 
-// ---------------------------
-// Signals table
-// ---------------------------
-function updateSignalsTable(country) {
-  const tbody = document.getElementById("cc-signals-tbody");
-  if (!tbody) return;
+function updateChart(countryCode) {
+  if (!growthChart) return;
+  const data = COUNTRY_DATA[countryCode] || COUNTRY_DATA.US;
+  const chartData = data.chart || COUNTRY_DATA.US.chart;
 
-  tbody.innerHTML = "";
+  growthChart.data.labels = chartData.dates.slice();
 
-  const indicators = country.indicators || [];
-  if (!indicators.length) {
-    const tr = document.createElement("tr");
-    tr.innerHTML =
-      '<td colspan="7" class="py-3 text-center text-xs text-slate-500">No indicator detail loaded for this country yet.</td>';
-    tbody.appendChild(tr);
-    return;
+  // simple interpretation by tab:
+  if (currentChartTab === "level") {
+    growthChart.data.datasets[0].data = chartData.composite;
+    growthChart.data.datasets[1].data = chartData.leading;
+    growthChart.data.datasets[2].data = chartData.coincident;
+    growthChart.data.datasets[3].data = chartData.lagging;
+  } else if (currentChartTab === "zscore") {
+    // treat the same data as z-scores for now
+    growthChart.data.datasets[0].data = chartData.composite;
+    growthChart.data.datasets[1].data = chartData.leading;
+    growthChart.data.datasets[2].data = chartData.coincident;
+    growthChart.data.datasets[3].data = chartData.lagging;
+  } else {
+    // components view – same underlying, just a different caption
+    growthChart.data.datasets[0].data = chartData.composite;
+    growthChart.data.datasets[1].data = chartData.leading;
+    growthChart.data.datasets[2].data = chartData.coincident;
+    growthChart.data.datasets[3].data = chartData.lagging;
   }
 
-  indicators.forEach((ind) => {
-    const tr = document.createElement("tr");
-    tr.className = "hover:bg-slate-900/70";
+  growthChart.update();
 
-    const zColourClass =
-      ind.zColour === "positive"
-        ? "text-emerald-300"
-        : ind.zColour === "negative"
-        ? "text-rose-300"
-        : "text-slate-200";
+  const caption = document.querySelector("[data-cc-chart-caption]");
+  if (caption) {
+    if (currentChartTab === "level") {
+      caption.textContent =
+        "Chart – Level view: growth composite vs time, scaled around zero.";
+    } else if (currentChartTab === "zscore") {
+      caption.textContent =
+        "Chart – z-Score view: composite and components vs own history.";
+    } else {
+      caption.textContent =
+        "Chart – Components view: leading, coincident and lagging contribution lines.";
+    }
+  }
+}
 
-    tr.innerHTML = `
-      <td class="py-2 pr-3 text-slate-100">${ind.name}</td>
-      <td class="py-2 pr-3 text-slate-300">${ind.engine}</td>
-      <td class="py-2 pr-3 text-slate-300">${ind.bucket}</td>
-      <td class="py-2 pr-3">
-        <span class="inline-flex items-center gap-1 rounded-full bg-slate-800/70 border border-slate-600 px-2 py-0.5 text-[11px] text-slate-100">
-          ${ind.signal}
-        </span>
-      </td>
-      <td class="py-2 pr-3 text-right text-slate-100">${ind.last}</td>
-      <td class="py-2 pr-3 text-right ${zColourClass}">${formatZ(ind.z)}</td>
-      <td class="py-2 text-slate-400">${ind.comment || ""}</td>
-    `;
-    tbody.appendChild(tr);
+// -------------------------------
+// 5. UI interaction wiring
+// -------------------------------
+
+function initLiveToggle() {
+  const group = document.getElementById("cc-live-toggle-group");
+  if (!group) return;
+
+  group.addEventListener("click", (e) => {
+    const btn = e.target.closest("[data-cc-live-toggle]");
+    if (!btn) return;
+
+    const mode = btn.getAttribute("data-cc-live-toggle");
+    const buttons = group.querySelectorAll("[data-cc-live-toggle]");
+
+    buttons.forEach((b) => {
+      const isActive = b === btn;
+      b.className =
+        "px-3 py-1 rounded-full text-xs " +
+        (isActive
+          ? "bg-cordobaGold text-slate-900 font-medium"
+          : "text-slate-400 hover:text-slate-100");
+    });
+
+    const info = document.querySelector("[data-cc-last-update]");
+    if (info) {
+      info.textContent =
+        mode === "live" ? "T-1 close (mocked)" : "Static snapshot (mocked)";
+    }
   });
 }
 
-function formatZ(z) {
-  if (typeof z !== "number") return "";
-  const sign = z > 0 ? "+" : "";
-  return sign + z.toFixed(1);
-}
-
-// ---------------------------
-// Country dropdown behaviour
-// ---------------------------
-function setupCountryDropdown() {
+function initCountryDropdown() {
   const toggle = document.getElementById("cc-country-toggle");
   const menu = document.getElementById("cc-country-menu");
   if (!toggle || !menu) return;
 
-  const optionButtons = menu.querySelectorAll("[data-cc-country]");
-
-  toggle.addEventListener("click", (e) => {
-    e.stopPropagation();
+  toggle.addEventListener("click", () => {
     menu.classList.toggle("hidden");
   });
 
-  document.addEventListener("click", () => {
-    if (!menu.classList.contains("hidden")) {
+  menu.addEventListener("click", (e) => {
+    const btn = e.target.closest("[data-cc-country]");
+    if (!btn) return;
+    const code = btn.getAttribute("data-cc-country");
+    setCountry(code);
+    menu.classList.add("hidden");
+  });
+
+  document.addEventListener("click", (e) => {
+    if (!menu.contains(e.target) && !toggle.contains(e.target)) {
       menu.classList.add("hidden");
     }
   });
-
-  optionButtons.forEach((btn) => {
-    btn.addEventListener("click", (e) => {
-      e.stopPropagation();
-      const code = btn.getAttribute("data-cc-country");
-      applyCountry(code);
-      menu.classList.add("hidden");
-    });
-  });
 }
 
-// ---------------------------
-// Focus countries (stub for future UI)
-// ---------------------------
-function setupFocusCountries() {
-  const focusButtons = document.querySelectorAll("[data-cc-focus]");
-  focusButtons.forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const code = btn.getAttribute("data-cc-focus");
-      applyCountry(code);
-    });
-  });
-}
-
-// ---------------------------
-// Live / Snapshot toggle
-// ---------------------------
-function setupLiveToggle() {
-  const group = document.getElementById("cc-live-toggle-group");
-  if (!group) return;
-
-  const buttons = group.querySelectorAll("[data-cc-live-toggle]");
+function initChartTabs() {
+  const buttons = document.querySelectorAll("[data-cc-chart-tab]");
   if (!buttons.length) return;
 
   buttons.forEach((btn) => {
     btn.addEventListener("click", () => {
-      const mode = btn.getAttribute("data-cc-live-toggle");
+      const tab = btn.getAttribute("data-cc-chart-tab");
+      currentChartTab = tab;
 
       buttons.forEach((b) => {
-        b.classList.remove("bg-cordobaGold", "text-slate-900", "font-medium");
-        b.classList.add("text-slate-400");
+        const active = b === btn;
+        b.className =
+          "px-2.5 py-0.5 rounded-full border text-[11px] " +
+          (active
+            ? "border-cordobaGold bg-cordobaGold/80 text-slate-950"
+            : "border-slate-700 text-slate-400 hover:border-cordobaGold/70");
       });
 
-      btn.classList.add("bg-cordobaGold", "text-slate-900", "font-medium");
-      btn.classList.remove("text-slate-400");
+      const activeCountry =
+        document
+          .querySelector("[data-cc-country-label]")
+          ?.textContent?.trim() || "United States";
 
-      console.log(`Live mode set to: ${mode}`);
+      const code =
+        Object.values(COUNTRY_DATA).find((c) => c.name === activeCountry)
+          ?.code || "US";
+
+      updateChart(code);
     });
   });
 }
 
-// ---------------------------
-// Chart tabs + chart
-// ---------------------------
-function setupChartTabs() {
-  const tabButtons = document.querySelectorAll("[data-cc-chart-tab]");
-  const captionEl = document.querySelector("[data-cc-chart-caption]");
-  if (!tabButtons.length || !captionEl) return;
+// -------------------------------
+// 6. Utilities & init
+// -------------------------------
 
-  tabButtons.forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const mode = btn.getAttribute("data-cc-chart-tab");
-      ccChartMode = mode;
-
-      tabButtons.forEach((b) => {
-        b.classList.remove("border-cordobaGold", "bg-cordobaGold/80", "text-slate-950");
-        b.classList.add("border-slate-700", "text-slate-400");
-      });
-
-      btn.classList.add("border-cordobaGold", "bg-cordobaGold/80", "text-slate-950");
-      btn.classList.remove("border-slate-700", "text-slate-400");
-
-      if (mode === "level") {
-        captionEl.textContent =
-          "Chart – Level view of the growth composite. Higher values signal stronger growth vs history.";
-      } else if (mode === "zscore") {
-        captionEl.textContent =
-          "Chart – z-Score view of the growth engine. Standardised vs the country’s own history.";
-      } else if (mode === "components") {
-        captionEl.textContent =
-          "Chart – Components view. Leading, coincident, and lagging contributions to the growth engine.";
-      }
-
-      const country = getCountryByCode(ccCurrentCountry);
-      if (country) updateGrowthChart(country);
-
-      console.log(`Chart mode set to: ${mode}`);
-    });
-  });
-}
-
-function updateGrowthChart(country) {
-  const ctx = document.getElementById("cc-growth-chart");
-  if (!ctx || !country.timeseries) return;
-
-  const ts = country.timeseries;
-  const labels = ts.dates || [];
-  let datasets = [];
-
-  if (ccChartMode === "level") {
-    datasets = [
-      {
-        label: "Composite (Level)",
-        data: ts.growthLevel || [],
-        borderColor: "rgba(16, 185, 129, 1)",
-        tension: 0.25
-      }
-    ];
-  } else if (ccChartMode === "zscore") {
-    datasets = [
-      {
-        label: "Composite (z-Score)",
-        data: ts.growthZ || [],
-        borderColor: "rgba(56, 189, 248, 1)",
-        tension: 0.25
-      }
-    ];
-  } else if (ccChartMode === "components") {
-    datasets = [
-      {
-        label: "Leading",
-        data: ts.growthLeading || [],
-        borderColor: "rgba(56, 189, 248, 1)",
-        tension: 0.25
-      },
-      {
-        label: "Coincident",
-        data: ts.growthCoincident || [],
-        borderColor: "rgba(251, 191, 36, 1)",
-        tension: 0.25
-      },
-      {
-        label: "Lagging",
-        data: ts.growthLagging || [],
-        borderColor: "rgba(248, 113, 113, 1)",
-        tension: 0.25
-      }
-    ];
-  }
-
-  if (ccGrowthChart) {
-    ccGrowthChart.data.labels = labels;
-    ccGrowthChart.data.datasets = datasets;
-    ccGrowthChart.update();
-  } else {
-    ccGrowthChart = new Chart(ctx, {
-      type: "line",
-      data: {
-        labels,
-        datasets
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: {
-            labels: {
-              color: "#e5e7eb",
-              font: { size: 10 }
-            }
-          }
-        },
-        scales: {
-          x: {
-            ticks: {
-              color: "#9ca3af",
-              font: { size: 9 }
-            },
-            grid: {
-              color: "rgba(75,85,99,0.3)"
-            }
-          },
-          y: {
-            ticks: {
-              color: "#9ca3af",
-              font: { size: 9 }
-            },
-            grid: {
-              color: "rgba(31,41,55,0.8)"
-            }
-          }
-        }
-      }
-    });
+function setText(id, value) {
+  const el = document.getElementById(id);
+  if (el && value !== undefined && value !== null) {
+    el.textContent = value;
   }
 }
 
-// ---------------------------
-// Rankings
-// ---------------------------
-function buildRankingTable() {
-  const tbody = document.getElementById("cc-ranking-tbody");
-  if (!tbody || !ccData || !ccData.countries) return;
+function init() {
+  initLiveToggle();
+  initCountryDropdown();
+  initChartTabs();
+  initChart();
 
-  const rows = ccData.countries.map((c) => {
-    const g = c.engines?.growth?.score ?? 50;
-    const inf = c.engines?.inflation?.score ?? 50;
-    const liq = c.engines?.liquidity?.score ?? 50;
-    const ext = c.engines?.external?.score ?? 50;
-    const overall = (g + (100 - Math.abs(inf - 50)) + liq + ext) / 4; // light penalty for extreme inflation
-    return {
-      country: c,
-      growth: g,
-      inflation: inf,
-      liquidity: liq,
-      external: ext,
-      overall
-    };
-  });
-
-  rows.sort((a, b) => b.overall - a.overall);
-
-  tbody.innerHTML = "";
-
-  rows.forEach((r, idx) => {
-    const tr = document.createElement("tr");
-    tr.className = "hover:bg-slate-900/70 cursor-pointer";
-
-    tr.addEventListener("click", () => {
-      applyCountry(r.country.code);
-    });
-
-    tr.innerHTML = `
-      <td class="py-2 pr-3 text-slate-400">${idx + 1}</td>
-      <td class="py-2 pr-3 text-slate-100">${r.country.name}</td>
-      <td class="py-2 pr-3 text-slate-300">${r.country.macroRegime || ""}</td>
-      <td class="py-2 pr-3 text-right text-slate-100">${Math.round(r.growth)}</td>
-      <td class="py-2 pr-3 text-right text-slate-100">${Math.round(r.inflation)}</td>
-      <td class="py-2 pr-3 text-right text-slate-100">${Math.round(r.liquidity)}</td>
-      <td class="py-2 pr-3 text-right text-slate-100">${Math.round(r.external)}</td>
-      <td class="py-2 pr-3 text-right text-cordobaGold font-medium">${Math.round(r.overall)}</td>
-    `;
-    tbody.appendChild(tr);
-  });
+  // Default country
+  setCountry("US");
+  updateRankingsTable();
 }
+
+document.addEventListener("DOMContentLoaded", init);
