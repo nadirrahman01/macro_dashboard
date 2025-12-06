@@ -125,7 +125,7 @@
         </div>
 
         <div class="flex items-center gap-3">
-          <!-- Search -->
+          <!-- Search (non-functional for now) -->
           <div class="relative hidden md:block">
             <input
               class="bg-slate-900/80 border border-slate-700 rounded-full pl-8 pr-3 py-1.5 text-xs placeholder:text-slate-500 focus:outline-none focus:border-cordobaGold/70"
@@ -164,7 +164,7 @@
       <!-- Content area -->
       <section class="flex-1 overflow-y-auto px-6 py-5 space-y-5">
 
-        <!-- Regime summary row -->
+        <!-- Regime summary row (country selection + stance + high-level z-scores) -->
         <div class="grid grid-cols-1 xl:grid-cols-3 gap-4">
           <!-- Left: Country & headline -->
           <div class="col-span-1 xl:col-span-2 bg-slate-950/80 border border-slate-800/90 rounded-2xl px-5 py-4 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -196,7 +196,7 @@
                     G-20 Countries
                   </div>
                   <div class="max-h-64 overflow-y-auto">
-                    <!-- Examples; data-driven logic will use the code -->
+                    <!-- A few examples; rest can be added later -->
                     <button class="w-full text-left px-3 py-1.5 hover:bg-slate-900" data-cc-country="US" data-cc-region="G-20 · DM">
                       United States
                     </button>
@@ -212,7 +212,6 @@
                     <button class="w-full text-left px-3 py-1.5 hover:bg-slate-900" data-cc-country="IN" data-cc-region="G-20 · EM">
                       India
                     </button>
-                    <!-- Add remaining G-20 here later -->
                   </div>
                 </div>
               </div>
@@ -231,9 +230,9 @@
             </div>
 
             <!-- Model stance -->
-            <div class="flex flex-col gap-2 min-w-[180px]">
+            <div class="flex flex-col gap-2 min-w-[220px]">
               <div class="text-[11px] uppercase tracking-[0.25em] text-slate-500">
-                Model Stance
+                Model Stance (Rules)
               </div>
               <div class="flex flex-wrap gap-2">
                 <span id="cc-stance-equities" class="text-xs inline-flex items-center gap-1 rounded-full bg-emerald-500/10 border border-emerald-500/40 px-2.5 py-1">
@@ -248,6 +247,9 @@
                   <span class="h-1.5 w-1.5 rounded-full bg-amber-400"></span>
                   Long USD
                 </span>
+              </div>
+              <div id="cc-stance-explainer" class="text-[11px] text-slate-500 leading-snug">
+                Stance is derived from growth, inflation and liquidity scores vs history.
               </div>
             </div>
           </div>
@@ -328,6 +330,74 @@
                   Low&nbsp;Risk
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Regime summary + Inflection monitor -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <!-- Regime Summary -->
+          <div class="lg:col-span-2 bg-slate-950/80 border border-slate-800/90 rounded-2xl px-5 py-4 flex flex-col gap-3">
+            <div class="flex items-center justify-between">
+              <div>
+                <div class="text-[11px] uppercase tracking-[0.2em] text-slate-500">
+                  Macro Regime Summary
+                </div>
+                <div class="text-sm text-slate-200 mt-0.5">
+                  <span data-cc-regime-title>Late-cycle disinflation</span> – <span data-cc-regime-country>United States</span>
+                </div>
+              </div>
+              <div class="text-xs text-slate-400">
+                Confidence:
+                <span class="text-cordobaGold font-medium" data-cc-regime-confidence>72%</span>
+              </div>
+            </div>
+            <div class="text-xs text-slate-300 leading-relaxed" data-cc-regime-summary>
+              Growth is still above trend but losing momentum, inflation is cooling, and policy remains tight in real terms. The curve is inverted and the risk is that cuts come into a slowdown rather than a soft landing.
+            </div>
+            <div class="flex flex-wrap items-center gap-2 text-[11px] text-slate-400">
+              <span class="uppercase tracking-[0.18em] text-slate-500">
+                Historical analogues:
+              </span>
+              <span id="cc-regime-analogs" class="inline-flex flex-wrap gap-1">
+                <span class="rounded-full border border-slate-700 px-2 py-0.5">2000</span>
+                <span class="rounded-full border border-slate-700 px-2 py-0.5">2007</span>
+                <span class="rounded-full border border-slate-700 px-2 py-0.5">2018</span>
+              </span>
+            </div>
+            <div class="flex flex-wrap gap-2 text-[11px] text-slate-400">
+              <span class="uppercase tracking-[0.18em] text-slate-500">
+                Risk flags:
+              </span>
+              <span id="cc-risk-growth" class="rounded-full border border-slate-700 px-2 py-0.5">
+                Growth risk: medium
+              </span>
+              <span id="cc-risk-inflation" class="rounded-full border border-slate-700 px-2 py-0.5">
+                Inflation risk: low
+              </span>
+              <span id="cc-risk-policy" class="rounded-full border border-slate-700 px-2 py-0.5">
+                Policy error risk: medium
+              </span>
+              <span id="cc-risk-external" class="rounded-full border border-slate-700 px-2 py-0.5">
+                External risk: low
+              </span>
+            </div>
+          </div>
+
+          <!-- Inflection Monitor -->
+          <div class="bg-slate-950/80 border border-slate-800/90 rounded-2xl px-5 py-4 flex flex-col gap-3">
+            <div class="flex items-center justify-between">
+              <div>
+                <div class="text-[11px] uppercase tracking-[0.2em] text-slate-500">
+                  What Changed This Month
+                </div>
+                <div class="text-sm text-slate-200 mt-0.5">
+                  Key inflection signals
+                </div>
+              </div>
+            </div>
+            <div id="cc-inflection-list" class="space-y-2 text-xs text-slate-300">
+              <!-- Populated dynamically -->
             </div>
           </div>
         </div>
@@ -437,7 +507,7 @@
 
         <!-- Heatmap + chart row -->
         <div class="grid grid-cols-1 xl:grid-cols-3 gap-4">
-          <!-- Heatmap -->
+          <!-- Heatmap (still placeholder styling) -->
           <div class="xl:col-span-1 bg-slate-950/80 border border-slate-800/90 rounded-2xl px-4 py-3 flex flex-col gap-3">
             <div class="flex items-center justify-between">
               <div>
@@ -453,7 +523,7 @@
               </button>
             </div>
             <div class="mt-2 h-56 rounded-xl bg-slate-900/80 border border-slate-800/80 grid grid-cols-5 grid-rows-4 text-[10px] text-center text-slate-300">
-              <!-- Just a visual placeholder grid -->
+              <!-- purely visual placeholder for now -->
               <div class="border border-slate-800/60 bg-emerald-500/25 flex items-center justify-center">US</div>
               <div class="border border-slate-800/60 bg-emerald-500/15 flex items-center justify-center">UK</div>
               <div class="border border-slate-800/60 bg-amber-500/20 flex items-center justify-center">EU</div>
@@ -589,8 +659,48 @@
                   <th class="py-2 text-left">Comment</th>
                 </tr>
               </thead>
-              <tbody class="divide-y divide-slate-900">
-                <!-- Rows will be replaced dynamically by main.js -->
+              <tbody id="cc-signals-tbody" class="divide-y divide-slate-900">
+                <!-- Rows populated by JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Relative Macro Rankings -->
+        <div class="bg-slate-950/80 border border-slate-800/90 rounded-2xl px-4 py-3">
+          <div class="flex items-center justify-between mb-3">
+            <div>
+              <div class="text-[11px] uppercase tracking-[0.2em] text-slate-500">
+                Cross-Country Rankings
+              </div>
+              <div class="text-sm text-slate-200 mt-0.5">
+                Relative macro scores – G-20 focus set
+              </div>
+            </div>
+            <div class="flex items-center gap-2 text-[11px] text-slate-400">
+              <span>Sorted by:</span>
+              <span id="cc-ranking-sort-label" class="rounded-full border border-slate-700 px-2 py-0.5">
+                Overall Macro Score
+              </span>
+            </div>
+          </div>
+
+          <div class="overflow-x-auto">
+            <table class="min-w-full text-xs">
+              <thead>
+                <tr class="text-[11px] uppercase tracking-[0.16em] text-slate-500 border-b border-slate-800">
+                  <th class="py-2 text-left">Rank</th>
+                  <th class="py-2 text-left">Country</th>
+                  <th class="py-2 text-left">Regime</th>
+                  <th class="py-2 text-right">Growth</th>
+                  <th class="py-2 text-right">Inflation</th>
+                  <th class="py-2 text-right">Liquidity</th>
+                  <th class="py-2 text-right">External</th>
+                  <th class="py-2 text-right">Overall</th>
+                </tr>
+              </thead>
+              <tbody id="cc-ranking-tbody" class="divide-y divide-slate-900">
+                <!-- Filled dynamically -->
               </tbody>
             </table>
           </div>
