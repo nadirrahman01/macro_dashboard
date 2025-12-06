@@ -1,0 +1,115 @@
+/* ================
+   Cordoba Capital – Custom Styling
+   ================= */
+
+/* Smooth scrolling */
+html, body {
+  scroll-behavior: smooth;
+}
+
+/* Hide scrollbars only visually (insti dashboards usually do this) */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #2b2b2b;
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #4a4a4a;
+}
+
+/* Fade-in animation for cards */
+.cc-fade {
+  opacity: 0;
+  transform: translateY(6px);
+  animation: ccFadeIn 0.5s ease forwards;
+}
+
+@keyframes ccFadeIn {
+  to {
+    opacity: 1;
+    transform: translateY(0px);
+  }
+}
+
+/* Pulse animation for LIVE bubbles */
+.cc-pulse {
+  animation: ccPulse 1.2s ease-in-out infinite;
+}
+
+@keyframes ccPulse {
+  0% {
+    transform: scale(1);
+    opacity: 0.8;
+  }
+  50% {
+    transform: scale(1.2);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 0.8;
+  }
+}
+
+/* Card hover upgrade */
+.cc-card:hover {
+  border-color: #9A690F;
+  background: rgba(154,105,15,0.05);
+  transition: 0.25s ease;
+}
+
+/* Institutional chart placeholder styling */
+.chart-placeholder {
+  background: linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0.04),
+    rgba(0, 0, 0, 0.1)
+  );
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 0.75rem;
+}
+
+/* Heatmap cell glow */
+.heat-cell {
+  transition: 0.2s ease;
+}
+
+.heat-cell:hover {
+  transform: scale(1.06);
+  box-shadow: 0 0 8px rgba(154, 105, 15, 0.4);
+  z-index: 5;
+}
+
+/* Typography improvements */
+h1, h2, h3 {
+  font-family: "Times New Roman", serif;
+  letter-spacing: 0.02em;
+}
+
+.smallcaps {
+  font-variant: small-caps;
+  letter-spacing: 0.12em;
+}
+
+/* Subtle borders for institutional UI */
+.cc-border {
+  border: 1px solid rgba(255,255,255,0.08);
+}
+
+/* Button micro-interaction */
+.cc-btn:hover {
+  background: rgba(154, 105, 15, 0.15);
+  border-color: #9A690F;
+  transition: 0.25s ease;
+}
+
+/* Disable text selection where needed */
+.noselect {
+  user-select: none;
+}
