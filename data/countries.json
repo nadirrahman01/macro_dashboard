@@ -6,6 +6,12 @@
       "region": "G-20 · DM",
       "regionType": "DM",
       "macroRegime": "Late-cycle disinflation",
+      "regimeMeta": {
+        "title": "Late-cycle disinflation",
+        "summary": "Growth is still above trend but losing momentum, inflation is cooling, and policy remains tight in real terms. The curve is inverted and the risk is that cuts come into a slowdown rather than a soft landing.",
+        "confidence": 0.72,
+        "analogs": ["2000", "2007", "2018"]
+      },
       "riskFlags": {
         "growth": "medium",
         "inflation": "low",
@@ -44,17 +50,17 @@
       },
       "modelStance": {
         "equities": "OW Equities",
-        "duration": "Duration Neutral",
+        "duration": "Neutral Duration",
         "fx": "Long USD",
         "credit": "Neutral Credit"
       },
       "policyCurve": {
         "policyRate": 4.5,
-        "policyRateChange12m": -0.50,
+        "policyRateChange12m": -0.5,
         "coreInflation": 2.7,
         "realPolicyRate": 1.8,
         "slope10s2s": -0.35,
-        "comment": "Tight but easing; curve still inverted with cuts starting to be priced."
+        "comment": "Policy is tight in real terms while the curve remains inverted; cuts are being priced into an already mature expansion."
       },
       "indicators": [
         {
@@ -98,7 +104,27 @@
           "comment": "Deficit contained; no immediate funding stress flagged by reserves."
         }
       ],
-      "latestView": "US sits in a late-cycle disinflation regime: growth still above trend, inflation cooling, but liquidity conditions remain restrictive and the curve inverted. Policy is tight in real terms, with easing now starting to be priced.",
+      "inflections": [
+        {
+          "indicator": "ISM New Orders",
+          "direction": "down",
+          "severity": "medium",
+          "comment": "New orders rolled over from expansion, pointing to softer manufacturing momentum ahead."
+        },
+        {
+          "indicator": "Core Services CPI (3m annualised)",
+          "direction": "down",
+          "severity": "medium",
+          "comment": "Services disinflation is finally broadening, easing the risk of a second inflation wave."
+        },
+        {
+          "indicator": "Fed-dated OIS Curve",
+          "direction": "up",
+          "severity": "low",
+          "comment": "Market is slowly adding back cuts, reducing the risk of an overtightening error."
+        }
+      ],
+      "latestView": "US sits in a late-cycle disinflation regime: growth above trend but fading, inflation cooling, and liquidity still tight with a deeply inverted curve.",
       "timeseries": {
         "dates": ["2025-05", "2025-06", "2025-07", "2025-08", "2025-09", "2025-10"],
         "growthLevel": [55, 57, 60, 62, 63, 63],
@@ -114,6 +140,12 @@
       "region": "G-20 · DM",
       "regionType": "DM",
       "macroRegime": "Early-cycle repair",
+      "regimeMeta": {
+        "title": "Early-cycle repair",
+        "summary": "Growth has stabilised around trend after a shallow slowdown, inflation is drifting lower but remains above comfort, and policy is only gradually stepping away from restrictive territory.",
+        "confidence": 0.68,
+        "analogs": ["2013", "2016"]
+      },
       "riskFlags": {
         "growth": "medium",
         "inflation": "medium",
@@ -162,7 +194,7 @@
         "coreInflation": 3.1,
         "realPolicyRate": 0.65,
         "slope10s2s": -0.15,
-        "comment": "Policy still restrictive vs history; curve inversion shallower than US but growth base weaker."
+        "comment": "Policy is still restrictive vs history, with a shallow inversion in the curve and fragile growth."
       },
       "indicators": [
         {
@@ -186,7 +218,21 @@
           "comment": "Inflation drifting lower but services remain firm."
         }
       ],
-      "latestView": "UK is in early-cycle repair: growth stabilising around trend, inflation still above comfort, and policy only gradually shifting from restrictive territory.",
+      "inflections": [
+        {
+          "indicator": "Composite PMI",
+          "direction": "up",
+          "severity": "low",
+          "comment": "Activity has nudged back above 50, consistent with stabilising growth."
+        },
+        {
+          "indicator": "Unemployment Rate",
+          "direction": "up",
+          "severity": "medium",
+          "comment": "A gradual rise signals a more fragile labour market under the surface."
+        }
+      ],
+      "latestView": "UK is in early-cycle repair: growth stabilising around trend, inflation still above comfort, and policy slowly shifting from restrictive territory.",
       "timeseries": {
         "dates": ["2025-05", "2025-06", "2025-07", "2025-08", "2025-09", "2025-10"],
         "growthLevel": [48, 50, 51, 52, 52, 52],
@@ -202,6 +248,12 @@
       "region": "G-20 · DM",
       "regionType": "DM",
       "macroRegime": "Shallow stagnation",
+      "regimeMeta": {
+        "title": "Shallow stagnation",
+        "summary": "Domestic demand is soft and manufacturing is under pressure, but inflation is contained and the external surplus still provides a buffer.",
+        "confidence": 0.7,
+        "analogs": ["2012", "2019"]
+      },
       "riskFlags": {
         "growth": "high",
         "inflation": "low",
@@ -249,10 +301,18 @@
         "policyRateChange12m": -0.25,
         "coreInflation": 2.1,
         "realPolicyRate": 1.15,
-        "slope10s2s": -0.10,
-        "comment": "Growth weak while policy remains mildly restrictive; curve modestly inverted."
+        "slope10s2s": -0.1,
+        "comment": "Growth is weak while policy remains mildly restrictive; curve modestly inverted."
       },
       "indicators": [],
+      "inflections": [
+        {
+          "indicator": "IFO Expectations",
+          "direction": "down",
+          "severity": "medium",
+          "comment": "Corporate sentiment has softened again, consistent with a shallow stagnation backdrop."
+        }
+      ],
       "latestView": "Germany looks like shallow stagnation: demand soft, but external surplus and contained inflation limit immediate stress.",
       "timeseries": {
         "dates": ["2025-05", "2025-06", "2025-07", "2025-08", "2025-09", "2025-10"],
@@ -269,6 +329,12 @@
       "region": "G-20 · EM",
       "regionType": "EM",
       "macroRegime": "Stop–go reflation",
+      "regimeMeta": {
+        "title": "Stop–go reflation",
+        "summary": "Policy and liquidity are supportive, inflation undershoots, and growth is driven by intermittent policy pushes rather than a broad-based private cycle.",
+        "confidence": 0.65,
+        "analogs": ["2012", "2015"]
+      },
       "riskFlags": {
         "growth": "medium",
         "inflation": "low",
@@ -316,11 +382,19 @@
         "policyRateChange12m": -0.25,
         "coreInflation": 0.8,
         "realPolicyRate": 1.7,
-        "slope10s2s": 0.10,
-        "comment": "Policy easy in quantity terms, but real rates still positive amid weak prices."
+        "slope10s2s": 0.1,
+        "comment": "Policy is easy in quantity terms but real rates are still positive amid weak prices."
       },
       "indicators": [],
-      "latestView": "China screens as stop–go reflation: policy and liquidity are supportive, inflation undershoots, but growth momentum remains uneven across sectors.",
+      "inflections": [
+        {
+          "indicator": "Total Social Financing (3m ann.)",
+          "direction": "up",
+          "severity": "medium",
+          "comment": "Credit impulse has ticked higher again, signalling another stop–go push from policy."
+        }
+      ],
+      "latestView": "China screens as stop–go reflation: liquidity is easy and inflation soft, but the growth impulse is uneven and heavily policy-led.",
       "timeseries": {
         "dates": ["2025-05", "2025-06", "2025-07", "2025-08", "2025-09", "2025-10"],
         "growthLevel": [50, 52, 54, 55, 56, 57],
@@ -336,6 +410,12 @@
       "region": "G-20 · EM",
       "regionType": "EM",
       "macroRegime": "High-growth expansion",
+      "regimeMeta": {
+        "title": "High-growth expansion",
+        "summary": "Domestic demand is strong, inflation is broadly contained around target, and liquidity is supportive despite relatively high real rates.",
+        "confidence": 0.78,
+        "analogs": ["2005", "2010"]
+      },
       "riskFlags": {
         "growth": "low",
         "inflation": "medium",
@@ -383,10 +463,18 @@
         "policyRateChange12m": 0.0,
         "coreInflation": 4.1,
         "realPolicyRate": 2.4,
-        "slope10s2s": 0.20,
-        "comment": "High real rates but anchored inflation and strong growth; curve modestly steep."
+        "slope10s2s": 0.2,
+        "comment": "Real rates are high but consistent with strong growth and anchored inflation; curve modestly steep."
       },
       "indicators": [],
+      "inflections": [
+        {
+          "indicator": "Bank Credit Growth",
+          "direction": "up",
+          "severity": "medium",
+          "comment": "Credit growth remains strong, reinforcing the domestic-demand-driven expansion."
+        }
+      ],
       "latestView": "India is classic high-growth expansion: strong domestic impulse, contained inflation, and supportive liquidity, albeit with relatively high real rates.",
       "timeseries": {
         "dates": ["2025-05", "2025-06", "2025-07", "2025-08", "2025-09", "2025-10"],
