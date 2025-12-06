@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Cordoba Capital – Global Macro Engine</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!-- Tailwind CDN (for prototype / GitHub Pages) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            cordobaGold: '#9A690F',
+            cordobaAccent: '#FFF7F0'
+          },
+          fontFamily: {
+            heading: ['"Times New Roman"', 'serif'],
+            body: ['Helvetica', 'system-ui', 'sans-serif']
+          }
+        }
+      }
+    }
+  </script>
+</head>
+<body class="bg-slate-950 text-slate-100 font-body min-h-screen">
+
+  <!-- Page wrapper -->
+  <div class="flex min-h-screen">
+
+    <!-- Sidebar -->
+    <aside class="w-64 bg-slate-950/95 border-r border-slate-800/80 flex flex-col">
+      <div class="px-6 py-5 border-b border-slate-800/80">
+        <div class="flex items-center gap-2">
+          <div class="h-8 w-8 rounded-full border border-cordobaGold flex items-center justify-center text-xs tracking-[0.2em]">
+            <span class="text-[10px] font-semibold" style="letter-spacing:0.18em;">CC</span>
+          </div>
+          <div>
+            <div class="font-heading text-lg tracking-wide">Cordoba Capital</div>
+            <div class="text-[11px] text-slate-400 uppercase tracking-[0.25em]">
+              Macro Engine
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <nav class="flex-1 px-4 py-4 space-y-1 text-sm">
+        <div class="text-[10px] uppercase tracking-[0.25em] text-slate-500 px-2 mb-2">
+          Dashboard
+        </div>
+
+        <button class="w-full flex items-center justify-between px-2.5 py-2 rounded-lg bg-slate-900 text-slate-100 hover:bg-slate-800/80">
+          <span class="flex items-center gap-2">
+            <span class="h-1.5 w-1.5 rounded-full bg-cordobaGold"></span>
+            Overview
+          </span>
+          <span class="text-[10px] text-slate-400 uppercase">LIVE</span>
+        </button>
+
+        <button class="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-slate-300 hover:bg-slate-900">
+          <span class="h-1.5 w-1.5 rounded-full bg-emerald-500/70"></span>
+          Growth Cycle
+        </button>
+
+        <button class="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-slate-300 hover:bg-slate-900">
+          <span class="h-1.5 w-1.5 rounded-full bg-rose-500/70"></span>
+          Inflation & Prices
+        </button>
+
+        <button class="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-slate-300 hover:bg-slate-900">
+          <span class="h-1.5 w-1.5 rounded-full bg-sky-500/70"></span>
+          Liquidity & Credit
+        </button>
+
+        <button class="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-slate-300 hover:bg-slate-900">
+          <span class="h-1.5 w-1.5 rounded-full bg-indigo-400/70"></span>
+          External Balance
+        </button>
+
+        <button class="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-slate-300 hover:bg-slate-900">
+          <span class="h-1.5 w-1.5 rounded-full bg-amber-400/70"></span>
+          FX & Rates Lens
+        </button>
+
+        <button class="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-slate-300 hover:bg-slate-900">
+          <span class="h-1.5 w-1.5 rounded-full border border-slate-500"></span>
+          Settings
+        </button>
+      </nav>
+
+      <div class="px-4 py-4 border-t border-slate-800/80 text-[11px] text-slate-500 space-y-1.5">
+        <div class="flex items-center justify-between">
+          <span>Data as of</span>
+          <span class="text-slate-300">T-1 close</span>
+        </div>
+        <div class="leading-snug">
+          Internal research tool for educational & non-commercial use by Cordoba Capital.
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main content -->
+    <main class="flex-1 flex flex-col">
+
+      <!-- Top bar -->
+      <header class="h-16 border-b border-slate-800/80 px-6 flex items-center justify-between bg-slate-950/90 backdrop-blur">
+        <div class="flex items-center gap-4">
+          <div class="text-xs uppercase tracking-[0.28em] text-slate-400">
+            Global Macro Dashboard
+          </div>
+          <div class="h-6 w-px bg-slate-800"></div>
+          <div class="flex items-center gap-2 text-xs text-slate-400">
+            <span class="inline-flex items-center gap-1 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2 py-0.5">
+              <span class="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+              Live Signals
+            </span>
+            <span class="hidden sm:inline text-slate-500">
+              Prototype – values are placeholder only
+            </span>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-3">
+          <!-- Search -->
+          <div class="relative hidden md:block">
+            <input
+              class="bg-slate-900/80 border border-slate-700 rounded-full pl-8 pr-3 py-1.5 text-xs placeholder:text-slate-500 focus:outline-none focus:border-cordobaGold/70"
+              placeholder="Search country, indicator, or engine..."
+            />
+            <span class="absolute left-2 top-1.5 text-slate-500 text-xs">⌕</span>
+          </div>
+
+          <!-- Date range -->
+          <button class="flex items-center gap-2 text-xs bg-slate-900/80 border border-slate-700 rounded-full px-3 py-1.5 hover:border-cordobaGold/70">
+            <span class="text-slate-400">Window</span>
+            <span class="text-slate-100">10Y</span>
+            <span class="text-slate-500">▼</span>
+          </button>
+
+          <!-- Live / Snapshot toggle -->
+          <div class="flex items-center text-xs bg-slate-900/80 border border-slate-700 rounded-full p-0.5">
+            <button class="px-3 py-1 rounded-full bg-cordobaGold text-slate-900 font-medium">
+              Live
+            </button>
+            <button class="px-3 py-1 rounded-full text-slate-400 hover:text-slate-100">
+              Snapshot
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <!-- Content area -->
+      <section class="flex-1 overflow-y-auto px-6 py-5 space-y-5">
+
+        <!-- Regime summary row -->
+        <div class="grid grid-cols-1 xl:grid-cols-3 gap-4">
+          <!-- Left: Country & headline -->
+          <div class="col-span-1 xl:col-span-2 bg-slate-950/80 border border-slate-800/90 rounded-2xl px-5 py-4 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div class="space-y-2">
+              <div class="text-[11px] uppercase tracking-[0.25em] text-slate-500">
+                Country Selection
+              </div>
+              <div class="flex flex-wrap items-center gap-3">
+                <div class="inline-flex items-center gap-2 bg-slate-900 border border-slate-700 rounded-full px-3 py-1.5">
+                  <span class="h-2 w-2 rounded-full bg-emerald-400"></span>
+                  <span class="text-sm font-medium">United States</span>
+                  <span class="text-[11px] text-slate-400">G-20 · DM</span>
+                  <span class="text-[11px] text-slate-500">▼</span>
+                </div>
+                <div class="inline-flex items-center gap-2 text-xs text-slate-400">
+                  <span>Benchmark:</span>
+                  <span class="border border-slate-700 rounded-full px-2 py-0.5">World</span>
+                  <span class="border border-slate-700 rounded-full px-2 py-0.5">DM</span>
+                  <span class="border border-slate-700 rounded-full px-2 py-0.5">EM</span>
+                </div>
+              </div>
+              <div class="text-xs text-slate-400 max-w-2xl">
+                Composite engine output for the selected country. Scores blend leading, coincident, and lagging indicators
+                across growth, inflation, liquidity, and external balance.
+              </div>
+            </div>
+
+            <!-- Model stance -->
+            <div class="flex flex-col gap-2 min-w-[180px]">
+              <div class="text-[11px] uppercase tracking-[0.25em] text-slate-500">
+                Model Stance
+              </div>
+              <div class="flex flex-wrap gap-2">
+                <span class="text-xs inline-flex items-center gap-1 rounded-full bg-emerald-500/10 border border-emerald-500/40 px-2.5 py-1">
+                  <span class="h-1.5 w-1.5 rounded-full bg-emerald-400"></span>
+                  OW Equities
+                </span>
+                <span class="text-xs inline-flex items-center gap-1 rounded-full bg-sky-500/10 border border-sky-500/40 px-2.5 py-1">
+                  <span class="h-1.5 w-1.5 rounded-full bg-sky-400"></span>
+                  Duration Neutral
+                </span>
+                <span class="text-xs inline-flex items-center gap-1 rounded-full bg-amber-500/10 border border-amber-500/40 px-2.5 py-1">
+                  <span class="h-1.5 w-1.5 rounded-full bg-amber-400"></span>
+                  Long USD
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right: Regime badges -->
+          <div class="col-span-1 grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <!-- Growth -->
+            <div class="bg-slate-950/80 border border-slate-800/90 rounded-2xl px-4 py-3 flex flex-col justify-between">
+              <div class="flex items-center justify-between text-[11px] uppercase tracking-[0.18em] text-slate-500">
+                <span>Growth</span>
+                <span class="text-emerald-400">↑</span>
+              </div>
+              <div class="mt-2 flex items-end justify-between">
+                <div>
+                  <div class="text-lg font-semibold">+0.8σ</div>
+                  <div class="text-[11px] text-slate-400 mt-0.5">
+                    Above Trend
+                  </div>
+                </div>
+                <div class="h-10 w-10 rounded-full border border-emerald-400/60 flex items-center justify-center text-[11px] text-emerald-300">
+                  Late-Cycle
+                </div>
+              </div>
+            </div>
+
+            <!-- Inflation -->
+            <div class="bg-slate-950/80 border border-slate-800/90 rounded-2xl px-4 py-3 flex flex-col justify-between">
+              <div class="flex items-center justify-between text-[11px] uppercase tracking-[0.18em] text-slate-500">
+                <span>Inflation</span>
+                <span class="text-rose-400">↓</span>
+              </div>
+              <div class="mt-2 flex items-end justify-between">
+                <div>
+                  <div class="text-lg font-semibold">+0.3σ</div>
+                  <div class="text-[11px] text-slate-400 mt-0.5">
+                    Disinflating
+                  </div>
+                </div>
+                <div class="h-10 w-10 rounded-full border border-rose-400/60 flex items-center justify-center text-[11px] text-rose-200">
+                  Cooling
+                </div>
+              </div>
+            </div>
+
+            <!-- Liquidity -->
+            <div class="bg-slate-950/80 border border-slate-800/90 rounded-2xl px-4 py-3 flex flex-col justify-between">
+              <div class="flex items-center justify-between text-[11px] uppercase tracking-[0.18em] text-slate-500">
+                <span>Liquidity</span>
+                <span class="text-sky-400">Tight</span>
+              </div>
+              <div class="mt-2 flex items-end justify-between">
+                <div>
+                  <div class="text-lg font-semibold">−0.7σ</div>
+                  <div class="text-[11px] text-slate-400 mt-0.5">
+                    Restrictive
+                  </div>
+                </div>
+                <div class="h-10 w-10 rounded-full border border-sky-400/60 flex items-center justify-center text-[11px] text-sky-200">
+                  QT
+                </div>
+              </div>
+            </div>
+
+            <!-- External -->
+            <div class="bg-slate-950/80 border border-slate-800/90 rounded-2xl px-4 py-3 flex flex-col justify-between">
+              <div class="flex items-center justify-between text-[11px] uppercase tracking-[0.18em] text-slate-500">
+                <span>External</span>
+                <span class="text-amber-300">Stable</span>
+              </div>
+              <div class="mt-2 flex items-end justify-between">
+                <div>
+                  <div class="text-lg font-semibold">+0.1σ</div>
+                  <div class="text-[11px] text-slate-400 mt-0.5">
+                    Balanced
+                  </div>
+                </div>
+                <div class="h-10 w-10 rounded-full border border-amber-300/60 flex items-center justify-center text-[11px] text-amber-100">
+                  Low&nbsp;Risk
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Engines row -->
+        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+          <!-- Engine card template: repeat / tweak text as needed -->
+          <div class="bg-slate-950/80 border border-slate-800/90 rounded-2xl px-4 py-3 flex flex-col gap-3">
+            <div class="flex items-center justify-between text-[11px] uppercase tracking-[0.2em] text-slate-500">
+              <span>Growth Engine</span>
+              <span class="text-slate-400">Composite</span>
+            </div>
+            <div class="flex items-end justify-between">
+              <div>
+                <div class="text-2xl font-semibold">63<span class="text-sm text-slate-400">/100</span></div>
+                <div class="text-[11px] text-slate-400 mt-0.5">
+                  78th percentile vs 10-year history
+                </div>
+              </div>
+              <span class="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 border border-emerald-500/40 px-2 py-0.5 text-[11px] text-emerald-200">
+                <span class="h-1.5 w-1.5 rounded-full bg-emerald-400"></span>
+                Expansion
+              </span>
+            </div>
+            <div class="h-14 rounded-xl bg-gradient-to-r from-emerald-500/20 via-cordobaGold/10 to-slate-900 border border-slate-800/80 flex items-end px-2 pb-1 text-[10px] text-slate-400">
+              <!-- Placeholder sparkline -->
+              <span>Mini growth sparkline</span>
+            </div>
+          </div>
+
+          <div class="bg-slate-950/80 border border-slate-800/90 rounded-2xl px-4 py-3 flex flex-col gap-3">
+            <div class="flex items-center justify-between text-[11px] uppercase tracking-[0.2em] text-slate-500">
+              <span>Inflation Engine</span>
+              <span class="text-slate-400">Composite</span>
+            </div>
+            <div class="flex items-end justify-between">
+              <div>
+                <div class="text-2xl font-semibold">54<span class="text-sm text-slate-400">/100</span></div>
+                <div class="text-[11px] text-slate-400 mt-0.5">
+                  61st percentile vs 10-year history
+                </div>
+              </div>
+              <span class="inline-flex items-center gap-1 rounded-full bg-rose-500/10 border border-rose-500/40 px-2 py-0.5 text-[11px] text-rose-200">
+                <span class="h-1.5 w-1.5 rounded-full bg-rose-400"></span>
+                Cooling
+              </span>
+            </div>
+            <div class="h-14 rounded-xl bg-gradient-to-r from-rose-500/25 via-cordobaGold/10 to-slate-900 border border-slate-800/80 flex items-end px-2 pb-1 text-[10px] text-slate-400">
+              <span>Mini inflation sparkline</span>
+            </div>
+          </div>
+
+          <div class="bg-slate-950/80 border border-slate-800/90 rounded-2xl px-4 py-3 flex flex-col gap-3">
+            <div class="flex items-center justify-between text-[11px] uppercase tracking-[0.2em] text-slate-500">
+              <span>Liquidity Engine</span>
+              <span class="text-slate-400">Composite</span>
+            </div>
+            <div class="flex items-end justify-between">
+              <div>
+                <div class="text-2xl font-semibold">41<span class="text-sm text-slate-400">/100</span></div>
+                <div class="text-[11px] text-slate-400 mt-0.5">
+                  32nd percentile vs 10-year history
+                </div>
+              </div>
+              <span class="inline-flex items-center gap-1 rounded-full bg-sky-500/10 border border-sky-500/40 px-2 py-0.5 text-[11px] text-sky-200">
+                <span class="h-1.5 w-1.5 rounded-full bg-sky-400"></span>
+                Tight
+              </span>
+            </div>
+            <div class="h-14 rounded-xl bg-gradient-to-r from-sky-500/25 via-cordobaGold/10 to-slate-900 border border-slate-800/80 flex items-end px-2 pb-1 text-[10px] text-slate-400">
+              <span>Mini liquidity sparkline</span>
+            </div>
+          </div>
+
+          <div class="bg-slate-950/80 border border-slate-800/90 rounded-2xl px-4 py-3 flex flex-col gap-3">
+            <div class="flex items-center justify-between text-[11px] uppercase tracking-[0.2em] text-slate-500">
+              <span>External Engine</span>
+              <span class="text-slate-400">Composite</span>
+            </div>
+            <div class="flex items-end justify-between">
+              <div>
+                <div class="text-2xl font-semibold">58<span class="text-sm text-slate-400">/100</span></div>
+                <div class="text-[11px] text-slate-400 mt-0.5">
+                  67th percentile vs 10-year history
+                </div>
+              </div>
+              <span class="inline-flex items-center gap-1 rounded-full bg-amber-500/10 border border-amber-500/40 px-2 py-0.5 text-[11px] text-amber-100">
+                <span class="h-1.5 w-1.5 rounded-full bg-amber-300"></span>
+                Resilient
+              </span>
+            </div>
+            <div class="h-14 rounded-xl bg-gradient-to-r from-amber-400/25 via-cordobaGold/10 to-slate-900 border border-slate-800/80 flex items-end px-2 pb-1 text-[10px] text-slate-400">
+              <span>Mini external sparkline</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Heatmap + chart row -->
+        <div class="grid grid-cols-1 xl:grid-cols-3 gap-4">
+          <!-- Heatmap -->
+          <div class="xl:col-span-1 bg-slate-950/80 border border-slate-800/90 rounded-2xl px-4 py-3 flex flex-col gap-3">
+            <div class="flex items-center justify-between">
+              <div>
+                <div class="text-[11px] uppercase tracking-[0.2em] text-slate-500">
+                  Cross-Country View
+                </div>
+                <div class="text-sm text-slate-200 mt-0.5">
+                  G-20 Macro Heatmap
+                </div>
+              </div>
+              <button class="text-[11px] text-slate-400 border border-slate-700 rounded-full px-2.5 py-0.5 hover:border-cordobaGold/70">
+                Growth · Infl · Liquidity
+              </button>
+            </div>
+            <div class="mt-2 h-56 rounded-xl bg-slate-900/80 border border-slate-800/80 grid grid-cols-5 grid-rows-4 text-[10px] text-center text-slate-300">
+              <!-- Just a visual placeholder grid -->
+              <div class="border border-slate-800/60 bg-emerald-500/25 flex items-center justify-center">US</div>
+              <div class="border border-slate-800/60 bg-emerald-500/15 flex items-center justify-center">UK</div>
+              <div class="border border-slate-800/60 bg-amber-500/20 flex items-center justify-center">EU</div>
+              <div class="border border-slate-800/60 bg-rose-500/20 flex items-center justify-center">JP</div>
+              <div class="border border-slate-800/60 bg-emerald-500/20 flex items-center justify-center">CA</div>
+
+              <div class="border border-slate-800/60 bg-emerald-500/25 flex items-center justify-center">KR</div>
+              <div class="border border-slate-800/60 bg-amber-500/25 flex items-center justify-center">CN</div>
+              <div class="border border-slate-800/60 bg-emerald-500/10 flex items-center justify-center">IN</div>
+              <div class="border border-slate-800/60 bg-rose-500/25 flex items-center justify-center">BR</div>
+              <div class="border border-slate-800/60 bg-amber-500/15 flex items-center justify-center">MX</div>
+
+              <div class="border border-slate-800/60 bg-emerald-500/15 flex items-center justify-center">ZA</div>
+              <div class="border border-slate-800/60 bg-amber-500/20 flex items-center justify-center">SA</div>
+              <div class="border border-slate-800/60 bg-emerald-500/20 flex items-center justify-center">ID</div>
+              <div class="border border-slate-800/60 bg-rose-500/20 flex items-center justify-center">TR</div>
+              <div class="border border-slate-800/60 bg-emerald-500/10 flex items-center justify-center">AR</div>
+
+              <div class="border border-slate-800/60 bg-amber-500/15 flex items-center justify-center">RU</div>
+              <div class="border border-slate-800/60 bg-emerald-500/10 flex items-center justify-center">IT</div>
+              <div class="border border-slate-800/60 bg-emerald-500/20 flex items-center justify-center">DE</div>
+              <div class="border border-slate-800/60 bg-amber-500/20 flex items-center justify-center">FR</div>
+              <div class="border border-slate-800/60 bg-slate-900 flex items-center justify-center text-slate-500">+</div>
+            </div>
+          </div>
+
+          <!-- Chart / decomposition -->
+          <div class="xl:col-span-2 bg-slate-950/80 border border-slate-800/90 rounded-2xl px-4 py-3 flex flex-col gap-3">
+            <div class="flex items-center justify-between">
+              <div>
+                <div class="text-[11px] uppercase tracking-[0.2em] text-slate-500">
+                  Time Series
+                </div>
+                <div class="text-sm text-slate-200 mt-0.5">
+                  Growth Engine – United States
+                </div>
+              </div>
+              <div class="flex items-center gap-2 text-[11px]">
+                <button class="px-2.5 py-0.5 rounded-full border border-cordobaGold bg-cordobaGold/80 text-slate-950">
+                  Level
+                </button>
+                <button class="px-2.5 py-0.5 rounded-full border border-slate-700 text-slate-400 hover:border-cordobaGold/70">
+                  z-Score
+                </button>
+                <button class="px-2.5 py-0.5 rounded-full border border-slate-700 text-slate-400 hover:border-cordobaGold/70">
+                  Components
+                </button>
+              </div>
+            </div>
+            <div class="h-40 rounded-xl bg-gradient-to-b from-slate-900 to-slate-950 border border-slate-800/80 flex items-center justify-center text-xs text-slate-500">
+              Chart placeholder – plug in actual growth composite line + recession shading later.
+            </div>
+            <div class="flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-400">
+              <div class="flex flex-wrap gap-2">
+                <span class="inline-flex items-center gap-1">
+                  <span class="h-2 w-4 rounded-full bg-emerald-400"></span>
+                  Composite
+                </span>
+                <span class="inline-flex items-center gap-1">
+                  <span class="h-2 w-4 rounded-full bg-sky-400"></span>
+                  Leading
+                </span>
+                <span class="inline-flex items-center gap-1">
+                  <span class="h-2 w-4 rounded-full bg-amber-400"></span>
+                  Coincident
+                </span>
+                <span class="inline-flex items-center gap-1">
+                  <span class="h-2 w-4 rounded-full bg-rose-400"></span>
+                  Lagging
+                </span>
+              </div>
+              <div>
+                Last update: <span class="text-slate-200">Prelim 2025-10</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Signals table -->
+        <div class="bg-slate-950/80 border border-slate-800/90 rounded-2xl px-4 py-3">
+          <div class="flex items-center justify-between mb-3">
+            <div>
+              <div class="text-[11px] uppercase tracking-[0.2em] text-slate-500">
+                Indicator Grid
+              </div>
+              <div class="text-sm text-slate-200 mt-0.5">
+                Key Signals – United States
+              </div>
+            </div>
+            <div class="flex items-center gap-2 text-[11px]">
+              <button class="px-2.5 py-0.5 rounded-full border border-slate-700 text-slate-400 hover:border-cordobaGold/70">
+                All Engines
+              </button>
+              <button class="px-2.5 py-0.5 rounded-full border border-slate-700 text-slate-400 hover:border-cordobaGold/70">
+                Only Top-of-Book
+              </button>
+            </div>
+          </div>
+
+          <div class="overflow-x-auto">
+            <table class="min-w-full text-xs">
+              <thead>
+                <tr class="text-[11px] uppercase tracking-[0.16em] text-slate-500 border-b border-slate-800">
+                  <th class="py-2 text-left">Indicator</th>
+                  <th class="py-2 text-left">Engine</th>
+                  <th class="py-2 text-left">Bucket</th>
+                  <th class="py-2 text-left">Signal</th>
+                  <th class="py-2 text-right">Last</th>
+                  <th class="py-2 text-right">z-Score</th>
+                  <th class="py-2 text-left">Comment</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-900">
+                <tr class="hover:bg-slate-900/70">
+                  <td class="py-2 pr-3 text-slate-100">OECD CLI</td>
+                  <td class="py-2 pr-3 text-slate-300">Growth</td>
+                  <td class="py-2 pr-3 text-slate-300">Leading</td>
+                  <td class="py-2 pr-3">
+                    <span class="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 border border-emerald-500/40 px-2 py-0.5 text-[11px] text-emerald-200">
+                      Expansion
+                    </span>
+                  </td>
+                  <td class="py-2 pr-3 text-right text-slate-100">100.8</td>
+                  <td class="py-2 pr-3 text-right text-emerald-300">+0.9</td>
+                  <td class="py-2 text-slate-400">
+                    Momentum remains positive but rolling over at the margin.
+                  </td>
+                </tr>
+                <tr class="hover:bg-slate-900/70">
+                  <td class="py-2 pr-3 text-slate-100">Core CPI (YoY)</td>
+                  <td class="py-2 pr-3 text-slate-300">Inflation</td>
+                  <td class="py-2 pr-3 text-slate-300">Coincident</td>
+                  <td class="py-2 pr-3">
+                    <span class="inline-flex items-center gap-1 rounded-full bg-rose-500/10 border border-rose-500/40 px-2 py-0.5 text-[11px] text-rose-200">
+                      Cooling
+                    </span>
+                  </td>
+                  <td class="py-2 pr-3 text-right text-slate-100">2.7%</td>
+                  <td class="py-2 pr-3 text-right text-rose-200">+0.3</td>
+                  <td class="py-2 text-slate-400">
+                    Still above target but trending lower; pressure shifting to services.
+                  </td>
+                </tr>
+                <tr class="hover:bg-slate-900/70">
+                  <td class="py-2 pr-3 text-slate-100">10s–2s UST Slope</td>
+                  <td class="py-2 pr-3 text-slate-300">Liquidity</td>
+                  <td class="py-2 pr-3 text-slate-300">Leading</td>
+                  <td class="py-2 pr-3">
+                    <span class="inline-flex items-center gap-1 rounded-full bg-amber-500/10 border border-amber-500/40 px-2 py-0.5 text-[11px] text-amber-100">
+                      Late-Cycle
+                    </span>
+                  </td>
+                  <td class="py-2 pr-3 text-right text-slate-100">−35 bps</td>
+                  <td class="py-2 pr-3 text-right text-amber-200">−1.2</td>
+                  <td class="py-2 text-slate-400">
+                    Curve remains inverted; recession risk priced but not realised yet.
+                  </td>
+                </tr>
+                <tr class="hover:bg-slate-900/70">
+                  <td class="py-2 pr-3 text-slate-100">Current Account / GDP</td>
+                  <td class="py-2 pr-3 text-slate-300">External</td>
+                  <td class="py-2 pr-3 text-slate-300">Lagging</td>
+                  <td class="py-2 pr-3">
+                    <span class="inline-flex items-center gap-1 rounded-full bg-sky-500/10 border border-sky-500/40 px-2 py-0.5 text-[11px] text-sky-200">
+                      Neutral
+                    </span>
+                  </td>
+                  <td class="py-2 pr-3 text-right text-slate-100">−2.1%</td>
+                  <td class="py-2 pr-3 text-right text-sky-200">−0.3</td>
+                  <td class="py-2 text-slate-400">
+                    Deficit contained; no immediate funding stress flagged by reserves.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </section>
+    </main>
+  </div>
+</body>
+</html>
