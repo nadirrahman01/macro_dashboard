@@ -164,10 +164,10 @@
       <!-- Content area -->
       <section class="flex-1 overflow-y-auto px-6 py-5 space-y-5">
 
-        <!-- Regime summary row (country selection + stance + high-level z-scores) -->
+        <!-- Regime summary row -->
         <div class="grid grid-cols-1 xl:grid-cols-3 gap-4">
           <!-- Left: Country & headline -->
-          <div class="col-span-1 xl:col-span-2 bg-slate-950/80 border border-slate-800/90 rounded-2xl px-5 py-4 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div class="col-span-1 xl:col-span-2 bg-slate-950/80 border border-slate-800/90 rounded-2xl px-5 py-4 cc-top-flex flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div class="space-y-2">
               <div class="text-[11px] uppercase tracking-[0.25em] text-slate-500">
                 Country Selection
@@ -175,7 +175,6 @@
 
               <!-- Country selector -->
               <div class="relative">
-                <!-- Toggle button -->
                 <button
                   id="cc-country-toggle"
                   class="inline-flex items-center gap-2 bg-slate-900 border border-slate-700 rounded-full px-3 py-1.5 hover:border-cordobaGold/70"
@@ -187,7 +186,7 @@
                   <span class="text-[11px] text-slate-500">▼</span>
                 </button>
 
-                <!-- Dropdown menu -->
+                <!-- Dropdown -->
                 <div
                   id="cc-country-menu"
                   class="hidden absolute z-20 mt-1 w-56 rounded-xl bg-slate-950 border border-slate-800 shadow-xl text-xs"
@@ -196,7 +195,6 @@
                     G-20 Countries
                   </div>
                   <div class="max-h-64 overflow-y-auto">
-                    <!-- A few examples; rest can be added later -->
                     <button class="w-full text-left px-3 py-1.5 hover:bg-slate-900" data-cc-country="US" data-cc-region="G-20 · DM">
                       United States
                     </button>
@@ -235,17 +233,28 @@
                 Model Stance (Rules)
               </div>
               <div class="flex flex-wrap gap-2">
-                <span id="cc-stance-equities" class="text-xs inline-flex items-center gap-1 rounded-full bg-emerald-500/10 border border-emerald-500/40 px-2.5 py-1">
-                  <span class="h-1.5 w-1.5 rounded-full bg-emerald-400"></span>
-                  OW Equities
+                <span
+                  id="cc-stance-equities"
+                  class="cc-stance-pill bg-emerald-500/10 border border-emerald-500/40"
+                >
+                  <span class="cc-stance-dot bg-emerald-400"></span>
+                  <span class="cc-stance-label">OW Equities</span>
                 </span>
-                <span id="cc-stance-duration" class="text-xs inline-flex items-center gap-1 rounded-full bg-sky-500/10 border border-sky-500/40 px-2.5 py-1">
-                  <span class="h-1.5 w-1.5 rounded-full bg-sky-400"></span>
-                  Duration Neutral
+
+                <span
+                  id="cc-stance-duration"
+                  class="cc-stance-pill bg-sky-500/10 border border-sky-500/40"
+                >
+                  <span class="cc-stance-dot bg-sky-400"></span>
+                  <span class="cc-stance-label">Neutral Duration</span>
                 </span>
-                <span id="cc-stance-fx" class="text-xs inline-flex items-center gap-1 rounded-full bg-amber-500/10 border border-amber-500/40 px-2.5 py-1">
-                  <span class="h-1.5 w-1.5 rounded-full bg-amber-400"></span>
-                  Long USD
+
+                <span
+                  id="cc-stance-fx"
+                  class="cc-stance-pill bg-amber-500/10 border border-amber-500/40"
+                >
+                  <span class="cc-stance-dot bg-amber-400"></span>
+                  <span class="cc-stance-label">Long USD</span>
                 </span>
               </div>
               <div id="cc-stance-explainer" class="text-[11px] text-slate-500 leading-snug">
@@ -507,7 +516,7 @@
 
         <!-- Heatmap + chart row -->
         <div class="grid grid-cols-1 xl:grid-cols-3 gap-4">
-          <!-- Heatmap (still placeholder styling) -->
+          <!-- Heatmap placeholder -->
           <div class="xl:col-span-1 bg-slate-950/80 border border-slate-800/90 rounded-2xl px-4 py-3 flex flex-col gap-3">
             <div class="flex items-center justify-between">
               <div>
@@ -523,7 +532,6 @@
               </button>
             </div>
             <div class="mt-2 h-56 rounded-xl bg-slate-900/80 border border-slate-800/80 grid grid-cols-5 grid-rows-4 text-[10px] text-center text-slate-300">
-              <!-- purely visual placeholder for now -->
               <div class="border border-slate-800/60 bg-emerald-500/25 flex items-center justify-center">US</div>
               <div class="border border-slate-800/60 bg-emerald-500/15 flex items-center justify-center">UK</div>
               <div class="border border-slate-800/60 bg-amber-500/20 flex items-center justify-center">EU</div>
@@ -660,7 +668,7 @@
                 </tr>
               </thead>
               <tbody id="cc-signals-tbody" class="divide-y divide-slate-900">
-                <!-- Rows populated by JS -->
+                <!-- Populated by JS -->
               </tbody>
             </table>
           </div>
