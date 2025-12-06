@@ -1,0 +1,402 @@
+{
+  "countries": [
+    {
+      "code": "US",
+      "name": "United States",
+      "region": "G-20 · DM",
+      "regionType": "DM",
+      "macroRegime": "Late-cycle disinflation",
+      "riskFlags": {
+        "growth": "medium",
+        "inflation": "low",
+        "policyError": "medium",
+        "external": "low"
+      },
+      "engines": {
+        "growth": {
+          "score": 63,
+          "z": 0.8,
+          "percentile": 78,
+          "regime": "Expansion",
+          "descriptor": "Above trend"
+        },
+        "inflation": {
+          "score": 54,
+          "z": 0.3,
+          "percentile": 61,
+          "regime": "Cooling",
+          "descriptor": "Disinflating"
+        },
+        "liquidity": {
+          "score": 41,
+          "z": -0.7,
+          "percentile": 32,
+          "regime": "Tight",
+          "descriptor": "Restrictive"
+        },
+        "external": {
+          "score": 58,
+          "z": 0.1,
+          "percentile": 67,
+          "regime": "Resilient",
+          "descriptor": "Balanced"
+        }
+      },
+      "modelStance": {
+        "equities": "OW Equities",
+        "duration": "Duration Neutral",
+        "fx": "Long USD",
+        "credit": "Neutral Credit"
+      },
+      "policyCurve": {
+        "policyRate": 4.5,
+        "policyRateChange12m": -0.50,
+        "coreInflation": 2.7,
+        "realPolicyRate": 1.8,
+        "slope10s2s": -0.35,
+        "comment": "Tight but easing; curve still inverted with cuts starting to be priced."
+      },
+      "indicators": [
+        {
+          "name": "OECD CLI",
+          "engine": "Growth",
+          "bucket": "Leading",
+          "signal": "Expansion",
+          "last": "100.8",
+          "z": 0.9,
+          "zColour": "positive",
+          "comment": "Momentum remains positive but rolling over at the margin."
+        },
+        {
+          "name": "Core CPI (YoY)",
+          "engine": "Inflation",
+          "bucket": "Coincident",
+          "signal": "Cooling",
+          "last": "2.7%",
+          "z": 0.3,
+          "zColour": "mild",
+          "comment": "Still above target but trending lower; pressure shifting to services."
+        },
+        {
+          "name": "10s–2s UST Slope",
+          "engine": "Liquidity",
+          "bucket": "Leading",
+          "signal": "Late-Cycle",
+          "last": "−35 bps",
+          "z": -1.2,
+          "zColour": "negative",
+          "comment": "Curve remains inverted; recession risk priced but not realised yet."
+        },
+        {
+          "name": "Current Account / GDP",
+          "engine": "External",
+          "bucket": "Lagging",
+          "signal": "Neutral",
+          "last": "−2.1%",
+          "z": -0.3,
+          "zColour": "mild",
+          "comment": "Deficit contained; no immediate funding stress flagged by reserves."
+        }
+      ],
+      "latestView": "US sits in a late-cycle disinflation regime: growth still above trend, inflation cooling, but liquidity conditions remain restrictive and the curve inverted. Policy is tight in real terms, with easing now starting to be priced.",
+      "timeseries": {
+        "dates": ["2025-05", "2025-06", "2025-07", "2025-08", "2025-09", "2025-10"],
+        "growthLevel": [55, 57, 60, 62, 63, 63],
+        "growthZ": [0.2, 0.3, 0.5, 0.7, 0.8, 0.8],
+        "growthLeading": [0.4, 0.5, 0.6, 0.7, 0.6, 0.5],
+        "growthCoincident": [0.1, 0.2, 0.4, 0.5, 0.6, 0.6],
+        "growthLagging": [-0.1, 0, 0.1, 0.2, 0.3, 0.4]
+      }
+    },
+    {
+      "code": "UK",
+      "name": "United Kingdom",
+      "region": "G-20 · DM",
+      "regionType": "DM",
+      "macroRegime": "Early-cycle repair",
+      "riskFlags": {
+        "growth": "medium",
+        "inflation": "medium",
+        "policyError": "medium",
+        "external": "medium"
+      },
+      "engines": {
+        "growth": {
+          "score": 52,
+          "z": 0.1,
+          "percentile": 55,
+          "regime": "Recovery",
+          "descriptor": "Around trend"
+        },
+        "inflation": {
+          "score": 59,
+          "z": 0.5,
+          "percentile": 70,
+          "regime": "Sticky",
+          "descriptor": "Above comfort"
+        },
+        "liquidity": {
+          "score": 45,
+          "z": -0.3,
+          "percentile": 40,
+          "regime": "Tightening",
+          "descriptor": "Mildly restrictive"
+        },
+        "external": {
+          "score": 49,
+          "z": -0.1,
+          "percentile": 48,
+          "regime": "Neutral",
+          "descriptor": "Balanced"
+        }
+      },
+      "modelStance": {
+        "equities": "Neutral Equities",
+        "duration": "OW Duration",
+        "fx": "Neutral GBP",
+        "credit": "Cautious Credit"
+      },
+      "policyCurve": {
+        "policyRate": 3.75,
+        "policyRateChange12m": -0.25,
+        "coreInflation": 3.1,
+        "realPolicyRate": 0.65,
+        "slope10s2s": -0.15,
+        "comment": "Policy still restrictive vs history; curve inversion shallower than US but growth base weaker."
+      },
+      "indicators": [
+        {
+          "name": "Composite PMI",
+          "engine": "Growth",
+          "bucket": "Leading",
+          "signal": "Recovery",
+          "last": "51.2",
+          "z": 0.2,
+          "zColour": "mild",
+          "comment": "Back above 50 but with soft new orders."
+        },
+        {
+          "name": "Core CPI (YoY)",
+          "engine": "Inflation",
+          "bucket": "Coincident",
+          "signal": "Sticky",
+          "last": "3.1%",
+          "z": 0.6,
+          "zColour": "positive",
+          "comment": "Inflation drifting lower but services remain firm."
+        }
+      ],
+      "latestView": "UK is in early-cycle repair: growth stabilising around trend, inflation still above comfort, and policy only gradually shifting from restrictive territory.",
+      "timeseries": {
+        "dates": ["2025-05", "2025-06", "2025-07", "2025-08", "2025-09", "2025-10"],
+        "growthLevel": [48, 50, 51, 52, 52, 52],
+        "growthZ": [-0.1, 0, 0.1, 0.1, 0.1, 0.1],
+        "growthLeading": [0.1, 0.2, 0.2, 0.3, 0.2, 0.2],
+        "growthCoincident": [-0.2, -0.1, 0, 0.1, 0.1, 0.1],
+        "growthLagging": [-0.3, -0.2, -0.1, 0, 0, 0.1]
+      }
+    },
+    {
+      "code": "DE",
+      "name": "Germany",
+      "region": "G-20 · DM",
+      "regionType": "DM",
+      "macroRegime": "Shallow stagnation",
+      "riskFlags": {
+        "growth": "high",
+        "inflation": "low",
+        "policyError": "medium",
+        "external": "medium"
+      },
+      "engines": {
+        "growth": {
+          "score": 42,
+          "z": -0.7,
+          "percentile": 25,
+          "regime": "Stagnation",
+          "descriptor": "Below trend"
+        },
+        "inflation": {
+          "score": 47,
+          "z": -0.2,
+          "percentile": 45,
+          "regime": "Soft",
+          "descriptor": "Benign"
+        },
+        "liquidity": {
+          "score": 53,
+          "z": 0.2,
+          "percentile": 60,
+          "regime": "Neutral",
+          "descriptor": "Balanced"
+        },
+        "external": {
+          "score": 56,
+          "z": 0.3,
+          "percentile": 65,
+          "regime": "Resilient",
+          "descriptor": "Surplus"
+        }
+      },
+      "modelStance": {
+        "equities": "UW Equities",
+        "duration": "OW Duration",
+        "fx": "Neutral EUR",
+        "credit": "Selective Credit"
+      },
+      "policyCurve": {
+        "policyRate": 3.25,
+        "policyRateChange12m": -0.25,
+        "coreInflation": 2.1,
+        "realPolicyRate": 1.15,
+        "slope10s2s": -0.10,
+        "comment": "Growth weak while policy remains mildly restrictive; curve modestly inverted."
+      },
+      "indicators": [],
+      "latestView": "Germany looks like shallow stagnation: demand soft, but external surplus and contained inflation limit immediate stress.",
+      "timeseries": {
+        "dates": ["2025-05", "2025-06", "2025-07", "2025-08", "2025-09", "2025-10"],
+        "growthLevel": [45, 44, 43, 42, 42, 42],
+        "growthZ": [-0.3, -0.4, -0.6, -0.7, -0.7, -0.7],
+        "growthLeading": [-0.4, -0.5, -0.7, -0.8, -0.8, -0.8],
+        "growthCoincident": [-0.3, -0.3, -0.4, -0.4, -0.5, -0.5],
+        "growthLagging": [0, -0.1, -0.1, -0.2, -0.2, -0.2]
+      }
+    },
+    {
+      "code": "CN",
+      "name": "China",
+      "region": "G-20 · EM",
+      "regionType": "EM",
+      "macroRegime": "Stop–go reflation",
+      "riskFlags": {
+        "growth": "medium",
+        "inflation": "low",
+        "policyError": "high",
+        "external": "medium"
+      },
+      "engines": {
+        "growth": {
+          "score": 57,
+          "z": 0.4,
+          "percentile": 70,
+          "regime": "Reflation",
+          "descriptor": "Above trend"
+        },
+        "inflation": {
+          "score": 39,
+          "z": -1.0,
+          "percentile": 15,
+          "regime": "Disinflation",
+          "descriptor": "Very soft"
+        },
+        "liquidity": {
+          "score": 62,
+          "z": 0.9,
+          "percentile": 80,
+          "regime": "Easy",
+          "descriptor": "Accommodative"
+        },
+        "external": {
+          "score": 60,
+          "z": 0.4,
+          "percentile": 70,
+          "regime": "Surplus",
+          "descriptor": "External buffer"
+        }
+      },
+      "modelStance": {
+        "equities": "Selective Equities",
+        "duration": "Neutral Duration",
+        "fx": "Mildly Short CNY",
+        "credit": "Cautious HY"
+      },
+      "policyCurve": {
+        "policyRate": 2.5,
+        "policyRateChange12m": -0.25,
+        "coreInflation": 0.8,
+        "realPolicyRate": 1.7,
+        "slope10s2s": 0.10,
+        "comment": "Policy easy in quantity terms, but real rates still positive amid weak prices."
+      },
+      "indicators": [],
+      "latestView": "China screens as stop–go reflation: policy and liquidity are supportive, inflation undershoots, but growth momentum remains uneven across sectors.",
+      "timeseries": {
+        "dates": ["2025-05", "2025-06", "2025-07", "2025-08", "2025-09", "2025-10"],
+        "growthLevel": [50, 52, 54, 55, 56, 57],
+        "growthZ": [0, 0.1, 0.2, 0.3, 0.35, 0.4],
+        "growthLeading": [0.2, 0.3, 0.3, 0.4, 0.3, 0.3],
+        "growthCoincident": [-0.1, 0, 0.1, 0.2, 0.25, 0.3],
+        "growthLagging": [-0.2, -0.1, 0, 0.1, 0.15, 0.2]
+      }
+    },
+    {
+      "code": "IN",
+      "name": "India",
+      "region": "G-20 · EM",
+      "regionType": "EM",
+      "macroRegime": "High-growth expansion",
+      "riskFlags": {
+        "growth": "low",
+        "inflation": "medium",
+        "policyError": "medium",
+        "external": "medium"
+      },
+      "engines": {
+        "growth": {
+          "score": 72,
+          "z": 1.2,
+          "percentile": 90,
+          "regime": "Expansion",
+          "descriptor": "Well above trend"
+        },
+        "inflation": {
+          "score": 52,
+          "z": 0.1,
+          "percentile": 55,
+          "regime": "Contained",
+          "descriptor": "On target"
+        },
+        "liquidity": {
+          "score": 59,
+          "z": 0.5,
+          "percentile": 70,
+          "regime": "Supportive",
+          "descriptor": "Mildly easy"
+        },
+        "external": {
+          "score": 51,
+          "z": 0.0,
+          "percentile": 50,
+          "regime": "Neutral",
+          "descriptor": "Balanced"
+        }
+      },
+      "modelStance": {
+        "equities": "OW Equities",
+        "duration": "UW Duration",
+        "fx": "Mildly Long INR",
+        "credit": "OW Local Credit"
+      },
+      "policyCurve": {
+        "policyRate": 6.5,
+        "policyRateChange12m": 0.0,
+        "coreInflation": 4.1,
+        "realPolicyRate": 2.4,
+        "slope10s2s": 0.20,
+        "comment": "High real rates but anchored inflation and strong growth; curve modestly steep."
+      },
+      "indicators": [],
+      "latestView": "India is classic high-growth expansion: strong domestic impulse, contained inflation, and supportive liquidity, albeit with relatively high real rates.",
+      "timeseries": {
+        "dates": ["2025-05", "2025-06", "2025-07", "2025-08", "2025-09", "2025-10"],
+        "growthLevel": [65, 67, 69, 70, 71, 72],
+        "growthZ": [0.8, 0.9, 1.0, 1.1, 1.15, 1.2],
+        "growthLeading": [1.0, 1.1, 1.1, 1.2, 1.1, 1.1],
+        "growthCoincident": [0.6, 0.7, 0.8, 0.9, 0.95, 1.0],
+        "growthLagging": [0.3, 0.4, 0.5, 0.6, 0.65, 0.7]
+      }
+    }
+  ],
+  "focus": ["US", "UK", "DE", "CN", "IN"]
+}
