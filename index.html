@@ -5,7 +5,7 @@
   <title>Cordoba Capital – Global Macro Engine</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-  <link rel="stylesheet" href="assets/style.css">
+  <!-- Tailwind CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -23,6 +23,9 @@
       }
     }
   </script>
+
+  <!-- Custom Cordoba CSS -->
+  <link rel="stylesheet" href="assets/style.css">
 </head>
 <body class="bg-slate-950 text-slate-100 font-body min-h-screen">
 
@@ -139,22 +142,22 @@
           </button>
 
           <!-- Live / Snapshot toggle -->
-        <div id="cc-live-toggle-group" class="flex items-center text-xs bg-slate-900/80 border border-slate-700 rounded-full p-0.5">
-          <button
-            class="px-3 py-1 rounded-full bg-cordobaGold text-slate-900 font-medium"
-            data-cc-live-toggle="live"
-            type="button"
-          >
-            Live
-          </button>
-          <button
-            class="px-3 py-1 rounded-full text-slate-400 hover:text-slate-100"
-            data-cc-live-toggle="snapshot"
-            type="button"
-          >
-            Snapshot
-          </button>
-        </div>
+          <div id="cc-live-toggle-group" class="flex items-center text-xs bg-slate-900/80 border border-slate-700 rounded-full p-0.5">
+            <button
+              class="px-3 py-1 rounded-full bg-cordobaGold text-slate-900 font-medium"
+              data-cc-live-toggle="live"
+              type="button"
+            >
+              Live
+            </button>
+            <button
+              class="px-3 py-1 rounded-full text-slate-400 hover:text-slate-100"
+              data-cc-live-toggle="snapshot"
+              type="button"
+            >
+              Snapshot
+            </button>
+          </div>
         </div>
       </header>
 
@@ -169,56 +172,58 @@
               <div class="text-[11px] uppercase tracking-[0.25em] text-slate-500">
                 Country Selection
               </div>
-<div class="relative">
-  <!-- Toggle button -->
-  <button
-    id="cc-country-toggle"
-    class="inline-flex items-center gap-2 bg-slate-900 border border-slate-700 rounded-full px-3 py-1.5 hover:border-cordobaGold/70"
-    type="button"
-  >
-    <span class="h-2 w-2 rounded-full bg-emerald-400" id="cc-country-dot"></span>
-    <span class="text-sm font-medium" data-cc-country-label>United States</span>
-    <span class="text-[11px] text-slate-400" data-cc-country-region>G-20 · DM</span>
-    <span class="text-[11px] text-slate-500">▼</span>
-  </button>
 
-  <!-- Dropdown menu -->
-  <div
-    id="cc-country-menu"
-    class="hidden absolute z-20 mt-1 w-56 rounded-xl bg-slate-950 border border-slate-800 shadow-xl text-xs"
-  >
-    <div class="px-3 py-2 text-[10px] uppercase tracking-[0.22em] text-slate-500">
-      G-20 Countries
-    </div>
-    <div class="max-h-64 overflow-y-auto">
-      <!-- A few examples; you can add the rest of G-20 -->
-      <button class="w-full text-left px-3 py-1.5 hover:bg-slate-900" data-cc-country="US" data-cc-region="G-20 · DM">
-        United States
-      </button>
-      <button class="w-full text-left px-3 py-1.5 hover:bg-slate-900" data-cc-country="UK" data-cc-region="G-20 · DM">
-        United Kingdom
-      </button>
-      <button class="w-full text-left px-3 py-1.5 hover:bg-slate-900" data-cc-country="DE" data-cc-region="G-20 · DM">
-        Germany
-      </button>
-      <button class="w-full text-left px-3 py-1.5 hover:bg-slate-900" data-cc-country="CN" data-cc-region="G-20 · EM">
-        China
-      </button>
-      <button class="w-full text-left px-3 py-1.5 hover:bg-slate-900" data-cc-country="IN" data-cc-region="G-20 · EM">
-        India
-      </button>
-      <!-- Add the rest of G-20 here later -->
-    </div>
-  </div>
-</div>
+              <!-- Country selector -->
+              <div class="relative">
+                <!-- Toggle button -->
+                <button
+                  id="cc-country-toggle"
+                  class="inline-flex items-center gap-2 bg-slate-900 border border-slate-700 rounded-full px-3 py-1.5 hover:border-cordobaGold/70"
+                  type="button"
+                >
+                  <span class="h-2 w-2 rounded-full bg-emerald-400" id="cc-country-dot"></span>
+                  <span class="text-sm font-medium" data-cc-country-label>United States</span>
+                  <span class="text-[11px] text-slate-400" data-cc-country-region>G-20 · DM</span>
+                  <span class="text-[11px] text-slate-500">▼</span>
+                </button>
 
-                <div class="inline-flex items-center gap-2 text-xs text-slate-400">
-                  <span>Benchmark:</span>
-                  <span class="border border-slate-700 rounded-full px-2 py-0.5">World</span>
-                  <span class="border border-slate-700 rounded-full px-2 py-0.5">DM</span>
-                  <span class="border border-slate-700 rounded-full px-2 py-0.5">EM</span>
+                <!-- Dropdown menu -->
+                <div
+                  id="cc-country-menu"
+                  class="hidden absolute z-20 mt-1 w-56 rounded-xl bg-slate-950 border border-slate-800 shadow-xl text-xs"
+                >
+                  <div class="px-3 py-2 text-[10px] uppercase tracking-[0.22em] text-slate-500">
+                    G-20 Countries
+                  </div>
+                  <div class="max-h-64 overflow-y-auto">
+                    <!-- A few examples; add the rest later -->
+                    <button class="w-full text-left px-3 py-1.5 hover:bg-slate-900" data-cc-country="US" data-cc-region="G-20 · DM">
+                      United States
+                    </button>
+                    <button class="w-full text-left px-3 py-1.5 hover:bg-slate-900" data-cc-country="UK" data-cc-region="G-20 · DM">
+                      United Kingdom
+                    </button>
+                    <button class="w-full text-left px-3 py-1.5 hover:bg-slate-900" data-cc-country="DE" data-cc-region="G-20 · DM">
+                      Germany
+                    </button>
+                    <button class="w-full text-left px-3 py-1.5 hover:bg-slate-900" data-cc-country="CN" data-cc-region="G-20 · EM">
+                      China
+                    </button>
+                    <button class="w-full text-left px-3 py-1.5 hover:bg-slate-900" data-cc-country="IN" data-cc-region="G-20 · EM">
+                      India
+                    </button>
+                    <!-- Add remaining G-20 countries here -->
+                  </div>
                 </div>
               </div>
+
+              <div class="inline-flex items-center gap-2 text-xs text-slate-400">
+                <span>Benchmark:</span>
+                <span class="border border-slate-700 rounded-full px-2 py-0.5">World</span>
+                <span class="border border-slate-700 rounded-full px-2 py-0.5">DM</span>
+                <span class="border border-slate-700 rounded-full px-2 py-0.5">EM</span>
+              </div>
+
               <div class="text-xs text-slate-400 max-w-2xl">
                 Composite engine output for the selected country. Scores blend leading, coincident, and lagging indicators
                 across growth, inflation, liquidity, and external balance.
@@ -329,7 +334,7 @@
 
         <!-- Engines row -->
         <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-          <!-- Engine card template: repeat / tweak text as needed -->
+          <!-- Growth Engine -->
           <div class="bg-slate-950/80 border border-slate-800/90 rounded-2xl px-4 py-3 flex flex-col gap-3">
             <div class="flex items-center justify-between text-[11px] uppercase tracking-[0.2em] text-slate-500">
               <span>Growth Engine</span>
@@ -348,11 +353,11 @@
               </span>
             </div>
             <div class="h-14 rounded-xl bg-gradient-to-r from-emerald-500/20 via-cordobaGold/10 to-slate-900 border border-slate-800/80 flex items-end px-2 pb-1 text-[10px] text-slate-400">
-              <!-- Placeholder sparkline -->
               <span>Mini growth sparkline</span>
             </div>
           </div>
 
+          <!-- Inflation Engine -->
           <div class="bg-slate-950/80 border border-slate-800/90 rounded-2xl px-4 py-3 flex flex-col gap-3">
             <div class="flex items-center justify-between text-[11px] uppercase tracking-[0.2em] text-slate-500">
               <span>Inflation Engine</span>
@@ -375,6 +380,7 @@
             </div>
           </div>
 
+          <!-- Liquidity Engine -->
           <div class="bg-slate-950/80 border border-slate-800/90 rounded-2xl px-4 py-3 flex flex-col gap-3">
             <div class="flex items-center justify-between text-[11px] uppercase tracking-[0.2em] text-slate-500">
               <span>Liquidity Engine</span>
@@ -397,6 +403,7 @@
             </div>
           </div>
 
+          <!-- External Engine -->
           <div class="bg-slate-950/80 border border-slate-800/90 rounded-2xl px-4 py-3 flex flex-col gap-3">
             <div class="flex items-center justify-between text-[11px] uppercase tracking-[0.2em] text-slate-500">
               <span>External Engine</span>
@@ -477,19 +484,34 @@
                 </div>
               </div>
               <div class="flex items-center gap-2 text-[11px]">
-                <button class="px-2.5 py-0.5 rounded-full border border-cordobaGold bg-cordobaGold/80 text-slate-950">
+                <button
+                  class="px-2.5 py-0.5 rounded-full border border-cordobaGold bg-cordobaGold/80 text-slate-950"
+                  data-cc-chart-tab="level"
+                  type="button"
+                >
                   Level
                 </button>
-                <button class="px-2.5 py-0.5 rounded-full border border-slate-700 text-slate-400 hover:border-cordobaGold/70">
+                <button
+                  class="px-2.5 py-0.5 rounded-full border border-slate-700 text-slate-400 hover:border-cordobaGold/70"
+                  data-cc-chart-tab="zscore"
+                  type="button"
+                >
                   z-Score
                 </button>
-                <button class="px-2.5 py-0.5 rounded-full border border-slate-700 text-slate-400 hover:border-cordobaGold/70">
+                <button
+                  class="px-2.5 py-0.5 rounded-full border border-slate-700 text-slate-400 hover:border-cordobaGold/70"
+                  data-cc-chart-tab="components"
+                  type="button"
+                >
                   Components
                 </button>
               </div>
             </div>
-            <div class="h-40 rounded-xl bg-gradient-to-b from-slate-900 to-slate-950 border border-slate-800/80 flex items-center justify-center text-xs text-slate-500">
-              Chart placeholder – plug in actual growth composite line + recession shading later.
+            <div
+              class="h-40 rounded-xl bg-gradient-to-b from-slate-900 to-slate-950 border border-slate-800/80 flex items-center justify-center text-xs text-slate-500"
+              id="cc-chart-placeholder"
+            >
+              <span>Chart placeholder – showing Level view. Plug in actual growth composite line + recession shading later.</span>
             </div>
             <div class="flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-400">
               <div class="flex flex-wrap gap-2">
@@ -620,8 +642,8 @@
       </section>
     </main>
   </div>
-    <script src="main.js"></script>
-</body>
-</html>
+
+  <!-- JS logic -->
+  <script src="main.js"></script>
 </body>
 </html>
