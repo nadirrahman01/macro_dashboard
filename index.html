@@ -196,7 +196,7 @@
                     G-20 Countries
                   </div>
                   <div class="max-h-64 overflow-y-auto">
-                    <!-- A few examples; add the rest later -->
+                    <!-- Examples; data-driven logic will use the code -->
                     <button class="w-full text-left px-3 py-1.5 hover:bg-slate-900" data-cc-country="US" data-cc-region="G-20 · DM">
                       United States
                     </button>
@@ -212,7 +212,7 @@
                     <button class="w-full text-left px-3 py-1.5 hover:bg-slate-900" data-cc-country="IN" data-cc-region="G-20 · EM">
                       India
                     </button>
-                    <!-- Add remaining G-20 countries here -->
+                    <!-- Add remaining G-20 here later -->
                   </div>
                 </div>
               </div>
@@ -224,7 +224,7 @@
                 <span class="border border-slate-700 rounded-full px-2 py-0.5">EM</span>
               </div>
 
-              <div class="text-xs text-slate-400 max-w-2xl">
+              <div class="text-xs text-slate-400 max-w-2xl" data-cc-latest-view>
                 Composite engine output for the selected country. Scores blend leading, coincident, and lagging indicators
                 across growth, inflation, liquidity, and external balance.
               </div>
@@ -236,15 +236,15 @@
                 Model Stance
               </div>
               <div class="flex flex-wrap gap-2">
-                <span class="text-xs inline-flex items-center gap-1 rounded-full bg-emerald-500/10 border border-emerald-500/40 px-2.5 py-1">
+                <span id="cc-stance-equities" class="text-xs inline-flex items-center gap-1 rounded-full bg-emerald-500/10 border border-emerald-500/40 px-2.5 py-1">
                   <span class="h-1.5 w-1.5 rounded-full bg-emerald-400"></span>
                   OW Equities
                 </span>
-                <span class="text-xs inline-flex items-center gap-1 rounded-full bg-sky-500/10 border border-sky-500/40 px-2.5 py-1">
+                <span id="cc-stance-duration" class="text-xs inline-flex items-center gap-1 rounded-full bg-sky-500/10 border border-sky-500/40 px-2.5 py-1">
                   <span class="h-1.5 w-1.5 rounded-full bg-sky-400"></span>
                   Duration Neutral
                 </span>
-                <span class="text-xs inline-flex items-center gap-1 rounded-full bg-amber-500/10 border border-amber-500/40 px-2.5 py-1">
+                <span id="cc-stance-fx" class="text-xs inline-flex items-center gap-1 rounded-full bg-amber-500/10 border border-amber-500/40 px-2.5 py-1">
                   <span class="h-1.5 w-1.5 rounded-full bg-amber-400"></span>
                   Long USD
                 </span>
@@ -262,8 +262,8 @@
               </div>
               <div class="mt-2 flex items-end justify-between">
                 <div>
-                  <div class="text-lg font-semibold">+0.8σ</div>
-                  <div class="text-[11px] text-slate-400 mt-0.5">
+                  <div class="text-lg font-semibold" id="cc-reg-growth-z">+0.8σ</div>
+                  <div class="text-[11px] text-slate-400 mt-0.5" id="cc-reg-growth-desc">
                     Above Trend
                   </div>
                 </div>
@@ -281,8 +281,8 @@
               </div>
               <div class="mt-2 flex items-end justify-between">
                 <div>
-                  <div class="text-lg font-semibold">+0.3σ</div>
-                  <div class="text-[11px] text-slate-400 mt-0.5">
+                  <div class="text-lg font-semibold" id="cc-reg-inflation-z">+0.3σ</div>
+                  <div class="text-[11px] text-slate-400 mt-0.5" id="cc-reg-inflation-desc">
                     Disinflating
                   </div>
                 </div>
@@ -300,8 +300,8 @@
               </div>
               <div class="mt-2 flex items-end justify-between">
                 <div>
-                  <div class="text-lg font-semibold">−0.7σ</div>
-                  <div class="text-[11px] text-slate-400 mt-0.5">
+                  <div class="text-lg font-semibold" id="cc-reg-liquidity-z">−0.7σ</div>
+                  <div class="text-[11px] text-slate-400 mt-0.5" id="cc-reg-liquidity-desc">
                     Restrictive
                   </div>
                 </div>
@@ -319,8 +319,8 @@
               </div>
               <div class="mt-2 flex items-end justify-between">
                 <div>
-                  <div class="text-lg font-semibold">+0.1σ</div>
-                  <div class="text-[11px] text-slate-400 mt-0.5">
+                  <div class="text-lg font-semibold" id="cc-reg-external-z">+0.1σ</div>
+                  <div class="text-[11px] text-slate-400 mt-0.5" id="cc-reg-external-desc">
                     Balanced
                   </div>
                 </div>
@@ -342,14 +342,16 @@
             </div>
             <div class="flex items-end justify-between">
               <div>
-                <div class="text-2xl font-semibold">63<span class="text-sm text-slate-400">/100</span></div>
-                <div class="text-[11px] text-slate-400 mt-0.5">
+                <div class="text-2xl font-semibold">
+                  <span id="cc-growth-score">63</span><span class="text-sm text-slate-400">/100</span>
+                </div>
+                <div class="text-[11px] text-slate-400 mt-0.5" id="cc-growth-percentile">
                   78th percentile vs 10-year history
                 </div>
               </div>
-              <span class="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 border border-emerald-500/40 px-2 py-0.5 text-[11px] text-emerald-200">
+              <span id="cc-growth-regime-badge" class="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 border border-emerald-500/40 px-2 py-0.5 text-[11px] text-emerald-200">
                 <span class="h-1.5 w-1.5 rounded-full bg-emerald-400"></span>
-                Expansion
+                <span id="cc-growth-regime-text">Expansion</span>
               </span>
             </div>
             <div class="h-14 rounded-xl bg-gradient-to-r from-emerald-500/20 via-cordobaGold/10 to-slate-900 border border-slate-800/80 flex items-end px-2 pb-1 text-[10px] text-slate-400">
@@ -365,14 +367,16 @@
             </div>
             <div class="flex items-end justify-between">
               <div>
-                <div class="text-2xl font-semibold">54<span class="text-sm text-slate-400">/100</span></div>
-                <div class="text-[11px] text-slate-400 mt-0.5">
+                <div class="text-2xl font-semibold">
+                  <span id="cc-inflation-score">54</span><span class="text-sm text-slate-400">/100</span>
+                </div>
+                <div class="text-[11px] text-slate-400 mt-0.5" id="cc-inflation-percentile">
                   61st percentile vs 10-year history
                 </div>
               </div>
-              <span class="inline-flex items-center gap-1 rounded-full bg-rose-500/10 border border-rose-500/40 px-2 py-0.5 text-[11px] text-rose-200">
+              <span id="cc-inflation-regime-badge" class="inline-flex items-center gap-1 rounded-full bg-rose-500/10 border border-rose-500/40 px-2 py-0.5 text-[11px] text-rose-200">
                 <span class="h-1.5 w-1.5 rounded-full bg-rose-400"></span>
-                Cooling
+                <span id="cc-inflation-regime-text">Cooling</span>
               </span>
             </div>
             <div class="h-14 rounded-xl bg-gradient-to-r from-rose-500/25 via-cordobaGold/10 to-slate-900 border border-slate-800/80 flex items-end px-2 pb-1 text-[10px] text-slate-400">
@@ -388,14 +392,16 @@
             </div>
             <div class="flex items-end justify-between">
               <div>
-                <div class="text-2xl font-semibold">41<span class="text-sm text-slate-400">/100</span></div>
-                <div class="text-[11px] text-slate-400 mt-0.5">
+                <div class="text-2xl font-semibold">
+                  <span id="cc-liquidity-score">41</span><span class="text-sm text-slate-400">/100</span>
+                </div>
+                <div class="text-[11px] text-slate-400 mt-0.5" id="cc-liquidity-percentile">
                   32nd percentile vs 10-year history
                 </div>
               </div>
-              <span class="inline-flex items-center gap-1 rounded-full bg-sky-500/10 border border-sky-500/40 px-2 py-0.5 text-[11px] text-sky-200">
+              <span id="cc-liquidity-regime-badge" class="inline-flex items-center gap-1 rounded-full bg-sky-500/10 border border-sky-500/40 px-2 py-0.5 text-[11px] text-sky-200">
                 <span class="h-1.5 w-1.5 rounded-full bg-sky-400"></span>
-                Tight
+                <span id="cc-liquidity-regime-text">Tight</span>
               </span>
             </div>
             <div class="h-14 rounded-xl bg-gradient-to-r from-sky-500/25 via-cordobaGold/10 to-slate-900 border border-slate-800/80 flex items-end px-2 pb-1 text-[10px] text-slate-400">
@@ -411,14 +417,16 @@
             </div>
             <div class="flex items-end justify-between">
               <div>
-                <div class="text-2xl font-semibold">58<span class="text-sm text-slate-400">/100</span></div>
-                <div class="text-[11px] text-slate-400 mt-0.5">
+                <div class="text-2xl font-semibold">
+                  <span id="cc-external-score">58</span><span class="text-sm text-slate-400">/100</span>
+                </div>
+                <div class="text-[11px] text-slate-400 mt-0.5" id="cc-external-percentile">
                   67th percentile vs 10-year history
                 </div>
               </div>
-              <span class="inline-flex items-center gap-1 rounded-full bg-amber-500/10 border border-amber-500/40 px-2 py-0.5 text-[11px] text-amber-100">
+              <span id="cc-external-regime-badge" class="inline-flex items-center gap-1 rounded-full bg-amber-500/10 border border-amber-500/40 px-2 py-0.5 text-[11px] text-amber-100">
                 <span class="h-1.5 w-1.5 rounded-full bg-amber-300"></span>
-                Resilient
+                <span id="cc-external-regime-text">Resilient</span>
               </span>
             </div>
             <div class="h-14 rounded-xl bg-gradient-to-r from-amber-400/25 via-cordobaGold/10 to-slate-900 border border-slate-800/80 flex items-end px-2 pb-1 text-[10px] text-slate-400">
@@ -480,7 +488,7 @@
                   Time Series
                 </div>
                 <div class="text-sm text-slate-200 mt-0.5">
-                  Growth Engine – United States
+                  Growth Engine – <span data-cc-timeseries-country>United States</span>
                 </div>
               </div>
               <div class="flex items-center gap-2 text-[11px]">
@@ -507,12 +515,20 @@
                 </button>
               </div>
             </div>
+
             <div
-              class="h-40 rounded-xl bg-gradient-to-b from-slate-900 to-slate-950 border border-slate-800/80 flex items-center justify-center text-xs text-slate-500"
+              class="h-12 rounded-xl bg-gradient-to-b from-slate-900 to-slate-950 border border-slate-800/80 flex items-center justify-center text-xs text-slate-500 px-3 text-center"
               id="cc-chart-placeholder"
             >
-              <span>Chart placeholder – showing Level view. Plug in actual growth composite line + recession shading later.</span>
+              <span data-cc-chart-caption>
+                Chart – showing Level view. Growth composite vs time; switch tabs for z-score and components.
+              </span>
             </div>
+
+            <div class="h-40">
+              <canvas id="cc-growth-chart"></canvas>
+            </div>
+
             <div class="flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-400">
               <div class="flex flex-wrap gap-2">
                 <span class="inline-flex items-center gap-1">
@@ -533,7 +549,7 @@
                 </span>
               </div>
               <div>
-                Last update: <span class="text-slate-200">Prelim 2025-10</span>
+                Last update: <span class="text-slate-200" data-cc-last-update>Prelim 2025-10</span>
               </div>
             </div>
           </div>
@@ -574,66 +590,7 @@
                 </tr>
               </thead>
               <tbody class="divide-y divide-slate-900">
-                <tr class="hover:bg-slate-900/70">
-                  <td class="py-2 pr-3 text-slate-100">OECD CLI</td>
-                  <td class="py-2 pr-3 text-slate-300">Growth</td>
-                  <td class="py-2 pr-3 text-slate-300">Leading</td>
-                  <td class="py-2 pr-3">
-                    <span class="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 border border-emerald-500/40 px-2 py-0.5 text-[11px] text-emerald-200">
-                      Expansion
-                    </span>
-                  </td>
-                  <td class="py-2 pr-3 text-right text-slate-100">100.8</td>
-                  <td class="py-2 pr-3 text-right text-emerald-300">+0.9</td>
-                  <td class="py-2 text-slate-400">
-                    Momentum remains positive but rolling over at the margin.
-                  </td>
-                </tr>
-                <tr class="hover:bg-slate-900/70">
-                  <td class="py-2 pr-3 text-slate-100">Core CPI (YoY)</td>
-                  <td class="py-2 pr-3 text-slate-300">Inflation</td>
-                  <td class="py-2 pr-3 text-slate-300">Coincident</td>
-                  <td class="py-2 pr-3">
-                    <span class="inline-flex items-center gap-1 rounded-full bg-rose-500/10 border border-rose-500/40 px-2 py-0.5 text-[11px] text-rose-200">
-                      Cooling
-                    </span>
-                  </td>
-                  <td class="py-2 pr-3 text-right text-slate-100">2.7%</td>
-                  <td class="py-2 pr-3 text-right text-rose-200">+0.3</td>
-                  <td class="py-2 text-slate-400">
-                    Still above target but trending lower; pressure shifting to services.
-                  </td>
-                </tr>
-                <tr class="hover:bg-slate-900/70">
-                  <td class="py-2 pr-3 text-slate-100">10s–2s UST Slope</td>
-                  <td class="py-2 pr-3 text-slate-300">Liquidity</td>
-                  <td class="py-2 pr-3 text-slate-300">Leading</td>
-                  <td class="py-2 pr-3">
-                    <span class="inline-flex items-center gap-1 rounded-full bg-amber-500/10 border border-amber-500/40 px-2 py-0.5 text-[11px] text-amber-100">
-                      Late-Cycle
-                    </span>
-                  </td>
-                  <td class="py-2 pr-3 text-right text-slate-100">−35 bps</td>
-                  <td class="py-2 pr-3 text-right text-amber-200">−1.2</td>
-                  <td class="py-2 text-slate-400">
-                    Curve remains inverted; recession risk priced but not realised yet.
-                  </td>
-                </tr>
-                <tr class="hover:bg-slate-900/70">
-                  <td class="py-2 pr-3 text-slate-100">Current Account / GDP</td>
-                  <td class="py-2 pr-3 text-slate-300">External</td>
-                  <td class="py-2 pr-3 text-slate-300">Lagging</td>
-                  <td class="py-2 pr-3">
-                    <span class="inline-flex items-center gap-1 rounded-full bg-sky-500/10 border border-sky-500/40 px-2 py-0.5 text-[11px] text-sky-200">
-                      Neutral
-                    </span>
-                  </td>
-                  <td class="py-2 pr-3 text-right text-slate-100">−2.1%</td>
-                  <td class="py-2 pr-3 text-right text-sky-200">−0.3</td>
-                  <td class="py-2 text-slate-400">
-                    Deficit contained; no immediate funding stress flagged by reserves.
-                  </td>
-                </tr>
+                <!-- Rows will be replaced dynamically by main.js -->
               </tbody>
             </table>
           </div>
@@ -643,6 +600,8 @@
     </main>
   </div>
 
+  <!-- Charts library -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <!-- JS logic -->
   <script src="main.js"></script>
 </body>
