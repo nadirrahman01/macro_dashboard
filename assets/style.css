@@ -113,3 +113,30 @@ h1, h2, h3 {
 .noselect {
   user-select: none;
 }
+
+/* Cordoba Macro Engine – responsive stance pills */
+
+.cc-stance-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;            /* ~4px */
+  border-radius: 9999px;
+  padding: 0.25rem 0.6rem; /* tight chip */
+  font-size: 0.7rem;       /* between 10–11px */
+  white-space: nowrap;     /* keep that label on one line */
+}
+
+.cc-stance-dot {
+  width: 0.375rem;  /* 6px */
+  height: 0.375rem;
+  border-radius: 9999px;
+}
+
+/* Help the top summary row stack better on small screens */
+@media (max-width: 768px) {
+  .cc-top-flex {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+}
