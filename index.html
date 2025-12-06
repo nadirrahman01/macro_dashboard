@@ -5,7 +5,6 @@
   <title>Cordoba Capital – Global Macro Engine</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-  <!-- Tailwind CDN (for prototype / GitHub Pages) -->
   <link rel="stylesheet" href="assets/style.css">
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
@@ -140,14 +139,22 @@
           </button>
 
           <!-- Live / Snapshot toggle -->
-          <div class="flex items-center text-xs bg-slate-900/80 border border-slate-700 rounded-full p-0.5">
-            <button class="px-3 py-1 rounded-full bg-cordobaGold text-slate-900 font-medium">
-              Live
-            </button>
-            <button class="px-3 py-1 rounded-full text-slate-400 hover:text-slate-100">
-              Snapshot
-            </button>
-          </div>
+        <div id="cc-live-toggle-group" class="flex items-center text-xs bg-slate-900/80 border border-slate-700 rounded-full p-0.5">
+          <button
+            class="px-3 py-1 rounded-full bg-cordobaGold text-slate-900 font-medium"
+            data-cc-live-toggle="live"
+            type="button"
+          >
+            Live
+          </button>
+          <button
+            class="px-3 py-1 rounded-full text-slate-400 hover:text-slate-100"
+            data-cc-live-toggle="snapshot"
+            type="button"
+          >
+            Snapshot
+          </button>
+        </div>
         </div>
       </header>
 
@@ -162,13 +169,49 @@
               <div class="text-[11px] uppercase tracking-[0.25em] text-slate-500">
                 Country Selection
               </div>
-              <div class="flex flex-wrap items-center gap-3">
-                <div class="inline-flex items-center gap-2 bg-slate-900 border border-slate-700 rounded-full px-3 py-1.5">
-                  <span class="h-2 w-2 rounded-full bg-emerald-400"></span>
-                  <span class="text-sm font-medium">United States</span>
-                  <span class="text-[11px] text-slate-400">G-20 · DM</span>
-                  <span class="text-[11px] text-slate-500">▼</span>
-                </div>
+<div class="relative">
+  <!-- Toggle button -->
+  <button
+    id="cc-country-toggle"
+    class="inline-flex items-center gap-2 bg-slate-900 border border-slate-700 rounded-full px-3 py-1.5 hover:border-cordobaGold/70"
+    type="button"
+  >
+    <span class="h-2 w-2 rounded-full bg-emerald-400" id="cc-country-dot"></span>
+    <span class="text-sm font-medium" data-cc-country-label>United States</span>
+    <span class="text-[11px] text-slate-400" data-cc-country-region>G-20 · DM</span>
+    <span class="text-[11px] text-slate-500">▼</span>
+  </button>
+
+  <!-- Dropdown menu -->
+  <div
+    id="cc-country-menu"
+    class="hidden absolute z-20 mt-1 w-56 rounded-xl bg-slate-950 border border-slate-800 shadow-xl text-xs"
+  >
+    <div class="px-3 py-2 text-[10px] uppercase tracking-[0.22em] text-slate-500">
+      G-20 Countries
+    </div>
+    <div class="max-h-64 overflow-y-auto">
+      <!-- A few examples; you can add the rest of G-20 -->
+      <button class="w-full text-left px-3 py-1.5 hover:bg-slate-900" data-cc-country="US" data-cc-region="G-20 · DM">
+        United States
+      </button>
+      <button class="w-full text-left px-3 py-1.5 hover:bg-slate-900" data-cc-country="UK" data-cc-region="G-20 · DM">
+        United Kingdom
+      </button>
+      <button class="w-full text-left px-3 py-1.5 hover:bg-slate-900" data-cc-country="DE" data-cc-region="G-20 · DM">
+        Germany
+      </button>
+      <button class="w-full text-left px-3 py-1.5 hover:bg-slate-900" data-cc-country="CN" data-cc-region="G-20 · EM">
+        China
+      </button>
+      <button class="w-full text-left px-3 py-1.5 hover:bg-slate-900" data-cc-country="IN" data-cc-region="G-20 · EM">
+        India
+      </button>
+      <!-- Add the rest of G-20 here later -->
+    </div>
+  </div>
+</div>
+
                 <div class="inline-flex items-center gap-2 text-xs text-slate-400">
                   <span>Benchmark:</span>
                   <span class="border border-slate-700 rounded-full px-2 py-0.5">World</span>
@@ -482,7 +525,7 @@
                 Indicator Grid
               </div>
               <div class="text-sm text-slate-200 mt-0.5">
-                Key Signals – United States
+                Key Signals – <span data-cc-signals-country>United States</span>
               </div>
             </div>
             <div class="flex items-center gap-2 text-[11px]">
