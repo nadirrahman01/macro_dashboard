@@ -6,23 +6,27 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <!-- Tailwind CDN -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          colors: {
-            cordobaGold: '#9A690F',
-            cordobaAccent: '#FFF7F0'
-          },
-          fontFamily: {
-            heading: ['"Times New Roman"', 'serif'],
-            body: ['Helvetica', 'system-ui', 'sans-serif']
-          }
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          cordobaGold: '#9A690F',
+          cordobaAccent: '#FBF4EC',
+          cordobaInk: '#1A1A1A',
+          cordobaMuted: '#6B6B6B',
+          cordobaBorder: '#E6E0D9'
+        },
+        fontFamily: {
+          heading: ['"Playfair Display"', 'serif'],
+          body: ['Inter', 'system-ui', 'sans-serif']
         }
       }
     }
-  </script>
+  }
+</script>
+
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
 
   <!-- Custom Cordoba CSS -->
   <link rel="stylesheet" href="assets/style.css">
