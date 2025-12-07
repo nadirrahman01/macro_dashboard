@@ -5,47 +5,50 @@
   <title>Cordoba Capital – Global Macro Engine</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-  <!-- Tailwind CDN -->
-<script>
-  tailwind.config = {
-    theme: {
-      extend: {
-        colors: {
-          cordobaGold: '#9A690F',
-          cordobaAccent: '#FBF4EC',
-          cordobaInk: '#1A1A1A',
-          cordobaMuted: '#6B6B6B',
-          cordobaBorder: '#E6E0D9'
-        },
-        fontFamily: {
-          heading: ['"Playfair Display"', 'serif'],
-          body: ['Inter', 'system-ui', 'sans-serif']
+  <!-- Tailwind -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            cordobaGold: '#9A690F',
+            cordobaAccent: '#FBF4EC',
+            cordobaInk: '#1A1A1A',
+            cordobaMuted: '#6B6B6B',
+            cordobaBorder: '#E6E0D9'
+          },
+          fontFamily: {
+            heading: ['"Playfair Display"', 'serif'],
+            body: ['Inter', 'system-ui', 'sans-serif']
+          }
         }
       }
     }
-  }
-</script>
+  </script>
 
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <!-- Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
 
-  <!-- Custom Cordoba CSS -->
+  <!-- Custom CSS -->
   <link rel="stylesheet" href="assets/style.css">
 </head>
-<body class="bg-slate-950 text-slate-100 font-body min-h-screen">
+
+<body class="bg-white text-cordobaInk font-body min-h-screen">
 
   <!-- Page wrapper -->
   <div class="flex min-h-screen">
 
     <!-- Sidebar -->
-    <aside class="w-64 bg-slate-950/95 border-r border-slate-800/80 flex flex-col">
-      <div class="px-6 py-5 border-b border-slate-800/80">
-        <div class="flex items-center gap-2">
-          <div class="h-8 w-8 rounded-full border border-cordobaGold flex items-center justify-center text-xs tracking-[0.2em]">
-            <span class="text-[10px] font-semibold" style="letter-spacing:0.18em;">CC</span>
+    <aside class="w-72 border-r border-cordobaBorder bg-white flex flex-col">
+      <div class="px-6 py-5 border-b border-cordobaBorder">
+        <div class="flex items-center gap-3">
+          <div class="h-9 w-9 rounded-full border border-cordobaGold flex items-center justify-center text-[11px] tracking-[0.22em]">
+            <span class="font-semibold">CC</span>
           </div>
           <div>
-            <div class="font-heading text-lg tracking-wide">Cordoba Capital</div>
-            <div class="text-[11px] text-slate-400 uppercase tracking-[0.25em]">
+            <div class="font-heading text-xl leading-tight">Cordoba Capital</div>
+            <div class="text-[11px] text-cordobaMuted tracking-[0.25em] uppercase">
               Macro Engine
             </div>
           </div>
@@ -53,53 +56,53 @@
       </div>
 
       <nav class="flex-1 px-4 py-4 space-y-1 text-sm">
-        <div class="text-[10px] uppercase tracking-[0.25em] text-slate-500 px-2 mb-2">
+        <div class="text-[10px] uppercase tracking-[0.25em] text-cordobaMuted px-2 mb-2">
           Dashboard
         </div>
 
-        <button class="w-full flex items-center justify-between px-2.5 py-2 rounded-lg bg-slate-900 text-slate-100 hover:bg-slate-800/80">
+        <button class="w-full flex items-center justify-between px-3 py-2 rounded-xl bg-cordobaAccent border border-cordobaBorder text-cordobaInk">
           <span class="flex items-center gap-2">
             <span class="h-1.5 w-1.5 rounded-full bg-cordobaGold"></span>
             Overview
           </span>
-          <span class="text-[10px] text-slate-400 uppercase">LIVE</span>
+          <span class="text-[10px] text-cordobaMuted uppercase">Live</span>
         </button>
 
-        <button class="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-slate-300 hover:bg-slate-900">
+        <button class="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-cordobaInk/80 hover:bg-cordobaAccent hover:border hover:border-cordobaBorder">
           <span class="h-1.5 w-1.5 rounded-full bg-emerald-500/70"></span>
           Growth Cycle
         </button>
 
-        <button class="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-slate-300 hover:bg-slate-900">
+        <button class="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-cordobaInk/80 hover:bg-cordobaAccent hover:border hover:border-cordobaBorder">
           <span class="h-1.5 w-1.5 rounded-full bg-rose-500/70"></span>
           Inflation & Prices
         </button>
 
-        <button class="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-slate-300 hover:bg-slate-900">
+        <button class="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-cordobaInk/80 hover:bg-cordobaAccent hover:border hover:border-cordobaBorder">
           <span class="h-1.5 w-1.5 rounded-full bg-sky-500/70"></span>
           Liquidity & Credit
         </button>
 
-        <button class="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-slate-300 hover:bg-slate-900">
+        <button class="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-cordobaInk/80 hover:bg-cordobaAccent hover:border hover:border-cordobaBorder">
           <span class="h-1.5 w-1.5 rounded-full bg-indigo-400/70"></span>
           External Balance
         </button>
 
-        <button class="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-slate-300 hover:bg-slate-900">
+        <button class="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-cordobaInk/80 hover:bg-cordobaAccent hover:border hover:border-cordobaBorder">
           <span class="h-1.5 w-1.5 rounded-full bg-amber-400/70"></span>
           FX & Rates Lens
         </button>
 
-        <button class="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-slate-300 hover:bg-slate-900">
-          <span class="h-1.5 w-1.5 rounded-full border border-slate-500"></span>
+        <button class="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-cordobaInk/80 hover:bg-cordobaAccent hover:border hover:border-cordobaBorder">
+          <span class="h-1.5 w-1.5 rounded-full border border-cordobaMuted/40"></span>
           Settings
         </button>
       </nav>
 
-      <div class="px-4 py-4 border-t border-slate-800/80 text-[11px] text-slate-500 space-y-1.5">
+      <div class="px-4 py-4 border-t border-cordobaBorder text-[11px] text-cordobaMuted space-y-1.5 bg-[#FCF8F3]">
         <div class="flex items-center justify-between">
           <span>Data as of</span>
-          <span class="text-slate-300">T-1 close</span>
+          <span class="text-cordobaInk/80">T-1 close</span>
         </div>
         <div class="leading-snug">
           Internal research tool for educational & non-commercial use by Cordoba Capital.
@@ -111,51 +114,51 @@
     <main class="flex-1 flex flex-col">
 
       <!-- Top bar -->
-      <header class="h-16 border-b border-slate-800/80 px-6 flex items-center justify-between bg-slate-950/90 backdrop-blur">
+      <header class="h-16 border-b border-cordobaBorder px-6 flex items-center justify-between bg-white">
         <div class="flex items-center gap-4">
-          <div class="text-xs uppercase tracking-[0.28em] text-slate-400">
+          <div class="text-[11px] tracking-[0.28em] uppercase text-cordobaMuted">
             Global Macro Dashboard
           </div>
-          <div class="h-6 w-px bg-slate-800"></div>
-          <div class="flex items-center gap-2 text-xs text-slate-400">
-            <span class="inline-flex items-center gap-1 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2 py-0.5">
-              <span class="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+          <div class="h-6 w-px bg-cordobaBorder"></div>
+          <div class="flex items-center gap-2 text-xs text-cordobaMuted">
+            <span class="inline-flex items-center gap-2 rounded-full border border-cordobaBorder bg-cordobaAccent px-3 py-1">
+              <span class="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
               Live Signals
             </span>
-            <span class="hidden sm:inline text-slate-500">
+            <span class="hidden sm:inline text-cordobaMuted">
               Prototype – values are placeholder only
             </span>
           </div>
         </div>
 
         <div class="flex items-center gap-3">
-          <!-- Search (non-functional for now) -->
+          <!-- Search -->
           <div class="relative hidden md:block">
             <input
-              class="bg-slate-900/80 border border-slate-700 rounded-full pl-8 pr-3 py-1.5 text-xs placeholder:text-slate-500 focus:outline-none focus:border-cordobaGold/70"
+              class="bg-white border border-cordobaBorder rounded-full pl-8 pr-3 py-1.5 text-xs placeholder:text-cordobaMuted focus:outline-none focus:border-cordobaGold"
               placeholder="Search country, indicator, or engine..."
             />
-            <span class="absolute left-2 top-1.5 text-slate-500 text-xs">⌕</span>
+            <span class="absolute left-2 top-1.5 text-cordobaMuted text-xs">⌕</span>
           </div>
 
           <!-- Date range -->
-          <button class="flex items-center gap-2 text-xs bg-slate-900/80 border border-slate-700 rounded-full px-3 py-1.5 hover:border-cordobaGold/70">
-            <span class="text-slate-400">Window</span>
-            <span class="text-slate-100">10Y</span>
-            <span class="text-slate-500">▼</span>
+          <button class="flex items-center gap-2 text-xs bg-white border border-cordobaBorder rounded-full px-3 py-1.5 hover:border-cordobaGold">
+            <span class="text-cordobaMuted">Window</span>
+            <span class="text-cordobaInk">10Y</span>
+            <span class="text-cordobaMuted">▼</span>
           </button>
 
           <!-- Live / Snapshot toggle -->
-          <div id="cc-live-toggle-group" class="flex items-center text-xs bg-slate-900/80 border border-slate-700 rounded-full p-0.5">
+          <div id="cc-live-toggle-group" class="flex items-center text-xs bg-white border border-cordobaBorder rounded-full p-0.5">
             <button
-              class="px-3 py-1 rounded-full bg-cordobaGold text-slate-900 font-medium"
+              class="px-3 py-1 rounded-full bg-cordobaGold text-white font-medium"
               data-cc-live-toggle="live"
               type="button"
             >
               Live
             </button>
             <button
-              class="px-3 py-1 rounded-full text-slate-400 hover:text-slate-100"
+              class="px-3 py-1 rounded-full text-cordobaMuted hover:text-cordobaInk"
               data-cc-live-toggle="snapshot"
               type="button"
             >
@@ -166,14 +169,14 @@
       </header>
 
       <!-- Content area -->
-      <section class="flex-1 overflow-y-auto px-6 py-5 space-y-5">
+      <section class="flex-1 overflow-y-auto px-6 py-6 space-y-6 bg-[#FFFBF7]">
 
         <!-- Regime summary row -->
-        <div class="grid grid-cols-1 xl:grid-cols-3 gap-4">
+        <div class="grid grid-cols-1 xl:grid-cols-3 gap-5">
           <!-- Left: Country & headline -->
-          <div class="col-span-1 xl:col-span-2 bg-slate-950/80 border border-slate-800/90 rounded-2xl px-5 py-4 cc-top-flex flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <div class="space-y-2">
-              <div class="text-[11px] uppercase tracking-[0.25em] text-slate-500">
+          <div class="col-span-1 xl:col-span-2 cc-card px-5 py-4 cc-top-flex flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+            <div class="space-y-3">
+              <div class="text-[11px] uppercase tracking-[0.25em] text-cordobaMuted">
                 Country Selection
               </div>
 
@@ -181,166 +184,165 @@
               <div class="relative">
                 <button
                   id="cc-country-toggle"
-                  class="inline-flex items-center gap-2 bg-slate-900 border border-slate-700 rounded-full px-3 py-1.5 hover:border-cordobaGold/70"
+                  class="inline-flex items-center gap-2 bg-white border border-cordobaBorder rounded-full px-3 py-1.5 hover:border-cordobaGold"
                   type="button"
                 >
                   <span class="h-2 w-2 rounded-full bg-emerald-400" id="cc-country-dot"></span>
                   <span class="text-sm font-medium" data-cc-country-label>United States</span>
-                  <span class="text-[11px] text-slate-400" data-cc-country-region>G-20 · DM</span>
-                  <span class="text-[11px] text-slate-500">▼</span>
+                  <span class="text-[11px] text-cordobaMuted" data-cc-country-region>G-20 · DM</span>
+                  <span class="text-[11px] text-cordobaMuted">▼</span>
                 </button>
 
                 <!-- Dropdown -->
                 <div
                   id="cc-country-menu"
-                  class="hidden absolute z-20 mt-1 w-56 rounded-xl bg-slate-950 border border-slate-800 shadow-xl text-xs"
+                  class="hidden absolute z-20 mt-2 w-56 rounded-2xl bg-white border border-cordobaBorder shadow-lg text-xs"
                 >
-                  <div class="px-3 py-2 text-[10px] uppercase tracking-[0.22em] text-slate-500">
+                  <div class="px-3 py-2 text-[10px] uppercase tracking-[0.22em] text-cordobaMuted">
                     G-20 Countries
                   </div>
                   <div class="max-h-64 overflow-y-auto">
-                    <button class="w-full text-left px-3 py-1.5 hover:bg-slate-900" data-cc-country="US" data-cc-region="G-20 · DM">
+                    <button class="w-full text-left px-3 py-1.5 hover:bg-cordobaAccent" data-cc-country="US" data-cc-region="G-20 · DM">
                       United States
                     </button>
-                    <button class="w-full text-left px-3 py-1.5 hover:bg-slate-900" data-cc-country="UK" data-cc-region="G-20 · DM">
+                    <button class="w-full text-left px-3 py-1.5 hover:bg-cordobaAccent" data-cc-country="UK" data-cc-region="G-20 · DM">
                       United Kingdom
                     </button>
-                    <button class="w-full text-left px-3 py-1.5 hover:bg-slate-900" data-cc-country="DE" data-cc-region="G-20 · DM">
+                    <button class="w-full text-left px-3 py-1.5 hover:bg-cordobaAccent" data-cc-country="DE" data-cc-region="G-20 · DM">
                       Germany
                     </button>
-                    <button class="w-full text-left px-3 py-1.5 hover:bg-slate-900" data-cc-country="CN" data-cc-region="G-20 · EM">
+                    <button class="w-full text-left px-3 py-1.5 hover:bg-cordobaAccent" data-cc-country="CN" data-cc-region="G-20 · EM">
                       China
                     </button>
-                    <button class="w-full text-left px-3 py-1.5 hover:bg-slate-900" data-cc-country="IN" data-cc-region="G-20 · EM">
+                    <button class="w-full text-left px-3 py-1.5 hover:bg-cordobaAccent" data-cc-country="IN" data-cc-region="G-20 · EM">
                       India
                     </button>
                   </div>
                 </div>
               </div>
 
-              <div class="inline-flex items-center gap-2 text-xs text-slate-400">
+              <div class="inline-flex items-center gap-2 text-xs text-cordobaMuted">
                 <span>Benchmark:</span>
-                <span class="border border-slate-700 rounded-full px-2 py-0.5">World</span>
-                <span class="border border-slate-700 rounded-full px-2 py-0.5">DM</span>
-                <span class="border border-slate-700 rounded-full px-2 py-0.5">EM</span>
+                <span class="border border-cordobaBorder rounded-full px-2 py-0.5">World</span>
+                <span class="border border-cordobaBorder rounded-full px-2 py-0.5">DM</span>
+                <span class="border border-cordobaBorder rounded-full px-2 py-0.5">EM</span>
               </div>
 
-              <div class="text-xs text-slate-400 max-w-2xl" data-cc-latest-view>
-                Composite engine output for the selected country. Scores blend leading, coincident, and lagging indicators
-                across growth, inflation, liquidity, and external balance.
+              <div class="text-xs text-cordobaMuted max-w-2xl" data-cc-latest-view>
+                Composite engine output for the selected country. Scores blend leading, coincident, and lagging indicators across growth, inflation, liquidity, and external balance.
               </div>
             </div>
 
             <!-- Model stance -->
-            <div class="flex flex-col gap-2 min-w-[220px]">
-              <div class="text-[11px] uppercase tracking-[0.25em] text-slate-500">
+            <div class="flex flex-col gap-2 min-w-[230px]">
+              <div class="text-[11px] uppercase tracking-[0.25em] text-cordobaMuted">
                 Model Stance (Rules)
               </div>
               <div class="flex flex-wrap gap-2">
                 <span
                   id="cc-stance-equities"
-                  class="cc-stance-pill bg-emerald-500/10 border border-emerald-500/40"
+                  class="cc-stance-pill inline-flex items-center gap-1 bg-cordobaAccent border border-cordobaBorder"
                 >
-                  <span class="cc-stance-dot bg-emerald-400"></span>
-                  <span class="cc-stance-label">OW Equities</span>
+                  <span class="cc-stance-dot bg-emerald-500"></span>
+                  <span class="cc-stance-label text-xs text-cordobaInk">OW Equities</span>
                 </span>
 
                 <span
                   id="cc-stance-duration"
-                  class="cc-stance-pill bg-sky-500/10 border border-sky-500/40"
+                  class="cc-stance-pill inline-flex items-center gap-1 bg-white border border-cordobaBorder"
                 >
-                  <span class="cc-stance-dot bg-sky-400"></span>
-                  <span class="cc-stance-label">Neutral Duration</span>
+                  <span class="cc-stance-dot bg-sky-500"></span>
+                  <span class="cc-stance-label text-xs text-cordobaInk">Neutral Duration</span>
                 </span>
 
                 <span
                   id="cc-stance-fx"
-                  class="cc-stance-pill bg-amber-500/10 border border-amber-500/40"
+                  class="cc-stance-pill inline-flex items-center gap-1 bg-white border border-cordobaBorder"
                 >
                   <span class="cc-stance-dot bg-amber-400"></span>
-                  <span class="cc-stance-label">Long USD</span>
+                  <span class="cc-stance-label text-xs text-cordobaInk">Long USD</span>
                 </span>
               </div>
-              <div id="cc-stance-explainer" class="text-[11px] text-slate-500 leading-snug">
+              <div id="cc-stance-explainer" class="text-[11px] text-cordobaMuted leading-snug">
                 Stance is derived from growth, inflation and liquidity scores vs history.
               </div>
             </div>
           </div>
 
           <!-- Right: Regime badges -->
-            <div class="col-span-1 grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <div class="col-span-1 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
             <!-- Growth -->
-              <div class="bg-slate-950/80 border border-slate-800/90 rounded-2xl px-4 py-3 flex flex-col justify-between overflow-hidden">
-              <div class="flex items-center justify-between text-[11px] uppercase tracking-[0.18em] text-slate-500">
+            <div class="cc-card px-4 py-3 flex flex-col justify-between overflow-hidden">
+              <div class="flex items-center justify-between text-[11px] uppercase tracking-[0.18em] text-cordobaMuted">
                 <span>Growth</span>
-                <span class="text-emerald-400">↑</span>
+                <span class="text-emerald-600">↑</span>
               </div>
-              <div class="mt-2 flex items-end justify-between">
+              <div class="mt-3 flex items-end justify-between">
                 <div>
                   <div class="text-lg font-semibold" id="cc-reg-growth-z">+0.8σ</div>
-                  <div class="text-[11px] text-slate-400 mt-0.5" id="cc-reg-growth-desc">
-                    Above Trend
+                  <div class="text-[11px] text-cordobaMuted mt-0.5" id="cc-reg-growth-desc">
+                    Above trend
                   </div>
                 </div>
-                <div class="h-10 w-10 rounded-full border border-emerald-400/60 flex items-center justify-center text-[11px] text-emerald-300">
+                <div class="h-10 w-10 rounded-full border border-emerald-500/70 flex items-center justify-center text-[11px] text-emerald-700">
                   Late-Cycle
                 </div>
               </div>
             </div>
 
             <!-- Inflation -->
-            <div class="bg-slate-950/80 border border-slate-800/90 rounded-2xl px-4 py-3 flex flex-col justify-between overflow-hidden">
-              <div class="flex items-center justify-between text-[11px] uppercase tracking-[0.18em] text-slate-500">
+            <div class="cc-card px-4 py-3 flex flex-col justify-between overflow-hidden">
+              <div class="flex items-center justify-between text-[11px] uppercase tracking-[0.18em] text-cordobaMuted">
                 <span>Inflation</span>
-                <span class="text-rose-400">↓</span>
+                <span class="text-rose-500">↓</span>
               </div>
-              <div class="mt-2 flex items-end justify-between">
+              <div class="mt-3 flex items-end justify-between">
                 <div>
                   <div class="text-lg font-semibold" id="cc-reg-inflation-z">+0.3σ</div>
-                  <div class="text-[11px] text-slate-400 mt-0.5" id="cc-reg-inflation-desc">
+                  <div class="text-[11px] text-cordobaMuted mt-0.5" id="cc-reg-inflation-desc">
                     Disinflating
                   </div>
                 </div>
-                <div class="h-10 w-10 rounded-full border border-rose-400/60 flex items-center justify-center text-[11px] text-rose-200">
+                <div class="h-10 w-10 rounded-full border border-rose-400/70 flex items-center justify-center text-[11px] text-rose-600">
                   Cooling
                 </div>
               </div>
             </div>
 
             <!-- Liquidity -->
-            <div class="bg-slate-950/80 border border-slate-800/90 rounded-2xl px-4 py-3 flex flex-col justify-between overflow-hidden">
-              <div class="flex items-center justify-between text-[11px] uppercase tracking-[0.18em] text-slate-500">
+            <div class="cc-card px-4 py-3 flex flex-col justify-between overflow-hidden">
+              <div class="flex items-center justify-between text-[11px] uppercase tracking-[0.18em] text-cordobaMuted">
                 <span>Liquidity</span>
-                <span class="text-sky-400">Tight</span>
+                <span class="text-sky-500">Tight</span>
               </div>
-              <div class="mt-2 flex items-end justify-between">
+              <div class="mt-3 flex items-end justify-between">
                 <div>
                   <div class="text-lg font-semibold" id="cc-reg-liquidity-z">−0.7σ</div>
-                  <div class="text-[11px] text-slate-400 mt-0.5" id="cc-reg-liquidity-desc">
+                  <div class="text-[11px] text-cordobaMuted mt-0.5" id="cc-reg-liquidity-desc">
                     Restrictive
                   </div>
                 </div>
-                <div class="h-10 w-10 rounded-full border border-sky-400/60 flex items-center justify-center text-[11px] text-sky-200">
+                <div class="h-10 w-10 rounded-full border border-sky-400/70 flex items-center justify-center text-[11px] text-sky-600">
                   QT
                 </div>
               </div>
             </div>
 
             <!-- External -->
-              <div class="bg-slate-950/80 border border-slate-800/90 rounded-2xl px-4 py-3 flex flex-col justify-between overflow-hidden">
-              <div class="flex items-center justify-between text-[11px] uppercase tracking-[0.18em] text-slate-500">
+            <div class="cc-card px-4 py-3 flex flex-col justify-between overflow-hidden">
+              <div class="flex items-center justify-between text-[11px] uppercase tracking-[0.18em] text-cordobaMuted">
                 <span>External</span>
-                <span class="text-amber-300">Stable</span>
+                <span class="text-amber-500">Stable</span>
               </div>
-              <div class="mt-2 flex items-end justify-between">
+              <div class="mt-3 flex items-end justify-between">
                 <div>
                   <div class="text-lg font-semibold" id="cc-reg-external-z">+0.1σ</div>
-                  <div class="text-[11px] text-slate-400 mt-0.5" id="cc-reg-external-desc">
+                  <div class="text-[11px] text-cordobaMuted mt-0.5" id="cc-reg-external-desc">
                     Balanced
                   </div>
                 </div>
-                <div class="h-10 w-10 rounded-full border border-amber-300/60 flex items-center justify-center text-[11px] text-amber-100">
-                  Low&nbsp;Risk
+                <div class="h-10 w-10 rounded-full border border-amber-400/70 flex items-center justify-center text-[11px] text-amber-700">
+                  Low Risk
                 </div>
               </div>
             </div>
@@ -348,248 +350,248 @@
         </div>
 
         <!-- Regime summary + Inflection monitor -->
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
           <!-- Regime Summary -->
-          <div class="lg:col-span-2 bg-slate-950/80 border border-slate-800/90 rounded-2xl px-5 py-4 flex flex-col gap-3">
+          <div class="lg:col-span-2 cc-card px-5 py-4 flex flex-col gap-3">
             <div class="flex items-center justify-between">
               <div>
-                <div class="text-[11px] uppercase tracking-[0.2em] text-slate-500">
+                <div class="text-[11px] uppercase tracking-[0.2em] text-cordobaMuted">
                   Macro Regime Summary
                 </div>
-                <div class="text-sm text-slate-200 mt-0.5">
+                <div class="mt-1 font-heading text-xl md:text-2xl leading-snug">
                   <span data-cc-regime-title>Late-cycle disinflation</span> – <span data-cc-regime-country>United States</span>
                 </div>
               </div>
-              <div class="text-xs text-slate-400">
+              <div class="text-xs text-cordobaMuted">
                 Confidence:
                 <span class="text-cordobaGold font-medium" data-cc-regime-confidence>72%</span>
               </div>
             </div>
-            <div class="text-xs text-slate-300 leading-relaxed" data-cc-regime-summary>
+            <div class="text-xs md:text-sm text-cordobaInk leading-relaxed" data-cc-regime-summary>
               Growth is still above trend but losing momentum, inflation is cooling, and policy remains tight in real terms. The curve is inverted and the risk is that cuts come into a slowdown rather than a soft landing.
             </div>
-            <div class="flex flex-wrap items-center gap-2 text-[11px] text-slate-400">
-              <span class="uppercase tracking-[0.18em] text-slate-500">
+            <div class="flex flex-wrap items-center gap-2 text-[11px] text-cordobaMuted">
+              <span class="uppercase tracking-[0.18em]">
                 Historical analogues:
               </span>
               <span id="cc-regime-analogs" class="inline-flex flex-wrap gap-1">
-                <span class="rounded-full border border-slate-700 px-2 py-0.5">2000</span>
-                <span class="rounded-full border border-slate-700 px-2 py-0.5">2007</span>
-                <span class="rounded-full border border-slate-700 px-2 py-0.5">2018</span>
+                <span class="rounded-full border border-cordobaBorder px-2 py-0.5">2000</span>
+                <span class="rounded-full border border-cordobaBorder px-2 py-0.5">2007</span>
+                <span class="rounded-full border border-cordobaBorder px-2 py-0.5">2018</span>
               </span>
             </div>
-            <div class="flex flex-wrap gap-2 text-[11px] text-slate-400">
-              <span class="uppercase tracking-[0.18em] text-slate-500">
+            <div class="flex flex-wrap gap-2 text-[11px] text-cordobaMuted">
+              <span class="uppercase tracking-[0.18em]">
                 Risk flags:
               </span>
-              <span id="cc-risk-growth" class="rounded-full border border-slate-700 px-2 py-0.5">
+              <span id="cc-risk-growth" class="rounded-full border border-cordobaBorder px-2 py-0.5">
                 Growth risk: medium
               </span>
-              <span id="cc-risk-inflation" class="rounded-full border border-slate-700 px-2 py-0.5">
+              <span id="cc-risk-inflation" class="rounded-full border border-cordobaBorder px-2 py-0.5">
                 Inflation risk: low
               </span>
-              <span id="cc-risk-policy" class="rounded-full border border-slate-700 px-2 py-0.5">
+              <span id="cc-risk-policy" class="rounded-full border border-cordobaBorder px-2 py-0.5">
                 Policy error risk: medium
               </span>
-              <span id="cc-risk-external" class="rounded-full border border-slate-700 px-2 py-0.5">
+              <span id="cc-risk-external" class="rounded-full border border-cordobaBorder px-2 py-0.5">
                 External risk: low
               </span>
             </div>
           </div>
 
           <!-- Inflection Monitor -->
-          <div class="bg-slate-950/80 border border-slate-800/90 rounded-2xl px-5 py-4 flex flex-col gap-3">
+          <div class="cc-card px-5 py-4 flex flex-col gap-3">
             <div class="flex items-center justify-between">
               <div>
-                <div class="text-[11px] uppercase tracking-[0.2em] text-slate-500">
+                <div class="text-[11px] uppercase tracking-[0.2em] text-cordobaMuted">
                   What Changed This Month
                 </div>
-                <div class="text-sm text-slate-200 mt-0.5">
+                <div class="mt-1 font-heading text-lg">
                   Key inflection signals
                 </div>
               </div>
             </div>
-            <div id="cc-inflection-list" class="space-y-2 text-xs text-slate-300">
+            <div id="cc-inflection-list" class="space-y-2 text-xs text-cordobaInk">
               <!-- Populated dynamically -->
             </div>
           </div>
         </div>
 
         <!-- Engines row -->
-        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5">
           <!-- Growth Engine -->
-          <div class="bg-slate-950/80 border border-slate-800/90 rounded-2xl px-4 py-3 flex flex-col gap-3">
-            <div class="flex items-center justify-between text-[11px] uppercase tracking-[0.2em] text-slate-500">
+          <div class="cc-card px-4 py-3 flex flex-col gap-3">
+            <div class="flex items-center justify-between text-[11px] uppercase tracking-[0.2em] text-cordobaMuted">
               <span>Growth Engine</span>
-              <span class="text-slate-400">Composite</span>
+              <span class="text-cordobaMuted">Composite</span>
             </div>
             <div class="flex items-end justify-between">
               <div>
                 <div class="text-2xl font-semibold">
-                  <span id="cc-growth-score">63</span><span class="text-sm text-slate-400">/100</span>
+                  <span id="cc-growth-score">63</span><span class="text-sm text-cordobaMuted">/100</span>
                 </div>
-                <div class="text-[11px] text-slate-400 mt-0.5" id="cc-growth-percentile">
+                <div class="text-[11px] text-cordobaMuted mt-0.5" id="cc-growth-percentile">
                   78th percentile vs 10-year history
                 </div>
               </div>
-              <span id="cc-growth-regime-badge" class="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 border border-emerald-500/40 px-2 py-0.5 text-[11px] text-emerald-200">
-                <span class="h-1.5 w-1.5 rounded-full bg-emerald-400"></span>
+              <span id="cc-growth-regime-badge" class="inline-flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-400 px-2 py-0.5 text-[11px] text-emerald-700">
+                <span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
                 <span id="cc-growth-regime-text">Expansion</span>
               </span>
             </div>
-            <div class="h-14 rounded-xl bg-gradient-to-r from-emerald-500/20 via-cordobaGold/10 to-slate-900 border border-slate-800/80 flex items-end px-2 pb-1 text-[10px] text-slate-400">
-              <span>Mini growth sparkline</span>
+            <div class="h-14 rounded-xl bg-emerald-50 border border-cordobaBorder flex items-center px-2 text-[10px] text-cordobaMuted">
+              Mini growth sparkline
             </div>
           </div>
 
           <!-- Inflation Engine -->
-          <div class="bg-slate-950/80 border border-slate-800/90 rounded-2xl px-4 py-3 flex flex-col gap-3">
-            <div class="flex items-center justify-between text-[11px] uppercase tracking-[0.2em] text-slate-500">
+          <div class="cc-card px-4 py-3 flex flex-col gap-3">
+            <div class="flex items-center justify-between text-[11px] uppercase tracking-[0.2em] text-cordobaMuted">
               <span>Inflation Engine</span>
-              <span class="text-slate-400">Composite</span>
+              <span class="text-cordobaMuted">Composite</span>
             </div>
             <div class="flex items-end justify-between">
               <div>
                 <div class="text-2xl font-semibold">
-                  <span id="cc-inflation-score">54</span><span class="text-sm text-slate-400">/100</span>
+                  <span id="cc-inflation-score">54</span><span class="text-sm text-cordobaMuted">/100</span>
                 </div>
-                <div class="text-[11px] text-slate-400 mt-0.5" id="cc-inflation-percentile">
+                <div class="text-[11px] text-cordobaMuted mt-0.5" id="cc-inflation-percentile">
                   61st percentile vs 10-year history
                 </div>
               </div>
-              <span id="cc-inflation-regime-badge" class="inline-flex items-center gap-1 rounded-full bg-rose-500/10 border border-rose-500/40 px-2 py-0.5 text-[11px] text-rose-200">
-                <span class="h-1.5 w-1.5 rounded-full bg-rose-400"></span>
+              <span id="cc-inflation-regime-badge" class="inline-flex items-center gap-1 rounded-full bg-rose-50 border border-rose-400 px-2 py-0.5 text-[11px] text-rose-700">
+                <span class="h-1.5 w-1.5 rounded-full bg-rose-500"></span>
                 <span id="cc-inflation-regime-text">Cooling</span>
               </span>
             </div>
-            <div class="h-14 rounded-xl bg-gradient-to-r from-rose-500/25 via-cordobaGold/10 to-slate-900 border border-slate-800/80 flex items-end px-2 pb-1 text-[10px] text-slate-400">
-              <span>Mini inflation sparkline</span>
+            <div class="h-14 rounded-xl bg-rose-50 border border-cordobaBorder flex items-center px-2 text-[10px] text-cordobaMuted">
+              Mini inflation sparkline
             </div>
           </div>
 
           <!-- Liquidity Engine -->
-          <div class="bg-slate-950/80 border border-slate-800/90 rounded-2xl px-4 py-3 flex flex-col gap-3">
-            <div class="flex items-center justify-between text-[11px] uppercase tracking-[0.2em] text-slate-500">
+          <div class="cc-card px-4 py-3 flex flex-col gap-3">
+            <div class="flex items-center justify-between text-[11px] uppercase tracking-[0.2em] text-cordobaMuted">
               <span>Liquidity Engine</span>
-              <span class="text-slate-400">Composite</span>
+              <span class="text-cordobaMuted">Composite</span>
             </div>
             <div class="flex items-end justify-between">
               <div>
                 <div class="text-2xl font-semibold">
-                  <span id="cc-liquidity-score">41</span><span class="text-sm text-slate-400">/100</span>
+                  <span id="cc-liquidity-score">41</span><span class="text-sm text-cordobaMuted">/100</span>
                 </div>
-                <div class="text-[11px] text-slate-400 mt-0.5" id="cc-liquidity-percentile">
+                <div class="text-[11px] text-cordobaMuted mt-0.5" id="cc-liquidity-percentile">
                   32nd percentile vs 10-year history
                 </div>
               </div>
-              <span id="cc-liquidity-regime-badge" class="inline-flex items-center gap-1 rounded-full bg-sky-500/10 border border-sky-500/40 px-2 py-0.5 text-[11px] text-sky-200">
-                <span class="h-1.5 w-1.5 rounded-full bg-sky-400"></span>
+              <span id="cc-liquidity-regime-badge" class="inline-flex items-center gap-1 rounded-full bg-sky-50 border border-sky-400 px-2 py-0.5 text-[11px] text-sky-700">
+                <span class="h-1.5 w-1.5 rounded-full bg-sky-500"></span>
                 <span id="cc-liquidity-regime-text">Tight</span>
               </span>
             </div>
-            <div class="h-14 rounded-xl bg-gradient-to-r from-sky-500/25 via-cordobaGold/10 to-slate-900 border border-slate-800/80 flex items-end px-2 pb-1 text-[10px] text-slate-400">
-              <span>Mini liquidity sparkline</span>
+            <div class="h-14 rounded-xl bg-sky-50 border border-cordobaBorder flex items-center px-2 text-[10px] text-cordobaMuted">
+              Mini liquidity sparkline
             </div>
           </div>
 
           <!-- External Engine -->
-          <div class="bg-slate-950/80 border border-slate-800/90 rounded-2xl px-4 py-3 flex flex-col gap-3">
-            <div class="flex items-center justify-between text-[11px] uppercase tracking-[0.2em] text-slate-500">
+          <div class="cc-card px-4 py-3 flex flex-col gap-3">
+            <div class="flex items-center justify-between text-[11px] uppercase tracking-[0.2em] text-cordobaMuted">
               <span>External Engine</span>
-              <span class="text-slate-400">Composite</span>
+              <span class="text-cordobaMuted">Composite</span>
             </div>
             <div class="flex items-end justify-between">
               <div>
                 <div class="text-2xl font-semibold">
-                  <span id="cc-external-score">58</span><span class="text-sm text-slate-400">/100</span>
+                  <span id="cc-external-score">58</span><span class="text-sm text-cordobaMuted">/100</span>
                 </div>
-                <div class="text-[11px] text-slate-400 mt-0.5" id="cc-external-percentile">
+                <div class="text-[11px] text-cordobaMuted mt-0.5" id="cc-external-percentile">
                   67th percentile vs 10-year history
                 </div>
               </div>
-              <span id="cc-external-regime-badge" class="inline-flex items-center gap-1 rounded-full bg-amber-500/10 border border-amber-500/40 px-2 py-0.5 text-[11px] text-amber-100">
-                <span class="h-1.5 w-1.5 rounded-full bg-amber-300"></span>
+              <span id="cc-external-regime-badge" class="inline-flex items-center gap-1 rounded-full bg-amber-50 border border-amber-400 px-2 py-0.5 text-[11px] text-amber-700">
+                <span class="h-1.5 w-1.5 rounded-full bg-amber-400"></span>
                 <span id="cc-external-regime-text">Resilient</span>
               </span>
             </div>
-            <div class="h-14 rounded-xl bg-gradient-to-r from-amber-400/25 via-cordobaGold/10 to-slate-900 border border-slate-800/80 flex items-end px-2 pb-1 text-[10px] text-slate-400">
-              <span>Mini external sparkline</span>
+            <div class="h-14 rounded-xl bg-amber-50 border border-cordobaBorder flex items-center px-2 text-[10px] text-cordobaMuted">
+              Mini external sparkline
             </div>
           </div>
         </div>
 
         <!-- Heatmap + chart row -->
-        <div class="grid grid-cols-1 xl:grid-cols-3 gap-4">
-          <!-- Heatmap placeholder -->
-          <div class="xl:col-span-1 bg-slate-950/80 border border-slate-800/90 rounded-2xl px-4 py-3 flex flex-col gap-3">
+        <div class="grid grid-cols-1 xl:grid-cols-3 gap-5">
+          <!-- Heatmap -->
+          <div class="xl:col-span-1 cc-card px-4 py-3 flex flex-col gap-3">
             <div class="flex items-center justify-between">
               <div>
-                <div class="text-[11px] uppercase tracking-[0.2em] text-slate-500">
+                <div class="text-[11px] uppercase tracking-[0.2em] text-cordobaMuted">
                   Cross-Country View
                 </div>
-                <div class="text-sm text-slate-200 mt-0.5">
+                <div class="font-heading text-lg mt-1">
                   G-20 Macro Heatmap
                 </div>
               </div>
-              <button class="text-[11px] text-slate-400 border border-slate-700 rounded-full px-2.5 py-0.5 hover:border-cordobaGold/70">
+              <button class="text-[11px] text-cordobaMuted border border-cordobaBorder rounded-full px-2.5 py-0.5 hover:border-cordobaGold">
                 Growth · Infl · Liquidity
               </button>
             </div>
-            <div class="mt-2 h-56 rounded-xl bg-slate-900/80 border border-slate-800/80 grid grid-cols-5 grid-rows-4 text-[10px] text-center text-slate-300">
-              <div class="border border-slate-800/60 bg-emerald-500/25 flex items-center justify-center">US</div>
-              <div class="border border-slate-800/60 bg-emerald-500/15 flex items-center justify-center">UK</div>
-              <div class="border border-slate-800/60 bg-amber-500/20 flex items-center justify-center">EU</div>
-              <div class="border border-slate-800/60 bg-rose-500/20 flex items-center justify-center">JP</div>
-              <div class="border border-slate-800/60 bg-emerald-500/20 flex items-center justify-center">CA</div>
+            <div class="mt-2 h-56 rounded-xl bg-white border border-cordobaBorder grid grid-cols-5 grid-rows-4 text-[10px] text-center text-cordobaInk/80">
+              <div class="border border-cordobaBorder bg-emerald-50 flex items-center justify-center">US</div>
+              <div class="border border-cordobaBorder bg-emerald-50 flex items-center justify-center">UK</div>
+              <div class="border border-cordobaBorder bg-amber-50 flex items-center justify-center">EU</div>
+              <div class="border border-cordobaBorder bg-rose-50 flex items-center justify-center">JP</div>
+              <div class="border border-cordobaBorder bg-emerald-50 flex items-center justify-center">CA</div>
 
-              <div class="border border-slate-800/60 bg-emerald-500/25 flex items-center justify-center">KR</div>
-              <div class="border border-slate-800/60 bg-amber-500/25 flex items-center justify-center">CN</div>
-              <div class="border border-slate-800/60 bg-emerald-500/10 flex items-center justify-center">IN</div>
-              <div class="border border-slate-800/60 bg-rose-500/25 flex items-center justify-center">BR</div>
-              <div class="border border-slate-800/60 bg-amber-500/15 flex items-center justify-center">MX</div>
+              <div class="border border-cordobaBorder bg-emerald-50 flex items-center justify-center">KR</div>
+              <div class="border border-cordobaBorder bg-amber-50 flex items-center justify-center">CN</div>
+              <div class="border border-cordobaBorder bg-emerald-50 flex items-center justify-center">IN</div>
+              <div class="border border-cordobaBorder bg-rose-50 flex items-center justify-center">BR</div>
+              <div class="border border-cordobaBorder bg-amber-50 flex items-center justify-center">MX</div>
 
-              <div class="border border-slate-800/60 bg-emerald-500/15 flex items-center justify-center">ZA</div>
-              <div class="border border-slate-800/60 bg-amber-500/20 flex items-center justify-center">SA</div>
-              <div class="border border-slate-800/60 bg-emerald-500/20 flex items-center justify-center">ID</div>
-              <div class="border border-slate-800/60 bg-rose-500/20 flex items-center justify-center">TR</div>
-              <div class="border border-slate-800/60 bg-emerald-500/10 flex items-center justify-center">AR</div>
+              <div class="border border-cordobaBorder bg-emerald-50 flex items-center justify-center">ZA</div>
+              <div class="border border-cordobaBorder bg-amber-50 flex items-center justify-center">SA</div>
+              <div class="border border-cordobaBorder bg-emerald-50 flex items-center justify-center">ID</div>
+              <div class="border border-cordobaBorder bg-rose-50 flex items-center justify-center">TR</div>
+              <div class="border border-cordobaBorder bg-emerald-50 flex items-center justify-center">AR</div>
 
-              <div class="border border-slate-800/60 bg-amber-500/15 flex items-center justify-center">RU</div>
-              <div class="border border-slate-800/60 bg-emerald-500/10 flex items-center justify-center">IT</div>
-              <div class="border border-slate-800/60 bg-emerald-500/20 flex items-center justify-center">DE</div>
-              <div class="border border-slate-800/60 bg-amber-500/20 flex items-center justify-center">FR</div>
-              <div class="border border-slate-800/60 bg-slate-900 flex items-center justify-center text-slate-500">+</div>
+              <div class="border border-cordobaBorder bg-amber-50 flex items-center justify-center">RU</div>
+              <div class="border border-cordobaBorder bg-emerald-50 flex items-center justify-center">IT</div>
+              <div class="border border-cordobaBorder bg-emerald-50 flex items-center justify-center">DE</div>
+              <div class="border border-cordobaBorder bg-amber-50 flex items-center justify-center">FR</div>
+              <div class="border border-cordobaBorder bg-white flex items-center justify-center text-cordobaMuted">+</div>
             </div>
           </div>
 
           <!-- Chart / decomposition -->
-          <div class="xl:col-span-2 bg-slate-950/80 border border-slate-800/90 rounded-2xl px-4 py-3 flex flex-col gap-3">
+          <div class="xl:col-span-2 cc-card px-4 py-3 flex flex-col gap-3">
             <div class="flex items-center justify-between">
               <div>
-                <div class="text-[11px] uppercase tracking-[0.2em] text-slate-500">
+                <div class="text-[11px] uppercase tracking-[0.2em] text-cordobaMuted">
                   Time Series
                 </div>
-                <div class="text-sm text-slate-200 mt-0.5">
+                <div class="font-heading text-lg mt-1">
                   Growth Engine – <span data-cc-timeseries-country>United States</span>
                 </div>
               </div>
               <div class="flex items-center gap-2 text-[11px]">
                 <button
-                  class="px-2.5 py-0.5 rounded-full border border-cordobaGold bg-cordobaGold/80 text-slate-950"
+                  class="px-2.5 py-0.5 rounded-full border border-cordobaGold bg-cordobaGold text-white"
                   data-cc-chart-tab="level"
                   type="button"
                 >
                   Level
                 </button>
                 <button
-                  class="px-2.5 py-0.5 rounded-full border border-slate-700 text-slate-400 hover:border-cordobaGold/70"
+                  class="px-2.5 py-0.5 rounded-full border border-cordobaBorder text-cordobaMuted hover:border-cordobaGold"
                   data-cc-chart-tab="zscore"
                   type="button"
                 >
                   z-Score
                 </button>
                 <button
-                  class="px-2.5 py-0.5 rounded-full border border-slate-700 text-slate-400 hover:border-cordobaGold/70"
+                  class="px-2.5 py-0.5 rounded-full border border-cordobaBorder text-cordobaMuted hover:border-cordobaGold"
                   data-cc-chart-tab="components"
                   type="button"
                 >
@@ -599,7 +601,7 @@
             </div>
 
             <div
-              class="h-12 rounded-xl bg-gradient-to-b from-slate-900 to-slate-950 border border-slate-800/80 flex items-center justify-center text-xs text-slate-500 px-3 text-center"
+              class="h-11 rounded-xl bg-cordobaAccent border border-cordobaBorder flex items-center justify-center text-xs text-cordobaMuted px-3 text-center"
               id="cc-chart-placeholder"
             >
               <span data-cc-chart-caption>
@@ -607,18 +609,18 @@
               </span>
             </div>
 
-            <div class="h-40">
+            <div class="h-44">
               <canvas id="cc-growth-chart"></canvas>
             </div>
 
-            <div class="flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-400">
+            <div class="flex flex-wrap items-center justify-between gap-2 text-[11px] text-cordobaMuted">
               <div class="flex flex-wrap gap-2">
                 <span class="inline-flex items-center gap-1">
-                  <span class="h-2 w-4 rounded-full bg-emerald-400"></span>
+                  <span class="h-2 w-4 rounded-full bg-emerald-500"></span>
                   Composite
                 </span>
                 <span class="inline-flex items-center gap-1">
-                  <span class="h-2 w-4 rounded-full bg-sky-400"></span>
+                  <span class="h-2 w-4 rounded-full bg-sky-500"></span>
                   Leading
                 </span>
                 <span class="inline-flex items-center gap-1">
@@ -631,28 +633,28 @@
                 </span>
               </div>
               <div>
-                Last update: <span class="text-slate-200" data-cc-last-update>Prelim 2025-10</span>
+                Last update: <span class="text-cordobaInk" data-cc-last-update>Prelim 2025-10</span>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- Signals table -->
-        <div class="bg-slate-950/80 border border-slate-800/90 rounded-2xl px-4 py-3">
+        <!-- Indicator Grid -->
+        <div class="cc-card px-4 py-3">
           <div class="flex items-center justify-between mb-3">
             <div>
-              <div class="text-[11px] uppercase tracking-[0.2em] text-slate-500">
+              <div class="text-[11px] uppercase tracking-[0.2em] text-cordobaMuted">
                 Indicator Grid
               </div>
-              <div class="text-sm text-slate-200 mt-0.5">
+              <div class="font-heading text-lg mt-1">
                 Key Signals – <span data-cc-signals-country>United States</span>
               </div>
             </div>
             <div class="flex items-center gap-2 text-[11px]">
-              <button class="px-2.5 py-0.5 rounded-full border border-slate-700 text-slate-400 hover:border-cordobaGold/70">
+              <button class="px-2.5 py-0.5 rounded-full border border-cordobaBorder text-cordobaMuted hover:border-cordobaGold">
                 All Engines
               </button>
-              <button class="px-2.5 py-0.5 rounded-full border border-slate-700 text-slate-400 hover:border-cordobaGold/70">
+              <button class="px-2.5 py-0.5 rounded-full border border-cordobaBorder text-cordobaMuted hover:border-cordobaGold">
                 Only Top-of-Book
               </button>
             </div>
@@ -661,7 +663,7 @@
           <div class="overflow-x-auto">
             <table class="min-w-full text-xs">
               <thead>
-                <tr class="text-[11px] uppercase tracking-[0.16em] text-slate-500 border-b border-slate-800">
+                <tr class="text-[11px] uppercase tracking-[0.16em] text-cordobaMuted border-b border-cordobaBorder">
                   <th class="py-2 text-left">Indicator</th>
                   <th class="py-2 text-left">Engine</th>
                   <th class="py-2 text-left">Bucket</th>
@@ -671,7 +673,7 @@
                   <th class="py-2 text-left">Comment</th>
                 </tr>
               </thead>
-              <tbody id="cc-signals-tbody" class="divide-y divide-slate-900">
+              <tbody id="cc-signals-tbody" class="divide-y divide-cordobaBorder/70">
                 <!-- Populated by JS -->
               </tbody>
             </table>
@@ -679,19 +681,19 @@
         </div>
 
         <!-- Relative Macro Rankings -->
-        <div class="bg-slate-950/80 border border-slate-800/90 rounded-2xl px-4 py-3">
+        <div class="cc-card px-4 py-3">
           <div class="flex items-center justify-between mb-3">
             <div>
-              <div class="text-[11px] uppercase tracking-[0.2em] text-slate-500">
+              <div class="text-[11px] uppercase tracking-[0.2em] text-cordobaMuted">
                 Cross-Country Rankings
               </div>
-              <div class="text-sm text-slate-200 mt-0.5">
+              <div class="font-heading text-lg mt-1">
                 Relative macro scores – G-20 focus set
               </div>
             </div>
-            <div class="flex items-center gap-2 text-[11px] text-slate-400">
+            <div class="flex items-center gap-2 text-[11px] text-cordobaMuted">
               <span>Sorted by:</span>
-              <span id="cc-ranking-sort-label" class="rounded-full border border-slate-700 px-2 py-0.5">
+              <span id="cc-ranking-sort-label" class="rounded-full border border-cordobaBorder px-2 py-0.5">
                 Overall Macro Score
               </span>
             </div>
@@ -700,7 +702,7 @@
           <div class="overflow-x-auto">
             <table class="min-w-full text-xs">
               <thead>
-                <tr class="text-[11px] uppercase tracking-[0.16em] text-slate-500 border-b border-slate-800">
+                <tr class="text-[11px] uppercase tracking-[0.16em] text-cordobaMuted border-b border-cordobaBorder">
                   <th class="py-2 text-left">Rank</th>
                   <th class="py-2 text-left">Country</th>
                   <th class="py-2 text-left">Regime</th>
@@ -711,7 +713,7 @@
                   <th class="py-2 text-right">Overall</th>
                 </tr>
               </thead>
-              <tbody id="cc-ranking-tbody" class="divide-y divide-slate-900">
+              <tbody id="cc-ranking-tbody" class="divide-y divide-cordobaBorder/70">
                 <!-- Filled dynamically -->
               </tbody>
             </table>
