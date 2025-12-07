@@ -1,432 +1,758 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <title>Cordoba Capital – Global Macro Engine</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+// main.js
+// Cordoba Capital – Global Macro Engine
+// Uses World Bank WDI data (annual) to drive all numbers & labels.
 
-  <!-- Tailwind (CDN for prototype) -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          colors: {
-            cordobaGold: '#9A690F',
-            cordobaAccent: '#FFF7F0',
-            cordobaSoft: '#FFFCF9'
-          },
-          fontFamily: {
-            heading: ['"Times New Roman"', 'serif'],
-            body: ['"Helvetica Neue"', 'system-ui', 'sans-serif']
-          }
-        }
-      }
+const COUNTRY_META = {
+  US: { name: "United States", region: "G-20 · DM" },
+  GB: { name: "United Kingdom", region: "G-20 · DM" },
+  DE: { name: "Germany", region: "G-20 · DM" },
+  FR: { name: "France", region: "G-20 · DM" },
+  JP: { name: "Japan", region: "G-20 · DM" },
+  CN: { name: "China", region: "G-20 · EM" },
+  IN: { name: "India", region: "G-20 · EM" },
+  BR: { name: "Brazil", region: "G-20 · EM" }
+};
+
+// Core indicators used in the engine
+const INDICATORS = [
+  {
+    id: "gdp_growth",
+    wb: "NY.GDP.MKTP.KD.ZG", // GDP growth (annual %)
+    label: "GDP growth (annual %)",
+    engine: "Growth",
+    bucket: "Coincident",
+    higherIsGood: true,
+    unit: "%",
+    decimals: 1
+  },
+  {
+    id: "inflation",
+    wb: "FP.CPI.TOTL.ZG", // Inflation, consumer prices (annual %)
+    label: "Inflation, CPI (annual %)",
+    engine: "Inflation",
+    bucket: "Coincident",
+    higherIsGood: false,
+    unit: "%",
+    decimals: 1
+  },
+  {
+    id: "unemployment",
+    wb: "SL.UEM.TOTL.ZS", // Unemployment rate (% of labour force)
+    label: "Unemployment rate (% labour force)",
+    engine: "Growth",
+    bucket: "Lagging",
+    higherIsGood: false,
+    unit: "%",
+    decimals: 1
+  },
+  {
+    id: "money",
+    wb: "FM.LBL.MQMY.ZG", // Money & quasi-money (M2) growth (annual %)
+    label: "Broad money (M2) growth (annual %)",
+    engine: "Liquidity",
+    bucket: "Leading",
+    higherIsGood: true,
+    unit: "%",
+    decimals: 1
+  },
+  {
+    id: "current_account",
+    wb: "BN.CAB.XOKA.GD.ZS", // Current-account balance (% of GDP)
+    label: "Current account balance (% of GDP)",
+    engine: "External",
+    bucket: "Coincident",
+    higherIsGood: true,
+    unit: "% of GDP",
+    decimals: 1
+  }
+];
+
+// Cache to avoid repeated calls for same country
+const macroCache = {};
+
+// --- Utility helpers --------------------------------------------------------
+
+function fetchWorldBankSeries(countryCode, indicatorCode) {
+  const url =
+    `https://api.worldbank.org/v2/country/${countryCode}/indicator/${indicatorCode}` +
+    `?format=json&per_page=200`;
+  return fetch(url)
+    .then(res => res.json())
+    .then(json => {
+      const [, data] = json;
+      if (!Array.isArray(data)) return [];
+      return data
+        .filter(d => d && d.value != null)
+        .map(d => ({
+          year: parseInt(d.date, 10),
+          value: Number(d.value)
+        }))
+        .sort((a, b) => a.year - b.year);
+    })
+    .catch(err => {
+      console.error("World Bank fetch error", countryCode, indicatorCode, err);
+      return [];
+    });
+}
+
+function computeStats(series, lookbackYears = 10) {
+  if (!series.length) return null;
+
+  const latest = series[series.length - 1];
+  const prev = series.length >= 2 ? series[series.length - 2] : null;
+
+  const cutoffYear = latest.year - lookbackYears + 1;
+  const window = series.filter(p => p.year >= cutoffYear);
+
+  const values = window.map(p => p.value);
+  const mean =
+    values.length > 0
+      ? values.reduce((sum, v) => sum + v, 0) / values.length
+      : latest.value;
+
+  const variance =
+    values.length > 1
+      ? values.reduce((sum, v) => sum + Math.pow(v - mean, 2), 0) /
+        (values.length - 1)
+      : 0;
+
+  const stdev = Math.sqrt(variance);
+  const z = stdev > 0 ? (latest.value - mean) / stdev : 0;
+  const delta = prev ? latest.value - prev.value : 0;
+
+  // For analogue years: find 3 closest years by z-score
+  const zByYear = window.map(p => ({
+    year: p.year,
+    z: stdev > 0 ? (p.value - mean) / stdev : 0
+  }));
+  const analogues = zByYear
+    .map(p => ({ ...p, diff: Math.abs(p.z - z) }))
+    .sort((a, b) => a.diff - b.diff)
+    .slice(0, 3)
+    .map(p => p.year);
+
+  return {
+    latest,
+    prev,
+    mean,
+    stdev,
+    z,
+    delta,
+    analogues,
+    windowYears: window.length
+  };
+}
+
+function formatNumber(val, decimals = 1, unit = "", fallback = "n/a") {
+  if (val == null || isNaN(val)) return fallback;
+  let num = val.toFixed(decimals);
+  if (unit === "%") return `${num}%`;
+  if (unit === "% of GDP") return `${num}%`;
+  return num;
+}
+
+function classifySignal(stat, cfg) {
+  if (!stat) {
+    return {
+      level: "n/a",
+      strength: "none",
+      label: "No recent data",
+      direction: "flat"
+    };
+  }
+
+  const { z, delta } = stat;
+  const absZ = Math.abs(z);
+  const dir = delta > 0 ? "up" : delta < 0 ? "down" : "flat";
+
+  let level;
+  if (absZ < 0.5) level = "near trend";
+  else if (absZ < 1.0) level = "moderate";
+  else level = "extreme";
+
+  let strength;
+  if (absZ < 0.5) strength = "low";
+  else if (absZ < 1.0) strength = "medium";
+  else strength = "high";
+
+  // Convert into intuitive macro words depending on whether high is good or bad
+  let label;
+  if (cfg.higherIsGood) {
+    if (z > 0.5 && dir === "up") label = "Strengthening above trend";
+    else if (z > 0.5 && dir === "down") label = "Still above trend, easing";
+    else if (z < -0.5 && dir === "down") label = "Weak and deteriorating";
+    else if (z < -0.5 && dir === "up") label = "Weak but stabilising";
+    else label = "Close to trend";
+  } else {
+    if (z > 0.5 && dir === "up") label = "Elevated and rising";
+    else if (z > 0.5 && dir === "down") label = "Elevated but cooling";
+    else if (z < -0.5 && dir === "down") label = "Subdued and falling";
+    else if (z < -0.5 && dir === "up") label = "Subdued but firming";
+    else label = "Close to trend";
+  }
+
+  return { level, strength, label, direction: dir };
+}
+
+function engineScoreFromIndicators(statsById) {
+  // Simple composite scoring: scale z-scores to 0–100 blend.
+  function scoreFromZ(z) {
+    // Clamp z between -2.5 and +2.5, map to 0–100
+    const clamped = Math.max(-2.5, Math.min(2.5, z || 0));
+    return Math.round(50 + (clamped / 2.5) * 40); // 10–90 range
+  }
+
+  const gdp = statsById.gdp_growth;
+  const infl = statsById.inflation;
+  const u = statsById.unemployment;
+  const m2 = statsById.money;
+  const ca = statsById.current_account;
+
+  const growthZ =
+    (gdp ? (gdp.z || 0) : 0) - (u ? (u.z || 0) * 0.4 : 0);
+  const inflationZ = infl ? -infl.z : 0; // lower inflation is "better"
+  const liquidityZ = m2 ? m2.z : 0;
+  const externalZ = ca ? ca.z : 0;
+
+  return {
+    growth: {
+      z: growthZ,
+      score: scoreFromZ(growthZ)
+    },
+    inflation: {
+      z: inflationZ,
+      score: scoreFromZ(inflationZ)
+    },
+    liquidity: {
+      z: liquidityZ,
+      score: scoreFromZ(liquidityZ)
+    },
+    external: {
+      z: externalZ,
+      score: scoreFromZ(externalZ)
     }
-  </script>
+  };
+}
 
-  <link rel="stylesheet" href="assets/style.css">
-</head>
-<body class="bg-cordobaSoft text-neutral-900 font-body">
+function riskLevelFromZ(z, higherIsGood) {
+  if (z == null || isNaN(z)) return "n/a";
 
-  <div class="min-h-screen flex flex-col">
+  const absZ = Math.abs(z);
+  if (absZ < 0.5) return "low";
+  if (absZ < 1.0) return "medium";
+  return "high";
+}
 
-    <!-- Header -->
-    <header class="border-b border-neutral-200 bg-white">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
-        <div class="flex items-center gap-3">
-          <div class="flex flex-col">
-            <span class="font-heading text-2xl sm:text-3xl leading-tight">Cordoba Capital</span>
-            <span class="tracking-[0.2em] text-xs text-neutral-500 uppercase">Macro Engine</span>
-          </div>
-        </div>
+// --- Rendering helpers ------------------------------------------------------
 
-        <div class="hidden md:flex items-center gap-4 text-xs text-neutral-500">
-          <span class="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-emerald-300 bg-emerald-50">
-            <span class="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-            Live signals
-          </span>
-          <span class="text-neutral-400">
-            Prototype – values from World Bank database (annual, latest available)
-          </span>
-        </div>
-      </div>
-    </header>
+function renderRegimeSummary(countryCode, statsById, engines) {
+  const meta = COUNTRY_META[countryCode];
+  const titleEl = document.getElementById("cc-regime-title");
+  const bodyEl = document.getElementById("cc-regime-body");
+  const confEl = document.getElementById("cc-regime-confidence");
+  const analogEl = document.getElementById("cc-analogue-years");
+  const riskEl = document.getElementById("cc-risk-flags");
 
-    <!-- Main layout -->
-    <div class="flex-1 flex">
+  const gdp = statsById.gdp_growth;
+  const infl = statsById.inflation;
+  const unemp = statsById.unemployment;
+  const ca = statsById.current_account;
 
-      <!-- Sidebar -->
-      <aside class="hidden md:flex flex-col w-56 border-r border-neutral-200 bg-white">
-        <div class="px-4 py-4">
-          <div class="text-xs font-semibold tracking-[0.25em] uppercase text-neutral-500 mb-3">
-            Dashboard
-          </div>
-          <nav class="space-y-1 text-sm">
-            <button class="w-full flex items-center justify-between px-3 py-2 rounded-lg bg-neutral-900 text-white">
-              <span>Overview</span>
-              <span class="text-[10px] uppercase text-neutral-300">Live</span>
-            </button>
-            <button class="w-full flex items-center justify-between px-3 py-2 rounded-lg text-neutral-600 hover:bg-cordobaSoft">
-              <span>Growth Cycle</span>
-            </button>
-            <button class="w-full flex items-center justify-between px-3 py-2 rounded-lg text-neutral-600 hover:bg-cordobaSoft">
-              <span>Inflation &amp; Prices</span>
-            </button>
-            <button class="w-full flex items-center justify-between px-3 py-2 rounded-lg text-neutral-600 hover:bg-cordobaSoft">
-              <span>Liquidity &amp; Credit</span>
-            </button>
-            <button class="w-full flex items-center justify-between px-3 py-2 rounded-lg text-neutral-600 hover:bg-cordobaSoft">
-              <span>External Balance</span>
-            </button>
-          </nav>
-        </div>
+  const growthZ = gdp ? gdp.z : 0;
+  const inflZ = infl ? infl.z : 0;
 
-        <div class="mt-auto px-4 py-4 border-t border-neutral-200 text-[11px] text-neutral-500">
-          <div class="flex items-center justify-between mb-1">
-            <span>Data as of</span>
-            <span id="cc-data-as-of" class="text-neutral-800">–</span>
-          </div>
-          <p class="leading-snug">
-            World Bank World Development Indicators. Internal research tool for educational use by Cordoba Capital.
-          </p>
-        </div>
-      </aside>
+  // Growth regime text
+  let growthPhrase = "near-trend growth";
+  if (growthZ > 0.5) growthPhrase = "above-trend growth";
+  else if (growthZ < -0.5) growthPhrase = "below-trend growth";
 
-      <!-- Main content -->
-      <main class="flex-1 bg-cordobaSoft">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+  // Inflation regime
+  let inflationPhrase = "stable inflation";
+  if (inflZ > 0.5) inflationPhrase = "elevated inflation";
+  else if (inflZ < -0.5) inflationPhrase = "disinflation";
 
-          <!-- Top controls -->
-          <section class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <!-- Country selection -->
-            <div class="flex flex-wrap items-center gap-4">
-              <div>
-                <div class="text-[11px] tracking-[0.25em] uppercase text-neutral-500">
-                  Country Selection
-                </div>
-                <div class="mt-1 flex items-center gap-2">
-                  <div class="relative">
-                    <button
-                      id="cc-country-toggle"
-                      type="button"
-                      class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-neutral-300 bg-white hover:border-cordobaGold text-sm"
-                    >
-                      <span class="h-2 w-2 rounded-full bg-emerald-500" id="cc-country-dot"></span>
-                      <span id="cc-country-label" class="font-medium">United States</span>
-                      <span id="cc-country-region" class="text-xs text-neutral-500">G-20 · DM</span>
-                      <span class="text-[10px] text-neutral-400">▼</span>
-                    </button>
+  const title = `${capitaliseFirst(growthPhrase)} with ${inflationPhrase} – ${
+    meta.name
+  }`;
+  titleEl.textContent = title;
 
-                    <!-- Dropdown -->
-                    <div
-                      id="cc-country-menu"
-                      class="hidden absolute z-20 mt-1 w-56 rounded-xl border border-neutral-200 bg-white shadow-lg text-sm"
-                    >
-                      <div class="px-3 py-2 text-[10px] uppercase tracking-[0.22em] text-neutral-500">
-                        G-20 countries
-                      </div>
-                      <div class="max-h-64 overflow-y-auto">
-                        <button class="w-full px-3 py-1.5 text-left hover:bg-cordobaSoft" data-cc-country="US" data-cc-region="G-20 · DM">
-                          United States
-                        </button>
-                        <button class="w-full px-3 py-1.5 text-left hover:bg-cordobaSoft" data-cc-country="GB" data-cc-region="G-20 · DM">
-                          United Kingdom
-                        </button>
-                        <button class="w-full px-3 py-1.5 text-left hover:bg-cordobaSoft" data-cc-country="DE" data-cc-region="G-20 · DM">
-                          Germany
-                        </button>
-                        <button class="w-full px-3 py-1.5 text-left hover:bg-cordobaSoft" data-cc-country="FR" data-cc-region="G-20 · DM">
-                          France
-                        </button>
-                        <button class="w-full px-3 py-1.5 text-left hover:bg-cordobaSoft" data-cc-country="JP" data-cc-region="G-20 · DM">
-                          Japan
-                        </button>
-                        <button class="w-full px-3 py-1.5 text-left hover:bg-cordobaSoft" data-cc-country="CN" data-cc-region="G-20 · EM">
-                          China
-                        </button>
-                        <button class="w-full px-3 py-1.5 text-left hover:bg-cordobaSoft" data-cc-country="IN" data-cc-region="G-20 · EM">
-                          India
-                        </button>
-                        <button class="w-full px-3 py-1.5 text-left hover:bg-cordobaSoft" data-cc-country="BR" data-cc-region="G-20 · EM">
-                          Brazil
-                        </button>
-                      </div>
-                    </div>
-                  </div>
+  // Confidence: simple function of how many indicators we have and window length
+  const indicatorsWithData = Object.values(statsById).filter(Boolean).length;
+  const avgWindow = average(
+    Object.values(statsById)
+      .filter(Boolean)
+      .map(s => s.windowYears || 0)
+  );
+  let confidence = 0.4 * (indicatorsWithData / INDICATORS.length) +
+    0.6 * Math.min(avgWindow / 10, 1);
+  confidence = Math.round(confidence * 100);
+  confEl.textContent = `${confidence}%`;
 
-                  <div class="hidden sm:flex items-center text-xs text-neutral-500 gap-2">
-                    <span>Benchmark:</span>
-                    <span class="px-2 py-0.5 rounded-full border border-neutral-300 text-neutral-700">World</span>
-                    <span class="px-2 py-0.5 rounded-full border border-neutral-300 text-neutral-700">DM</span>
-                    <span class="px-2 py-0.5 rounded-full border border-neutral-300 text-neutral-700">EM</span>
-                  </div>
-                </div>
-              </div>
+  // Main body paragraph built from real numbers
+  const parts = [];
 
-              <!-- Live / snapshot toggle -->
-              <div class="flex items-center gap-2 text-xs">
-                <div id="cc-live-toggle-group" class="inline-flex items-center rounded-full border border-neutral-300 bg-white p-0.5">
-                  <button
-                    data-cc-live-toggle="live"
-                    type="button"
-                    class="px-3 py-1 rounded-full bg-cordobaGold text-white font-medium"
-                  >
-                    Live
-                  </button>
-                  <button
-                    data-cc-live-toggle="snapshot"
-                    type="button"
-                    class="px-3 py-1 rounded-full text-neutral-500 hover:text-neutral-900"
-                  >
-                    Snapshot
-                  </button>
-                </div>
-              </div>
-            </div>
+  if (gdp) {
+    parts.push(
+      `Real GDP growth is ${formatNumber(
+        gdp.latest.value,
+        1,
+        "%"
+      )} compared with a 10-year average of ${formatNumber(
+        gdp.mean,
+        1,
+        "%"
+      )}.`
+    );
+  }
+  if (infl) {
+    parts.push(
+      `Headline inflation is ${formatNumber(
+        infl.latest.value,
+        1,
+        "%"
+      )} versus a 10-year average of ${formatNumber(infl.mean, 1, "%")}.`
+    );
+  }
+  if (unemp) {
+    parts.push(
+      `Unemployment stands at ${formatNumber(
+        unemp.latest.value,
+        1,
+        "%"
+      )}, relative to its 10-year average of ${formatNumber(
+        unemp.mean,
+        1,
+        "%"
+      )}.`
+    );
+  }
+  if (ca) {
+    parts.push(
+      `The current-account balance is ${formatNumber(
+        ca.latest.value,
+        1,
+        "% of GDP"
+      )} versus a 10-year average of ${formatNumber(
+        ca.mean,
+        1,
+        "% of GDP"
+      )}.`
+    );
+  }
 
-            <!-- Search stub -->
-            <div class="flex items-center gap-3 text-xs">
-              <div class="relative w-64 max-w-full">
-                <input
-                  class="w-full rounded-full border border-neutral-300 bg-white px-8 py-1.5 text-xs placeholder:text-neutral-400 focus:outline-none focus:border-cordobaGold"
-                  placeholder="Search country, indicator, or note (UI only for now)…"
-                  type="text"
-                />
-                <span class="absolute left-3 top-1.5 text-neutral-400">⌕</span>
-              </div>
-            </div>
-          </section>
+  bodyEl.textContent =
+    parts.join(" ") ||
+    "Insufficient historical data to build a macro summary for this country.";
 
-          <!-- Macro regime + key inflections -->
-          <section class="grid grid-cols-1 lg:grid-cols-2 gap-5">
-            <!-- Regime summary -->
-            <article class="bg-white border border-neutral-200 rounded-3xl px-5 sm:px-6 py-5 shadow-sm">
-              <div class="flex items-start justify-between gap-3 mb-4">
-                <div>
-                  <div class="text-[11px] tracking-[0.25em] uppercase text-neutral-500 mb-2">
-                    Macro Regime Summary
-                  </div>
-                  <h2 id="cc-regime-title" class="font-heading text-2xl sm:text-3xl leading-snug">
-                    Loading…
-                  </h2>
-                </div>
-                <div class="text-right text-xs text-neutral-500">
-                  <div>Confidence:</div>
-                  <div id="cc-regime-confidence" class="text-cordobaGold font-semibold">–</div>
-                </div>
-              </div>
+  // Historical analogues: take the GDP growth analogue years as the main reference
+  analogEl.innerHTML = "";
+  const analogueYears = gdp ? gdp.analogues : [];
+  analogueYears.forEach(year => {
+    const pill = document.createElement("span");
+    pill.className =
+      "inline-flex items-center px-2.5 py-0.5 rounded-full border border-neutral-300 bg-cordobaSoft text-xs";
+    pill.textContent = year;
+    analogEl.appendChild(pill);
+  });
+  if (!analogueYears.length) {
+    analogEl.innerHTML =
+      '<span class="text-xs text-neutral-400">Not enough history for analogues.</span>';
+  }
 
-              <p id="cc-regime-body" class="text-sm leading-relaxed text-neutral-700">
-                Loading macro description…
-              </p>
+  // Risk flags from engine z-scores
+  riskEl.innerHTML = "";
+  const growthRisk = riskLevelFromZ(engines.growth.z, true);
+  const inflationRisk = riskLevelFromZ(engines.inflation.z, false);
+  const externalRisk = riskLevelFromZ(engines.external.z, true);
 
-              <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-                <div>
-                  <div class="mb-1 font-semibold tracking-[0.18em] uppercase text-neutral-500">
-                    Historical analogues
-                  </div>
-                  <div id="cc-analogue-years" class="flex flex-wrap gap-2">
-                    <!-- Filled by JS -->
-                  </div>
-                </div>
-                <div>
-                  <div class="mb-1 font-semibold tracking-[0.18em] uppercase text-neutral-500">
-                    Risk flags
-                  </div>
-                  <div id="cc-risk-flags" class="flex flex-wrap gap-2">
-                    <!-- Filled by JS -->
-                  </div>
-                </div>
-              </div>
-            </article>
+  [
+    { label: "Growth risk", level: growthRisk },
+    { label: "Inflation risk", level: inflationRisk },
+    { label: "External risk", level: externalRisk }
+  ].forEach(r => {
+    const span = document.createElement("span");
+    span.className =
+      "inline-flex items-center px-2.5 py-0.5 rounded-full border bg-cordobaSoft text-xs border-neutral-300";
+    span.textContent = `${r.label}: ${r.level}`;
+    riskEl.appendChild(span);
+  });
 
-            <!-- Key inflection signals -->
-            <article class="bg-white border border-neutral-200 rounded-3xl px-5 sm:px-6 py-5 shadow-sm">
-              <div class="flex items-start justify-between gap-3 mb-3">
-                <div>
-                  <div class="text-[11px] tracking-[0.25em] uppercase text-neutral-500 mb-1">
-                    What changed in latest data
-                  </div>
-                  <h3 class="font-heading text-xl leading-snug">
-                    Key inflection signals
-                  </h3>
-                </div>
-              </div>
+  // Policy error risk: look at growth vs inflation z
+  let policyRiskLevel = "medium";
+  if (Math.abs(growthZ) < 0.3 && Math.abs(inflZ) < 0.3) policyRiskLevel = "low";
+  else if (growthZ < -0.7 && inflZ > 0.7) policyRiskLevel = "high";
+  const policySpan = document.createElement("span");
+  policySpan.className =
+    "inline-flex items-center px-2.5 py-0.5 rounded-full border bg-cordobaSoft text-xs border-neutral-300";
+  policySpan.textContent = `Policy error risk: ${policyRiskLevel}`;
+  riskEl.appendChild(policySpan);
+}
 
-              <div id="cc-inflection-list" class="space-y-3 text-sm">
-                <!-- Filled by JS -->
-                <p class="text-neutral-500 text-xs">Loading signals from latest releases…</p>
-              </div>
-            </article>
-          </section>
+function renderEngineCards(engines, statsById) {
+  const container = document.getElementById("cc-engine-cards");
+  container.innerHTML = "";
 
-          <!-- Engine snapshot row -->
-          <section class="bg-white border border-neutral-200 rounded-3xl px-4 sm:px-5 py-4 shadow-sm">
-            <div class="flex items-center justify-between mb-3">
-              <div>
-                <div class="text-[11px] tracking-[0.25em] uppercase text-neutral-500">
-                  Macro snapshot
-                </div>
-                <p class="text-xs text-neutral-500">
-                  Scores are based on z-scores vs the country’s own 10-year history.
-                </p>
-              </div>
-            </div>
+  const meta = [
+    {
+      id: "growth",
+      title: "Growth",
+      color: "border-emerald-300",
+      text: "text-emerald-700"
+    },
+    {
+      id: "inflation",
+      title: "Inflation",
+      color: "border-amber-300",
+      text: "text-amber-700"
+    },
+    {
+      id: "liquidity",
+      title: "Liquidity",
+      color: "border-sky-300",
+      text: "text-sky-700"
+    },
+    {
+      id: "external",
+      title: "External",
+      color: "border-rose-300",
+      text: "text-rose-700"
+    }
+  ];
 
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-3" id="cc-engine-cards">
-              <!-- Cards filled by JS -->
-            </div>
-          </section>
+  meta.forEach(m => {
+    const engine = engines[m.id];
+    const z = engine ? engine.z : 0;
+    const score = engine ? engine.score : 50;
 
-          <!-- Indicator grid -->
-          <section class="bg-white border border-neutral-200 rounded-3xl px-4 sm:px-5 py-4 shadow-sm">
-            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
-              <div>
-                <div class="text-[11px] tracking-[0.25em] uppercase text-neutral-500">
-                  Indicator grid
-                </div>
-                <div class="text-sm">
-                  Key signals – <span id="cc-signals-country">United States</span>
-                </div>
-              </div>
-              <div class="flex items-center gap-2 text-xs">
-                <button
-                  id="cc-filter-all"
-                  class="px-2.5 py-1 rounded-full border border-neutral-300 bg-cordobaSoft text-neutral-900"
-                >
-                  All engines
-                </button>
-                <button
-                  id="cc-filter-top"
-                  class="px-2.5 py-1 rounded-full border border-neutral-200 bg-white text-neutral-600 hover:border-cordobaGold"
-                >
-                  Only strongest signals
-                </button>
-              </div>
-            </div>
+    const card = document.createElement("div");
+    card.className =
+      "rounded-2xl border bg-cordobaSoft px-4 py-3 flex flex-col justify-between " +
+      m.color;
 
-            <div class="overflow-x-auto text-xs">
-              <table class="min-w-full border-t border-neutral-200">
-                <thead class="bg-cordobaSoft">
-                  <tr class="text-[11px] tracking-[0.18em] uppercase text-neutral-500">
-                    <th class="py-2 pr-3 text-left font-normal">Indicator</th>
-                    <th class="py-2 pr-3 text-left font-normal">Engine</th>
-                    <th class="py-2 pr-3 text-left font-normal">Bucket</th>
-                    <th class="py-2 pr-3 text-left font-normal">Signal</th>
-                    <th class="py-2 pr-3 text-right font-normal">Last</th>
-                    <th class="py-2 pr-3 text-right font-normal">z-score</th>
-                    <th class="py-2 pr-3 text-left font-normal">Comment</th>
-                  </tr>
-                </thead>
-                <tbody id="cc-indicator-rows" class="divide-y divide-neutral-100">
-                  <!-- JS rows -->
-                  <tr>
-                    <td colspan="7" class="py-3 text-center text-neutral-400">
-                      Loading indicators…
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </section>
+    const header = document.createElement("div");
+    header.className =
+      "flex items-baseline justify-between text-[11px] tracking-[0.18em] uppercase text-neutral-500";
+    header.innerHTML = `<span>${m.title}</span><span>z-score ${
+      z ? z.toFixed(1) : "0.0"
+    }</span>`;
+    card.appendChild(header);
 
-          <!-- Latest Cordoba research row -->
-          <section class="bg-white border border-neutral-200 rounded-3xl px-4 sm:px-5 py-4 shadow-sm">
-            <div class="flex items-center justify-between mb-4">
-              <div>
-                <div class="text-[11px] tracking-[0.25em] uppercase text-neutral-500">
-                  Cordoba Capital – latest notes
-                </div>
-                <div class="text-sm text-neutral-600">
-                  Recent research from the main site (static links for now).
-                </div>
-              </div>
-              <a
-                href="https://cordobacapital.co.uk/"
-                target="_blank"
-                class="text-xs text-cordobaGold underline underline-offset-2 hover:text-neutral-900"
-              >
-                View all research
-              </a>
-            </div>
+    const main = document.createElement("div");
+    main.className = "mt-2 flex items-end justify-between gap-2";
+    const scoreEl = document.createElement("div");
+    scoreEl.innerHTML = `
+      <div class="text-2xl font-semibold">${score}<span class="text-sm text-neutral-400">/100</span></div>
+      <div class="text-[11px] text-neutral-500 mt-1">vs own 10-year history</div>
+    `;
+    main.appendChild(scoreEl);
 
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-              <article class="border border-neutral-200 rounded-2xl overflow-hidden bg-cordobaSoft">
-                <div class="aspect-[4/3] bg-neutral-200">
-                  <!-- image left blank; this is just a frame -->
-                </div>
-                <div class="px-4 py-3 space-y-2">
-                  <span class="inline-flex px-2 py-0.5 text-[11px] uppercase tracking-[0.18em] rounded-full bg-cordobaGold text-white">
-                    Macro research
-                  </span>
-                  <h3 class="font-heading text-lg leading-snug">
-                    Will Morocco Be at the Forefront of North Africa’s Green Industrial Take-Off?
-                  </h3>
-                  <p class="text-xs text-neutral-500">
-                    Jibraan Manuel Mohammed · 4 Dec 2025
-                  </p>
-                  <a
-                    href="https://cordobacapital.co.uk/will-morocco-be-at-the-forefront-of-north-africas-green-industrial-take-off/"
-                    target="_blank"
-                    class="inline-flex mt-1 text-xs px-3 py-1 rounded-full border border-cordobaGold text-cordobaGold hover:bg-cordobaGold hover:text-white"
-                  >
-                    Read note
-                  </a>
-                </div>
-              </article>
+    const labelEl = document.createElement("span");
+    labelEl.className =
+      "inline-flex items-center px-2 py-0.5 rounded-full border text-[11px] " +
+      m.text +
+      " border-neutral-300 bg-white";
+    const qualitative =
+      Math.abs(z) < 0.5 ? "Near trend" : z > 0 ? "Above trend" : "Below trend";
+    labelEl.textContent = qualitative;
+    main.appendChild(labelEl);
 
-              <article class="border border-neutral-200 rounded-2xl overflow-hidden bg-cordobaSoft">
-                <div class="aspect-[4/3] bg-neutral-200"></div>
-                <div class="px-4 py-3 space-y-2">
-                  <span class="inline-flex px-2 py-0.5 text-[11px] uppercase tracking-[0.18em] rounded-full bg-cordobaGold text-white">
-                    Equity research
-                  </span>
-                  <h3 class="font-heading text-lg leading-snug">
-                    The Next Frontier of Global BPO: The Philippines
-                  </h3>
-                  <p class="text-xs text-neutral-500">
-                    Alessandra Bianchi · 2 Dec 2025
-                  </p>
-                  <a
-                    href="https://cordobacapital.co.uk/the-next-frontier-of-global-bpo-the-philippines/"
-                    target="_blank"
-                    class="inline-flex mt-1 text-xs px-3 py-1 rounded-full border border-cordobaGold text-cordobaGold hover:bg-cordobaGold hover:text-white"
-                  >
-                    Read note
-                  </a>
-                </div>
-              </article>
+    card.appendChild(main);
+    container.appendChild(card);
+  });
+}
 
-              <article class="border border-neutral-200 rounded-2xl overflow-hidden bg-cordobaSoft">
-                <div class="aspect-[4/3] bg-neutral-200"></div>
-                <div class="px-4 py-3 space-y-2">
-                  <span class="inline-flex px-2 py-0.5 text-[11px] uppercase tracking-[0.18em] rounded-full bg-cordobaGold text-white">
-                    Macro research
-                  </span>
-                  <h3 class="font-heading text-lg leading-snug">
-                    Central Asian Labour Market: Long-Term Outlook
-                  </h3>
-                  <p class="text-xs text-neutral-500">
-                    Tim Safin · 25 Nov 2025
-                  </p>
-                  <a
-                    href="https://cordobacapital.co.uk/central-asian-labour-market-long-term-outlook/"
-                    target="_blank"
-                    class="inline-flex mt-1 text-xs px-3 py-1 rounded-full border border-cordobaGold text-cordobaGold hover:bg-cordobaGold hover:text-white"
-                  >
-                    Read note
-                  </a>
-                </div>
-              </article>
-            </div>
-          </section>
+function renderInflectionSignals(statsById) {
+  const container = document.getElementById("cc-inflection-list");
+  container.innerHTML = "";
 
-        </div>
-      </main>
-    </div>
-  </div>
+  const ordered = [
+    "gdp_growth",
+    "inflation",
+    "unemployment",
+    "money",
+    "current_account"
+  ];
 
-  <script src="main.js"></script>
-</body>
-</html>
+  ordered.forEach(id => {
+    const cfg = INDICATORS.find(i => i.id === id);
+    const stat = statsById[id];
+    if (!cfg || !stat) return;
+
+    const signal = classifySignal(stat, cfg);
+
+    const row = document.createElement("div");
+    row.className =
+      "flex items-start justify-between gap-3 rounded-2xl border border-neutral-200 bg-cordobaSoft px-3 py-2";
+
+    const left = document.createElement("div");
+    left.className = "flex-1";
+    const title = document.createElement("div");
+    title.className = "font-medium text-sm";
+    title.textContent = cfg.label;
+    left.appendChild(title);
+
+    const small = document.createElement("div");
+    small.className = "text-xs text-neutral-600";
+    const latest = stat.latest;
+    const prev = stat.prev;
+    const delta = stat.delta;
+    const directionText =
+      delta > 0
+        ? "higher than"
+        : delta < 0
+        ? "lower than"
+        : "similar to";
+
+    small.textContent = `Latest reading is ${formatNumber(
+      latest.value,
+      cfg.decimals,
+      cfg.unit
+    )} (${latest.year}), ${directionText} the prior year and ${
+      signal.label
+    } vs the 10-year average of ${formatNumber(
+      stat.mean,
+      cfg.decimals,
+      cfg.unit
+    )}.`;
+    left.appendChild(small);
+
+    row.appendChild(left);
+
+    const right = document.createElement("div");
+    right.className = "text-right text-xs text-neutral-500 whitespace-nowrap";
+    const dirArrow =
+      signal.direction === "up"
+        ? "↑"
+        : signal.direction === "down"
+        ? "↓"
+        : "→";
+    right.innerHTML = `<div>${dirArrow} ${signal.level}</div><div>${signal.strength} signal</div>`;
+    row.appendChild(right);
+
+    container.appendChild(row);
+  });
+
+  if (!container.children.length) {
+    container.innerHTML =
+      '<p class="text-xs text-neutral-500">Not enough data to compute signals for this country.</p>';
+  }
+}
+
+function renderIndicatorGrid(statsById, countryCode) {
+  const tbody = document.getElementById("cc-indicator-rows");
+  const countryLabel = document.getElementById("cc-signals-country");
+
+  const meta = COUNTRY_META[countryCode];
+  countryLabel.textContent = meta ? meta.name : countryCode;
+
+  tbody.innerHTML = "";
+
+  INDICATORS.forEach(cfg => {
+    const stat = statsById[cfg.id];
+    if (!stat) return;
+
+    const signal = classifySignal(stat, cfg);
+
+    const tr = document.createElement("tr");
+    tr.className = "hover:bg-cordobaSoft";
+
+    const lastVal = formatNumber(
+      stat.latest.value,
+      cfg.decimals,
+      cfg.unit,
+      "n/a"
+    );
+
+    const zFormatted =
+      stat.z != null && !isNaN(stat.z) ? stat.z.toFixed(1) : "0.0";
+
+    const signalBadge = document.createElement("span");
+    signalBadge.className =
+      "inline-flex items-center px-2 py-0.5 rounded-full border bg-white text-[11px] border-neutral-300";
+    signalBadge.textContent = signal.label;
+
+    const commentText = `Latest ${stat.latest.year} reading of ${lastVal} vs 10-year average ${formatNumber(
+      stat.mean,
+      cfg.decimals,
+      cfg.unit
+    )}; change vs prior year ${formatNumber(
+      stat.delta,
+      cfg.decimals,
+      cfg.unit
+    )}.`;
+
+    tr.innerHTML = `
+      <td class="py-2 pr-3 text-neutral-900">${cfg.label}</td>
+      <td class="py-2 pr-3 text-neutral-600">${cfg.engine}</td>
+      <td class="py-2 pr-3 text-neutral-600">${cfg.bucket}</td>
+      <td class="py-2 pr-3"></td>
+      <td class="py-2 pr-3 text-right text-neutral-900">${lastVal}</td>
+      <td class="py-2 pr-3 text-right text-neutral-700">${zFormatted}</td>
+      <td class="py-2 pr-3 text-neutral-600">${commentText}</td>
+    `;
+
+    const signalCell = tr.children[3];
+    signalCell.appendChild(signalBadge);
+
+    tbody.appendChild(tr);
+  });
+
+  if (!tbody.children.length) {
+    const row = document.createElement("tr");
+    row.innerHTML =
+      '<td colspan="7" class="py-3 text-center text-neutral-400">No indicators available for this country.</td>';
+    tbody.appendChild(row);
+  }
+}
+
+function renderMeta(countryCode, statsById) {
+  const dataAsOf = document.getElementById("cc-data-as-of");
+
+  const allStats = Object.values(statsById).filter(Boolean);
+  if (!allStats.length) {
+    dataAsOf.textContent = "no data";
+    return;
+  }
+  const lastYear = Math.max(...allStats.map(s => s.latest.year));
+  dataAsOf.textContent = `latest: ${lastYear}`;
+}
+
+function capitaliseFirst(str) {
+  return str.charAt(0).toUpperCase() + str.slice(1);
+}
+
+function average(arr) {
+  if (!arr.length) return 0;
+  return arr.reduce((s, v) => s + v, 0) / arr.length;
+}
+
+// --- Country loading --------------------------------------------------------
+
+async function loadCountry(countryCode) {
+  const meta = COUNTRY_META[countryCode] || {
+    name: countryCode,
+    region: ""
+  };
+
+  // Update country label in UI
+  const labelSpan = document.getElementById("cc-country-label");
+  const regionSpan = document.getElementById("cc-country-region");
+  const countryDot = document.getElementById("cc-country-dot");
+
+  if (labelSpan) labelSpan.textContent = meta.name;
+  if (regionSpan) regionSpan.textContent = meta.region || "";
+  if (countryDot) countryDot.classList.add("bg-emerald-500");
+
+  if (!macroCache[countryCode]) {
+    const statsById = {};
+    for (const cfg of INDICATORS) {
+      const series = await fetchWorldBankSeries(countryCode, cfg.wb);
+      const stats = series.length ? computeStats(series) : null;
+      statsById[cfg.id] = stats;
+    }
+    macroCache[countryCode] = statsById;
+  }
+
+  const statsById = macroCache[countryCode];
+  const engines = engineScoreFromIndicators(statsById);
+
+  renderRegimeSummary(countryCode, statsById, engines);
+  renderEngineCards(engines, statsById);
+  renderInflectionSignals(statsById);
+  renderIndicatorGrid(statsById, countryCode);
+  renderMeta(countryCode, statsById);
+}
+
+// --- UI wiring --------------------------------------------------------------
+
+function setupCountryDropdown() {
+  const toggle = document.getElementById("cc-country-toggle");
+  const menu = document.getElementById("cc-country-menu");
+
+  if (!toggle || !menu) return;
+
+  toggle.addEventListener("click", () => {
+    menu.classList.toggle("hidden");
+  });
+
+  menu.addEventListener("click", evt => {
+    const btn = evt.target.closest("[data-cc-country]");
+    if (!btn) return;
+    const code = btn.getAttribute("data-cc-country");
+    const region = btn.getAttribute("data-cc-region");
+    menu.classList.add("hidden");
+
+    const meta = COUNTRY_META[code];
+    if (meta) {
+      document.getElementById("cc-country-label").textContent = meta.name;
+      document.getElementById("cc-country-region").textContent = region;
+    }
+    loadCountry(code);
+  });
+
+  document.addEventListener("click", evt => {
+    if (!menu.contains(evt.target) && evt.target !== toggle) {
+      menu.classList.add("hidden");
+    }
+  });
+}
+
+function setupLiveToggle() {
+  const group = document.getElementById("cc-live-toggle-group");
+  if (!group) return;
+
+  group.addEventListener("click", evt => {
+    const btn = evt.target.closest("[data-cc-live-toggle]");
+    if (!btn) return;
+
+    const mode = btn.getAttribute("data-cc-live-toggle");
+    Array.from(group.querySelectorAll("button")).forEach(b => {
+      b.classList.remove("bg-cordobaGold", "text-white");
+      b.classList.add("text-neutral-500");
+    });
+    btn.classList.add("bg-cordobaGold", "text-white");
+    btn.classList.remove("text-neutral-500");
+
+    // For now the toggle is purely cosmetic – World Bank provides annual data only.
+    console.log("Mode switched to", mode);
+  });
+}
+
+function setupFilters() {
+  const allBtn = document.getElementById("cc-filter-all");
+  const topBtn = document.getElementById("cc-filter-top");
+  const tbody = document.getElementById("cc-indicator-rows");
+
+  if (!allBtn || !topBtn || !tbody) return;
+
+  allBtn.addEventListener("click", () => {
+    Array.from(tbody.querySelectorAll("tr")).forEach(tr => {
+      tr.classList.remove("hidden");
+    });
+    allBtn.classList.add("bg-cordobaSoft");
+    topBtn.classList.remove("bg-cordobaSoft");
+  });
+
+  topBtn.addEventListener("click", () => {
+    // Only keep rows where |z| >= 0.7
+    Array.from(tbody.querySelectorAll("tr")).forEach(tr => {
+      const zCell = tr.children[5];
+      if (!zCell) return;
+      const z = parseFloat(zCell.textContent);
+      if (isNaN(z)) return;
+      const strong = Math.abs(z) >= 0.7;
+      tr.classList.toggle("hidden", !strong);
+    });
+    topBtn.classList.add("bg-cordobaSoft");
+    allBtn.classList.remove("bg-cordobaSoft");
+  });
+}
+
+// --- Init -------------------------------------------------------------------
+
+document.addEventListener("DOMContentLoaded", () => {
+  setupCountryDropdown();
+  setupLiveToggle();
+  setupFilters();
+  loadCountry("US"); // default
+});
