@@ -55,7 +55,7 @@ h3 {
   border: 1px solid #efe7dd;
 }
 
-/* Soft hover */
+/* Card hover */
 .cc-card:hover {
   border-color: #9a690f;
   background: #fffcf9;
@@ -105,21 +105,21 @@ table th {
   font-weight: 500;
 }
 
-/* === Indicator Grid & Rankings – clarity tweaks === */
+/* === Indicator Grid & Rankings – clarity === */
 
 /* Normal state: black text on white */
 table tbody td {
-  color: #1a1a1a;
+  color: #1a1a1a;           /* solid black text */
   background-color: #ffffff;
 }
 
-/* Remove old zebra striping completely */
+/* No zebra striping */
 table tbody tr:nth-child(even) td {
   background-color: #ffffff;
 }
 
-/* Hover: Cordoba accent background, black text */
+/* Hover: very light cream background, black text */
 table tbody tr:hover td {
-  background-color: #fbf4ec; /* Cordoba accent */
+  background-color: #fffcf9; /* hover background */
   color: #1a1a1a;
 }
