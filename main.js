@@ -2,6 +2,9 @@
 // Cordoba Capital – Global Macro Engine
 // Uses World Bank WDI data (annual) to drive all numbers & labels.
 
+// ---------------------------------------------------------------------------
+// Country metadata
+// ---------------------------------------------------------------------------
 const COUNTRY_META = {
   US: { name: "United States", region: "G-20 · DM" },
   GB: { name: "United Kingdom", region: "G-20 · DM" },
@@ -13,7 +16,9 @@ const COUNTRY_META = {
   BR: { name: "Brazil", region: "G-20 · EM" }
 };
 
+// ---------------------------------------------------------------------------
 // Core indicators used in the engine
+// ---------------------------------------------------------------------------
 const INDICATORS = [
   {
     id: "gdp_growth",
@@ -67,34 +72,72 @@ const INDICATORS = [
   }
 ];
 
-// Cache to avoid repeated calls for same country
+// In-memory cache for computed stats (per session)
 const macroCache = {};
 
-// --- Utility helpers --------------------------------------------------------
+// ---------------------------------------------------------------------------
+// World Bank fetch with localStorage cache
+// ---------------------------------------------------------------------------
+async function fetchWorldBankSeries(countryCode, indicatorCode) {
+  const cacheKey = `wb_${countryCode}_${indicatorCode}`;
 
-function fetchWorldBankSeries(countryCode, indicatorCode) {
-  const url =
-    `https://api.worldbank.org/v2/country/${countryCode}/indicator/${indicatorCode}` +
-    `?format=json&per_page=200`;
-  return fetch(url)
-    .then(res => res.json())
-    .then(json => {
-      const [, data] = json;
-      if (!Array.isArray(data)) return [];
-      return data
-        .filter(d => d && d.value != null)
-        .map(d => ({
-          year: parseInt(d.date, 10),
-          value: Number(d.value)
-        }))
-        .sort((a, b) => a.year - b.year);
-    })
-    .catch(err => {
-      console.error("World Bank fetch error", countryCode, indicatorCode, err);
+  // 1) Try localStorage cache first
+  try {
+    const cachedRaw = localStorage.getItem(cacheKey);
+    if (cachedRaw) {
+      const cached = JSON.parse(cachedRaw);
+      const maxAgeMs = 7 * 24 * 60 * 60 * 1000; // 7 days
+      if (cached.timestamp && Date.now() - cached.timestamp < maxAgeMs) {
+        return cached.series || [];
+      }
+    }
+  } catch (e) {
+    console.warn("LocalStorage read error:", e);
+  }
+
+  // 2) Live call to World Bank (HTTPS is essential for GitHub Pages)
+  const url = `https://api.worldbank.org/v2/country/${countryCode}/indicator/${indicatorCode}?format=json&per_page=200`;
+  try {
+    const res = await fetch(url);
+    if (!res.ok) {
+      console.error("World Bank request failed:", res.status, url);
       return [];
-    });
+    }
+    const json = await res.json();
+    const data = Array.isArray(json) ? json[1] : null;
+    if (!Array.isArray(data)) return [];
+
+    const series = data
+      .filter(d => d && d.value != null)
+      .map(d => ({
+        year: parseInt(d.date, 10),
+        value: Number(d.value)
+      }))
+      .sort((a, b) => a.year - b.year);
+
+    // 3) Write to cache
+    try {
+      localStorage.setItem(
+        cacheKey,
+        JSON.stringify({
+          timestamp: Date.now(),
+          series
+        })
+      );
+    } catch (e) {
+      console.warn("LocalStorage write error:", e);
+    }
+
+    return series;
+  } catch (err) {
+    console.error("World Bank fetch error:", countryCode, indicatorCode, err);
+    return [];
+  }
 }
 
+// ---------------------------------------------------------------------------
+// Stats & helpers
+// ---------------------------------------------------------------------------
 function computeStats(series, lookbackYears = 10) {
   if (!series.length) return null;
 
@@ -120,7 +163,7 @@ function computeStats(series, lookbackYears = 10) {
   const z = stdev > 0 ? (latest.value - mean) / stdev : 0;
   const delta = prev ? latest.value - prev.value : 0;
 
-  // For analogue years: find 3 closest years by z-score
+  // For analogue years: closest years by z-score within the window
   const zByYear = window.map(p => ({
     year: p.year,
     z: stdev > 0 ? (p.value - mean) / stdev : 0
@@ -145,9 +188,8 @@ function computeStats(series, lookbackYears = 10) {
 
 function formatNumber(val, decimals = 1, unit = "", fallback = "n/a") {
   if (val == null || isNaN(val)) return fallback;
-  let num = val.toFixed(decimals);
-  if (unit === "%") return `${num}%`;
-  if (unit === "% of GDP") return `${num}%`;
+  const num = val.toFixed(decimals);
+  if (unit === "%" || unit === "% of GDP") return `${num}%`;
   return num;
 }
 
@@ -163,7 +205,7 @@ function classifySignal(stat, cfg) {
 
   const { z, delta } = stat;
   const absZ = Math.abs(z);
-  const dir = delta > 0 ? "up" : delta < 0 ? "down" : "flat";
+  const direction = delta > 0 ? "up" : delta < 0 ? "down" : "flat";
 
   let level;
   if (absZ < 0.5) level = "near trend";
@@ -175,29 +217,26 @@ function classifySignal(stat, cfg) {
   else if (absZ < 1.0) strength = "medium";
   else strength = "high";
 
-  // Convert into intuitive macro words depending on whether high is good or bad
   let label;
   if (cfg.higherIsGood) {
-    if (z > 0.5 && dir === "up") label = "Strengthening above trend";
-    else if (z > 0.5 && dir === "down") label = "Still above trend, easing";
-    else if (z < -0.5 && dir === "down") label = "Weak and deteriorating";
-    else if (z < -0.5 && dir === "up") label = "Weak but stabilising";
+    if (z > 0.5 && direction === "up") label = "Strengthening above trend";
+    else if (z > 0.5 && direction === "down") label = "Above trend, easing";
+    else if (z < -0.5 && direction === "down") label = "Weak and deteriorating";
+    else if (z < -0.5 && direction === "up") label = "Weak but stabilising";
     else label = "Close to trend";
   } else {
-    if (z > 0.5 && dir === "up") label = "Elevated and rising";
-    else if (z > 0.5 && dir === "down") label = "Elevated but cooling";
-    else if (z < -0.5 && dir === "down") label = "Subdued and falling";
-    else if (z < -0.5 && dir === "up") label = "Subdued but firming";
+    if (z > 0.5 && direction === "up") label = "Elevated and rising";
+    else if (z > 0.5 && direction === "down") label = "Elevated but cooling";
+    else if (z < -0.5 && direction === "down") label = "Subdued and falling";
+    else if (z < -0.5 && direction === "up") label = "Subdued but firming";
     else label = "Close to trend";
   }
 
-  return { level, strength, label, direction: dir };
+  return { level, strength, label, direction };
 }
 
 function engineScoreFromIndicators(statsById) {
-  // Simple composite scoring: scale z-scores to 0–100 blend.
   function scoreFromZ(z) {
-    // Clamp z between -2.5 and +2.5, map to 0–100
     const clamped = Math.max(-2.5, Math.min(2.5, z || 0));
     return Math.round(50 + (clamped / 2.5) * 40); // 10–90 range
   }
@@ -210,43 +249,40 @@ function engineScoreFromIndicators(statsById) {
 
   const growthZ =
     (gdp ? (gdp.z || 0) : 0) - (u ? (u.z || 0) * 0.4 : 0);
-  const inflationZ = infl ? -infl.z : 0; // lower inflation is "better"
+  const inflationZ = infl ? -infl.z : 0; // lower inflation = "better"
   const liquidityZ = m2 ? m2.z : 0;
   const externalZ = ca ? ca.z : 0;
 
   return {
-    growth: {
-      z: growthZ,
-      score: scoreFromZ(growthZ)
-    },
-    inflation: {
-      z: inflationZ,
-      score: scoreFromZ(inflationZ)
-    },
-    liquidity: {
-      z: liquidityZ,
-      score: scoreFromZ(liquidityZ)
-    },
-    external: {
-      z: externalZ,
-      score: scoreFromZ(externalZ)
-    }
+    growth: { z: growthZ, score: scoreFromZ(growthZ) },
+    inflation: { z: inflationZ, score: scoreFromZ(inflationZ) },
+    liquidity: { z: liquidityZ, score: scoreFromZ(liquidityZ) },
+    external: { z: externalZ, score: scoreFromZ(externalZ) }
   };
 }
 
-function riskLevelFromZ(z, higherIsGood) {
+function riskLevelFromZ(z) {
   if (z == null || isNaN(z)) return "n/a";
-
   const absZ = Math.abs(z);
   if (absZ < 0.5) return "low";
   if (absZ < 1.0) return "medium";
   return "high";
 }
 
-// --- Rendering helpers ------------------------------------------------------
+function capitaliseFirst(str) {
+  return str ? str.charAt(0).toUpperCase() + str.slice(1) : "";
+}
 
+function average(arr) {
+  if (!arr.length) return 0;
+  return arr.reduce((s, v) => s + v, 0) / arr.length;
+}
+
+// ---------------------------------------------------------------------------
+// Rendering – Macro regime
+// ---------------------------------------------------------------------------
 function renderRegimeSummary(countryCode, statsById, engines) {
-  const meta = COUNTRY_META[countryCode];
+  const meta = COUNTRY_META[countryCode] || { name: countryCode, region: "" };
   const titleEl = document.getElementById("cc-regime-title");
   const bodyEl = document.getElementById("cc-regime-body");
   const confEl = document.getElementById("cc-regime-confidence");
@@ -261,47 +297,25 @@ function renderRegimeSummary(countryCode, statsById, engines) {
   const growthZ = gdp ? gdp.z : 0;
   const inflZ = infl ? infl.z : 0;
 
-  // Growth regime text
   let growthPhrase = "near-trend growth";
   if (growthZ > 0.5) growthPhrase = "above-trend growth";
   else if (growthZ < -0.5) growthPhrase = "below-trend growth";
 
-  // Inflation regime
   let inflationPhrase = "stable inflation";
   if (inflZ > 0.5) inflationPhrase = "elevated inflation";
   else if (inflZ < -0.5) inflationPhrase = "disinflation";
 
-  const title = `${capitaliseFirst(growthPhrase)} with ${inflationPhrase} – ${
-    meta.name
-  }`;
-  titleEl.textContent = title;
+  const title = `${capitaliseFirst(growthPhrase)} with ${inflationPhrase} – ${meta.name}`;
+  if (titleEl) titleEl.textContent = title;
 
-  // Confidence: simple function of how many indicators we have and window length
-  const indicatorsWithData = Object.values(statsById).filter(Boolean).length;
-  const avgWindow = average(
-    Object.values(statsById)
-      .filter(Boolean)
-      .map(s => s.windowYears || 0)
-  );
-  let confidence = 0.4 * (indicatorsWithData / INDICATORS.length) +
-    0.6 * Math.min(avgWindow / 10, 1);
-  confidence = Math.round(confidence * 100);
-  confEl.textContent = `${confidence}%`;
-
-  // Main body paragraph built from real numbers
   const parts = [];
-
   if (gdp) {
     parts.push(
       `Real GDP growth is ${formatNumber(
         gdp.latest.value,
         1,
         "%"
-      )} compared with a 10-year average of ${formatNumber(
-        gdp.mean,
-        1,
-        "%"
-      )}.`
+      )} compared with a 10-year average of ${formatNumber(gdp.mean, 1, "%")}.`
     );
   }
   if (infl) {
@@ -319,11 +333,7 @@ function renderRegimeSummary(countryCode, statsById, engines) {
         unemp.latest.value,
         1,
         "%"
-      )}, relative to its 10-year average of ${formatNumber(
-        unemp.mean,
-        1,
-        "%"
-      )}.`
+      )}, relative to a 10-year average of ${formatNumber(unemp.mean, 1, "%")}.`
     );
   }
   if (ca) {
@@ -340,56 +350,80 @@ function renderRegimeSummary(countryCode, statsById, engines) {
     );
   }
 
-  bodyEl.textContent =
-    parts.join(" ") ||
-    "Insufficient historical data to build a macro summary for this country.";
-
-  // Historical analogues: take the GDP growth analogue years as the main reference
-  analogEl.innerHTML = "";
-  const analogueYears = gdp ? gdp.analogues : [];
-  analogueYears.forEach(year => {
-    const pill = document.createElement("span");
-    pill.className =
-      "inline-flex items-center px-2.5 py-0.5 rounded-full border border-neutral-300 bg-cordobaSoft text-xs";
-    pill.textContent = year;
-    analogEl.appendChild(pill);
-  });
-  if (!analogueYears.length) {
-    analogEl.innerHTML =
-      '<span class="text-xs text-neutral-400">Not enough history for analogues.</span>';
+  if (bodyEl) {
+    bodyEl.textContent =
+      parts.join(" ") ||
+      "Insufficient historical data to build a macro summary for this country.";
   }
 
-  // Risk flags from engine z-scores
-  riskEl.innerHTML = "";
-  const growthRisk = riskLevelFromZ(engines.growth.z, true);
-  const inflationRisk = riskLevelFromZ(engines.inflation.z, false);
-  const externalRisk = riskLevelFromZ(engines.external.z, true);
+  const indicatorsWithData = Object.values(statsById).filter(Boolean).length;
+  const avgWindow = average(
+    Object.values(statsById)
+      .filter(Boolean)
+      .map(s => s.windowYears || 0)
+  );
+  let confidence =
+    0.4 * (indicatorsWithData / INDICATORS.length) +
+    0.6 * Math.min(avgWindow / 10, 1);
+  confidence = Math.round(confidence * 100);
+  if (confEl) confEl.textContent = `${confidence}%`;
 
-  [
-    { label: "Growth risk", level: growthRisk },
-    { label: "Inflation risk", level: inflationRisk },
-    { label: "External risk", level: externalRisk }
-  ].forEach(r => {
-    const span = document.createElement("span");
-    span.className =
-      "inline-flex items-center px-2.5 py-0.5 rounded-full border bg-cordobaSoft text-xs border-neutral-300";
-    span.textContent = `${r.label}: ${r.level}`;
-    riskEl.appendChild(span);
-  });
+  // Analogues: use GDP growth years
+  if (analogEl) {
+    analogEl.innerHTML = "";
+    const analogueYears = gdp ? gdp.analogues : [];
+    if (analogueYears && analogueYears.length) {
+      analogueYears.forEach(year => {
+        const pill = document.createElement("span");
+        pill.className =
+          "inline-flex items-center px-2.5 py-0.5 rounded-full border border-neutral-300 bg-cordobaSoft text-xs";
+        pill.textContent = year;
+        analogEl.appendChild(pill);
+      });
+    } else {
+      analogEl.innerHTML =
+        '<span class="text-xs text-neutral-400">Not enough history for analogues.</span>';
+    }
+  }
 
-  // Policy error risk: look at growth vs inflation z
-  let policyRiskLevel = "medium";
-  if (Math.abs(growthZ) < 0.3 && Math.abs(inflZ) < 0.3) policyRiskLevel = "low";
-  else if (growthZ < -0.7 && inflZ > 0.7) policyRiskLevel = "high";
-  const policySpan = document.createElement("span");
-  policySpan.className =
-    "inline-flex items-center px-2.5 py-0.5 rounded-full border bg-cordobaSoft text-xs border-neutral-300";
-  policySpan.textContent = `Policy error risk: ${policyRiskLevel}`;
-  riskEl.appendChild(policySpan);
+  if (riskEl) {
+    riskEl.innerHTML = "";
+
+    const growthRisk = riskLevelFromZ(engines.growth.z);
+    const inflationRisk = riskLevelFromZ(engines.inflation.z);
+    const externalRisk = riskLevelFromZ(engines.external.z);
+
+    [
+      { label: "Growth risk", level: growthRisk },
+      { label: "Inflation risk", level: inflationRisk },
+      { label: "External risk", level: externalRisk }
+    ].forEach(r => {
+      const span = document.createElement("span");
+      span.className =
+        "inline-flex items-center px-2.5 py-0.5 rounded-full border bg-cordobaSoft text-xs border-neutral-300 mr-1 mb-1";
+      span.textContent = `${r.label}: ${r.level}`;
+      riskEl.appendChild(span);
+    });
+
+    // Policy error risk based on growth vs inflation signals
+    let policyRisk = "medium";
+    if (Math.abs(growthZ) < 0.3 && Math.abs(inflZ) < 0.3) policyRisk = "low";
+    else if (growthZ < -0.7 && inflZ > 0.7) policyRisk = "high";
+
+    const policySpan = document.createElement("span");
+    policySpan.className =
+      "inline-flex items-center px-2.5 py-0.5 rounded-full border bg-cordobaSoft text-xs border-neutral-300 mr-1 mb-1";
+    policySpan.textContent = `Policy error risk: ${policyRisk}`;
+    riskEl.appendChild(policySpan);
+  }
 }
 
+// ---------------------------------------------------------------------------
+// Rendering – Engine cards
+// ---------------------------------------------------------------------------
 function renderEngineCards(engines, statsById) {
   const container = document.getElementById("cc-engine-cards");
+  if (!container) return;
   container.innerHTML = "";
 
   const meta = [
@@ -439,6 +473,7 @@ function renderEngineCards(engines, statsById) {
 
     const main = document.createElement("div");
     main.className = "mt-2 flex items-end justify-between gap-2";
+
     const scoreEl = document.createElement("div");
     scoreEl.innerHTML = `
       <div class="text-2xl font-semibold">${score}<span class="text-sm text-neutral-400">/100</span></div>
@@ -446,13 +481,13 @@ function renderEngineCards(engines, statsById) {
     `;
     main.appendChild(scoreEl);
 
+    const qualitative =
+      Math.abs(z) < 0.5 ? "Near trend" : z > 0 ? "Above trend" : "Below trend";
     const labelEl = document.createElement("span");
     labelEl.className =
       "inline-flex items-center px-2 py-0.5 rounded-full border text-[11px] " +
       m.text +
       " border-neutral-300 bg-white";
-    const qualitative =
-      Math.abs(z) < 0.5 ? "Near trend" : z > 0 ? "Above trend" : "Below trend";
     labelEl.textContent = qualitative;
     main.appendChild(labelEl);
 
@@ -461,8 +496,12 @@ function renderEngineCards(engines, statsById) {
   });
 }
 
+// ---------------------------------------------------------------------------
+// Rendering – Key inflection signals
+// ---------------------------------------------------------------------------
 function renderInflectionSignals(statsById) {
   const container = document.getElementById("cc-inflection-list");
+  if (!container) return;
   container.innerHTML = "";
 
   const ordered = [
@@ -486,6 +525,7 @@ function renderInflectionSignals(statsById) {
 
     const left = document.createElement("div");
     left.className = "flex-1";
+
     const title = document.createElement("div");
     title.className = "font-medium text-sm";
     title.textContent = cfg.label;
@@ -494,12 +534,10 @@ function renderInflectionSignals(statsById) {
     const small = document.createElement("div");
     small.className = "text-xs text-neutral-600";
     const latest = stat.latest;
-    const prev = stat.prev;
-    const delta = stat.delta;
     const directionText =
-      delta > 0
+      stat.delta > 0
         ? "higher than"
-        : delta < 0
+        : stat.delta < 0
         ? "lower than"
         : "similar to";
 
@@ -538,12 +576,16 @@ function renderInflectionSignals(statsById) {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Rendering – Indicator table
+// ---------------------------------------------------------------------------
 function renderIndicatorGrid(statsById, countryCode) {
   const tbody = document.getElementById("cc-indicator-rows");
   const countryLabel = document.getElementById("cc-signals-country");
+  if (!tbody) return;
 
-  const meta = COUNTRY_META[countryCode];
-  countryLabel.textContent = meta ? meta.name : countryCode;
+  const meta = COUNTRY_META[countryCode] || { name: countryCode };
+  if (countryLabel) countryLabel.textContent = meta.name;
 
   tbody.innerHTML = "";
 
@@ -552,7 +594,6 @@ function renderIndicatorGrid(statsById, countryCode) {
     if (!stat) return;
 
     const signal = classifySignal(stat, cfg);
-
     const tr = document.createElement("tr");
     tr.className = "hover:bg-cordobaSoft";
 
@@ -562,14 +603,8 @@ function renderIndicatorGrid(statsById, countryCode) {
       cfg.unit,
       "n/a"
     );
-
     const zFormatted =
       stat.z != null && !isNaN(stat.z) ? stat.z.toFixed(1) : "0.0";
-
-    const signalBadge = document.createElement("span");
-    signalBadge.className =
-      "inline-flex items-center px-2 py-0.5 rounded-full border bg-white text-[11px] border-neutral-300";
-    signalBadge.textContent = signal.label;
 
     const commentText = `Latest ${stat.latest.year} reading of ${lastVal} vs 10-year average ${formatNumber(
       stat.mean,
@@ -592,6 +627,10 @@ function renderIndicatorGrid(statsById, countryCode) {
     `;
 
     const signalCell = tr.children[3];
+    const signalBadge = document.createElement("span");
+    signalBadge.className =
+      "inline-flex items-center px-2 py-0.5 rounded-full border bg-white text-[11px] border-neutral-300";
+    signalBadge.textContent = signal.label;
     signalCell.appendChild(signalBadge);
 
     tbody.appendChild(tr);
@@ -605,80 +644,80 @@ function renderIndicatorGrid(statsById, countryCode) {
   }
 }
 
-function renderMeta(countryCode, statsById) {
+// ---------------------------------------------------------------------------
+// Rendering – Meta
+// ---------------------------------------------------------------------------
+function renderMeta(statsById) {
   const dataAsOf = document.getElementById("cc-data-as-of");
+  if (!dataAsOf) return;
 
   const allStats = Object.values(statsById).filter(Boolean);
   if (!allStats.length) {
-    dataAsOf.textContent = "no data";
+    dataAsOf.textContent = "latest: n/a";
     return;
   }
+
   const lastYear = Math.max(...allStats.map(s => s.latest.year));
   dataAsOf.textContent = `latest: ${lastYear}`;
 }
 
-function capitaliseFirst(str) {
-  return str.charAt(0).toUpperCase() + str.slice(1);
-}
-
-function average(arr) {
-  if (!arr.length) return 0;
-  return arr.reduce((s, v) => s + v, 0) / arr.length;
-}
-
-// --- Country loading --------------------------------------------------------
-
+// ---------------------------------------------------------------------------
+// Country loader (parallel + cached)
+// ---------------------------------------------------------------------------
 async function loadCountry(countryCode) {
-  const meta = COUNTRY_META[countryCode] || {
-    name: countryCode,
-    region: ""
-  };
-
-  // Update country label in UI
-  const labelSpan = document.getElementById("cc-country-label");
-  const regionSpan = document.getElementById("cc-country-region");
-  const countryDot = document.getElementById("cc-country-dot");
-
-  if (labelSpan) labelSpan.textContent = meta.name;
-  if (regionSpan) regionSpan.textContent = meta.region || "";
-  if (countryDot) countryDot.classList.add("bg-emerald-500");
-
-  if (!macroCache[countryCode]) {
-    const statsById = {};
-const requests = INDICATORS.map(cfg =>
-  fetchWorldBankSeries(countryCode, cfg.wb).then(series => {
-    return {
-      id: cfg.id,
-      stats: series.length ? computeStats(series) : null
-    };
-  })
-);
-
-const results = await Promise.all(requests);
-
-results.forEach(r => {
-  statsById[r.id] = r.stats;
-});
-
-    macroCache[countryCode] = statsById;
+  // Use computed cache if we already have stats this session
+  if (macroCache[countryCode]) {
+    const statsById = macroCache[countryCode];
+    const engines = engineScoreFromIndicators(statsById);
+    renderRegimeSummary(countryCode, statsById, engines);
+    renderEngineCards(engines, statsById);
+    renderInflectionSignals(statsById);
+    renderIndicatorGrid(statsById, countryCode);
+    renderMeta(statsById);
+    return;
   }
 
-  const statsById = macroCache[countryCode];
-  const engines = engineScoreFromIndicators(statsById);
+  // Light loading hint (optional – you can style .cc-loading in CSS)
+  document.body.classList.add("cc-loading");
 
-  renderRegimeSummary(countryCode, statsById, engines);
-  renderEngineCards(engines, statsById);
-  renderInflectionSignals(statsById);
-  renderIndicatorGrid(statsById, countryCode);
-  renderMeta(countryCode, statsById);
+  try {
+    // Fetch all indicator series in parallel
+    const requests = INDICATORS.map(cfg =>
+      fetchWorldBankSeries(countryCode, cfg.wb).then(series => ({
+        cfg,
+        series
+      }))
+    );
+
+    const results = await Promise.all(requests);
+
+    const statsById = {};
+    results.forEach(({ cfg, series }) => {
+      const stats = series && series.length ? computeStats(series) : null;
+      statsById[cfg.id] = stats;
+    });
+
+    macroCache[countryCode] = statsById;
+
+    const engines = engineScoreFromIndicators(statsById);
+    renderRegimeSummary(countryCode, statsById, engines);
+    renderEngineCards(engines, statsById);
+    renderInflectionSignals(statsById);
+    renderIndicatorGrid(statsById, countryCode);
+    renderMeta(statsById);
+  } catch (err) {
+    console.error("Failed to load country data", err);
+  } finally {
+    document.body.classList.remove("cc-loading");
+  }
 }
 
-// --- UI wiring --------------------------------------------------------------
-
+// ---------------------------------------------------------------------------
+// UI wiring
+// ---------------------------------------------------------------------------
 function setupCountryDropdown() {
   const toggle = document.getElementById("cc-country-toggle");
   const menu = document.getElementById("cc-country-menu");
-
   if (!toggle || !menu) return;
 
   toggle.addEventListener("click", () => {
@@ -689,14 +728,15 @@ function setupCountryDropdown() {
     const btn = evt.target.closest("[data-cc-country]");
     if (!btn) return;
     const code = btn.getAttribute("data-cc-country");
-    const region = btn.getAttribute("data-cc-region");
+    const region = btn.getAttribute("data-cc-region") || "";
     menu.classList.add("hidden");
 
-    const meta = COUNTRY_META[code];
-    if (meta) {
-      document.getElementById("cc-country-label").textContent = meta.name;
-      document.getElementById("cc-country-region").textContent = region;
-    }
+    const meta = COUNTRY_META[code] || { name: code, region };
+    const labelSpan = document.getElementById("cc-country-label");
+    const regionSpan = document.getElementById("cc-country-region");
+    if (labelSpan) labelSpan.textContent = meta.name;
+    if (regionSpan) regionSpan.textContent = meta.region || region;
+
     loadCountry(code);
   });
 
@@ -715,16 +755,17 @@ function setupLiveToggle() {
     const btn = evt.target.closest("[data-cc-live-toggle]");
     if (!btn) return;
 
-    const mode = btn.getAttribute("data-cc-live-toggle");
     Array.from(group.querySelectorAll("button")).forEach(b => {
       b.classList.remove("bg-cordobaGold", "text-white");
       b.classList.add("text-neutral-500");
     });
+
     btn.classList.add("bg-cordobaGold", "text-white");
     btn.classList.remove("text-neutral-500");
 
-    // For now the toggle is purely cosmetic – World Bank provides annual data only.
-    console.log("Mode switched to", mode);
+    const mode = btn.getAttribute("data-cc-live-toggle");
+    console.log("Mode switched to:", mode);
+    // For now, mode is cosmetic – World Bank is annual
   });
 }
 
@@ -732,7 +773,6 @@ function setupFilters() {
   const allBtn = document.getElementById("cc-filter-all");
   const topBtn = document.getElementById("cc-filter-top");
   const tbody = document.getElementById("cc-indicator-rows");
-
   if (!allBtn || !topBtn || !tbody) return;
 
   allBtn.addEventListener("click", () => {
@@ -744,7 +784,6 @@ function setupFilters() {
   });
 
   topBtn.addEventListener("click", () => {
-    // Only keep rows where |z| >= 0.7
     Array.from(tbody.querySelectorAll("tr")).forEach(tr => {
       const zCell = tr.children[5];
       if (!zCell) return;
@@ -758,11 +797,12 @@ function setupFilters() {
   });
 }
 
-// --- Init -------------------------------------------------------------------
-
+// ---------------------------------------------------------------------------
+// Init
+// ---------------------------------------------------------------------------
 document.addEventListener("DOMContentLoaded", () => {
   setupCountryDropdown();
   setupLiveToggle();
   setupFilters();
-  loadCountry("US"); // default
+  loadCountry("US"); // default country on load
 });
