@@ -645,11 +645,21 @@ async function loadCountry(countryCode) {
 
   if (!macroCache[countryCode]) {
     const statsById = {};
-    for (const cfg of INDICATORS) {
-      const series = await fetchWorldBankSeries(countryCode, cfg.wb);
-      const stats = series.length ? computeStats(series) : null;
-      statsById[cfg.id] = stats;
-    }
+const requests = INDICATORS.map(cfg =>
+  fetchWorldBankSeries(countryCode, cfg.wb).then(series => {
+    return {
+      id: cfg.id,
+      stats: series.length ? computeStats(series) : null
+    };
+  })
+);
+
+const results = await Promise.all(requests);
+
+results.forEach(r => {
+  statsById[r.id] = r.stats;
+});
+
     macroCache[countryCode] = statsById;
   }
 
