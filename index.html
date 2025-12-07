@@ -269,85 +269,67 @@
             </div>
           </div>
 
-          <!-- Right: Regime badges -->
-          <div class="col-span-1 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-            <!-- Growth -->
-            <div class="cc-card px-4 py-3 flex flex-col justify-between overflow-hidden">
-              <div class="flex items-center justify-between text-[11px] uppercase tracking-[0.18em] text-cordobaMuted">
-                <span>Growth</span>
-                <span class="text-emerald-600">↑</span>
-              </div>
-              <div class="mt-3 flex items-end justify-between">
+          <!-- Right: Macro Snapshot -->
+          <div class="col-span-1">
+            <div class="cc-card px-4 py-3 flex flex-col gap-3 h-full">
+              <div class="flex items-center justify-between">
                 <div>
-                  <div class="text-lg font-semibold" id="cc-reg-growth-z">+0.8σ</div>
-                  <div class="text-[11px] text-cordobaMuted mt-0.5" id="cc-reg-growth-desc">
-                    Above trend
+                  <div class="text-[11px] uppercase tracking-[0.2em] text-cordobaMuted">
+                    Macro Snapshot
+                  </div>
+                  <div class="font-heading text-lg mt-1">
+                    Growth / Inflation / Liquidity / External
                   </div>
                 </div>
-                <div class="h-10 w-10 rounded-full border border-emerald-500/70 flex items-center justify-center text-[11px] text-emerald-700">
-                  Late-Cycle
-                </div>
               </div>
-            </div>
 
-            <!-- Inflation -->
-            <div class="cc-card px-4 py-3 flex flex-col justify-between overflow-hidden">
-              <div class="flex items-center justify-between text-[11px] uppercase tracking-[0.18em] text-cordobaMuted">
-                <span>Inflation</span>
-                <span class="text-rose-500">↓</span>
+              <div class="text-[11px] text-cordobaMuted leading-snug">
+                Z-scores vs each country’s own history. Positive numbers are above trend; negative numbers
+                indicate below-trend conditions or tighter-than-usual policy.
               </div>
-              <div class="mt-3 flex items-end justify-between">
-                <div>
-                  <div class="text-lg font-semibold" id="cc-reg-inflation-z">+0.3σ</div>
-                  <div class="text-[11px] text-cordobaMuted mt-0.5" id="cc-reg-inflation-desc">
-                    Disinflating
-                  </div>
-                </div>
-                <div class="h-10 w-10 rounded-full border border-rose-400/70 flex items-center justify-center text-[11px] text-rose-600">
-                  Cooling
-                </div>
-              </div>
-            </div>
 
-            <!-- Liquidity -->
-            <div class="cc-card px-4 py-3 flex flex-col justify-between overflow-hidden">
-              <div class="flex items-center justify-between text-[11px] uppercase tracking-[0.18em] text-cordobaMuted">
-                <span>Liquidity</span>
-                <span class="text-sky-500">Tight</span>
+              <div class="overflow-x-auto">
+                <table class="min-w-full text-xs">
+                  <thead>
+                    <tr class="border-b border-cordobaBorder text-[11px] uppercase tracking-[0.14em] text-cordobaMuted">
+                      <th class="py-2 text-left">Pillar</th>
+                      <th class="py-2 text-right">z-Score</th>
+                      <th class="py-2 text-left">Regime</th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-cordobaBorder/70">
+                    <tr>
+                      <td class="py-2 pr-3 text-cordobaInk">Growth</td>
+                      <td class="py-2 pr-3 text-right font-medium" id="cc-reg-growth-z">+0.8σ</td>
+                      <td class="py-2 text-cordobaMuted" id="cc-reg-growth-desc">Above trend</td>
+                    </tr>
+                    <tr>
+                      <td class="py-2 pr-3 text-cordobaInk">Inflation</td>
+                      <td class="py-2 pr-3 text-right font-medium" id="cc-reg-inflation-z">+0.3σ</td>
+                      <td class="py-2 text-cordobaMuted" id="cc-reg-inflation-desc">Disinflating</td>
+                    </tr>
+                    <tr>
+                      <td class="py-2 pr-3 text-cordobaInk">Liquidity</td>
+                      <td class="py-2 pr-3 text-right font-medium" id="cc-reg-liquidity-z">−0.7σ</td>
+                      <td class="py-2 text-cordobaMuted" id="cc-reg-liquidity-desc">Restrictive</td>
+                    </tr>
+                    <tr>
+                      <td class="py-2 pr-3 text-cordobaInk">External</td>
+                      <td class="py-2 pr-3 text-right font-medium" id="cc-reg-external-z">+0.1σ</td>
+                      <td class="py-2 text-cordobaMuted" id="cc-reg-external-desc">Balanced</td>
+                    </tr>
+                  </tbody>
+                </table>
               </div>
-              <div class="mt-3 flex items-end justify-between">
-                <div>
-                  <div class="text-lg font-semibold" id="cc-reg-liquidity-z">−0.7σ</div>
-                  <div class="text-[11px] text-cordobaMuted mt-0.5" id="cc-reg-liquidity-desc">
-                    Restrictive
-                  </div>
-                </div>
-                <div class="h-10 w-10 rounded-full border border-sky-400/70 flex items-center justify-center text-[11px] text-sky-600">
-                  QT
-                </div>
-              </div>
-            </div>
 
-            <!-- External -->
-            <div class="cc-card px-4 py-3 flex flex-col justify-between overflow-hidden">
-              <div class="flex items-center justify-between text-[11px] uppercase tracking-[0.18em] text-cordobaMuted">
-                <span>External</span>
-                <span class="text-amber-500">Stable</span>
-              </div>
-              <div class="mt-3 flex items-end justify-between">
-                <div>
-                  <div class="text-lg font-semibold" id="cc-reg-external-z">+0.1σ</div>
-                  <div class="text-[11px] text-cordobaMuted mt-0.5" id="cc-reg-external-desc">
-                    Balanced
-                  </div>
-                </div>
-                <div class="h-10 w-10 rounded-full border border-amber-400/70 flex items-center justify-center text-[11px] text-amber-700">
-                  Low Risk
-                </div>
+              <div class="text-[11px] text-cordobaMuted leading-snug">
+                Use this as a quick read-across of where the country sits in the cycle: strong growth with
+                cooling inflation and tight liquidity will typically tilt the model stance towards
+                equity overweight and cautious duration.
               </div>
             </div>
           </div>
-        </div>
+
 
         <!-- Regime summary + Inflection monitor -->
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
