@@ -1,7 +1,8 @@
-html, body {
+html,
+body {
   scroll-behavior: smooth;
   background: #ffffff;
-  color: #1A1A1A;
+  color: #1a1a1a;
 }
 
 /* Base font: Inter everywhere by default */
@@ -22,8 +23,10 @@ body {
 
 /* Typography */
 
-h1, h2, h3 {
-  color: #1A1A1A;
+h1,
+h2,
+h3 {
+  color: #1a1a1a;
 }
 
 /* Any element with font-heading (and its children) use Playfair */
@@ -41,27 +44,28 @@ h1, h2, h3 {
 /* Card system */
 .cc-card {
   background: #ffffff;
-  border: 1px solid #E6E0D9;
-  border-radius: 1.25rem;
+  border: 1px solid #e6e0d9;
+  border-radius: 1.5rem;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.03);
 }
 
 /* Accent sections */
 .cc-accent {
-  background: #FBF4EC;
-  border: 1px solid #EFE7DD;
+  background: #fbf4ec;
+  border: 1px solid #efe7dd;
 }
 
 /* Soft hover */
 .cc-card:hover {
-  border-color: #9A690F;
-  background: #FFFCF9;
+  border-color: #9a690f;
+  background: #fffcf9;
   transition: 0.25s ease;
 }
 
 /* Buttons */
 .cc-btn {
-  border: 1px solid #9A690F;
-  background: #9A690F;
+  border: 1px solid #9a690f;
+  background: #9a690f;
   color: white;
   border-radius: 999px;
   padding: 0.4rem 0.9rem;
@@ -69,9 +73,9 @@ h1, h2, h3 {
 }
 
 .cc-btn-outline {
-  border: 1px solid #9A690F;
+  border: 1px solid #9a690f;
   background: transparent;
-  color: #9A690F;
+  color: #9a690f;
   border-radius: 999px;
   padding: 0.4rem 0.9rem;
   font-size: 0.8rem;
@@ -79,7 +83,7 @@ h1, h2, h3 {
 
 /* Muted labels */
 .cc-muted {
-  color: #6B6B6B;
+  color: #6b6b6b;
 }
 
 /* Stance pills */
@@ -95,7 +99,27 @@ h1, h2, h3 {
   border-radius: 999px;
 }
 
-/* Table tweaks */
+/* Table base styles */
+
 table th {
   font-weight: 500;
+}
+
+/* === Indicator Grid & Rankings – clarity tweaks === */
+
+/* Normal state: black text on white */
+table tbody td {
+  color: #1a1a1a;
+  background-color: #ffffff;
+}
+
+/* Remove old zebra striping completely */
+table tbody tr:nth-child(even) td {
+  background-color: #ffffff;
+}
+
+/* Hover: Cordoba accent background, black text */
+table tbody tr:hover td {
+  background-color: #fbf4ec; /* Cordoba accent */
+  color: #1a1a1a;
 }
