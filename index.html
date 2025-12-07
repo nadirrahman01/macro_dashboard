@@ -30,7 +30,7 @@
   <!-- Fonts -->
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
 
-  <!-- Custom CSS (optional, for any extras) -->
+  <!-- Custom CSS (optional) -->
   <link rel="stylesheet" href="assets/style.css">
 </head>
 <body class="bg-white text-cordobaInk font-body min-h-screen">
@@ -42,7 +42,6 @@
     <aside class="w-72 border-r border-cordobaBorder bg-white flex flex-col">
       <div class="px-6 py-5 border-b border-cordobaBorder">
         <div class="flex items-center gap-3">
-          <!-- Wordmark only, no CC circle -->
           <div>
             <div class="font-heading text-xl leading-tight">Cordoba Capital</div>
             <div class="text-[11px] text-cordobaMuted tracking-[0.25em] uppercase">
@@ -169,7 +168,7 @@
       <section class="flex-1 overflow-y-auto px-6 py-6 bg-[#FFFBF7]">
         <div class="max-w-7xl mx-auto space-y-6">
 
-          <!-- Row 1: Country selection + stance + macro snapshot -->
+          <!-- ROW 1: Country selection + macro snapshot -->
           <div class="grid grid-cols-1 xl:grid-cols-3 gap-4">
 
             <!-- Country selection & composite blurb -->
@@ -217,7 +216,6 @@
                         <button class="w-full text-left px-3 py-1.5 hover:bg-[#FFFCF9]" data-cc-country="IN" data-cc-region="G-20 · EM">
                           India
                         </button>
-                        <!-- add more G-20 countries here if you like -->
                       </div>
                     </div>
                   </div>
@@ -255,7 +253,7 @@
               </p>
             </div>
 
-            <!-- Macro snapshot (static text for now) -->
+            <!-- Macro snapshot -->
             <div class="bg-white border border-cordobaBorder rounded-3xl px-5 py-4 flex flex-col gap-3">
               <div class="text-[11px] uppercase tracking-[0.25em] text-cordobaMuted">
                 Macro Snapshot
@@ -288,8 +286,8 @@
             </div>
           </div>
 
-          <!-- Row 2: Macro regime summary + what changed + skinny engine columns (static) -->
-          <div class="grid grid-cols-1 xl:grid-cols-3 gap-4">
+          <!-- ROW 2: Macro regime summary + what changed -->
+          <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
 
             <!-- Macro regime summary -->
             <section class="bg-white border border-cordobaBorder rounded-3xl px-5 py-4">
@@ -378,43 +376,90 @@
                 </div>
               </div>
             </section>
+          </div>
 
-            <!-- Slim engine columns (static placeholders) -->
-            <section class="bg-white border border-cordobaBorder rounded-3xl px-5 py-4 flex flex-col gap-3">
-              <div class="grid grid-cols-4 gap-3 text-xs">
-                <div class="border border-cordobaBorder rounded-2xl px-3 py-3 bg-[#FFFCF9]">
-                  <div class="text-[10px] uppercase tracking-[0.22em] text-cordobaMuted mb-1">Growth Engine</div>
-                  <div class="text-xl font-semibold leading-none mb-1">63<span class="text-xs text-cordobaMuted">/100</span></div>
-                  <div class="text-[11px] text-cordobaMuted">
-                    78th percentile vs 10-year history
+          <!-- ROW 3: Engine scorecards (now full row) -->
+          <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+
+            <!-- Growth Engine -->
+            <div class="bg-white border border-cordobaBorder rounded-3xl px-4 py-3 flex flex-col gap-3">
+              <div class="flex items-center justify-between text-[11px] uppercase tracking-[0.2em] text-cordobaMuted">
+                <span>Growth Engine</span>
+                <span class="text-cordobaMuted">Composite</span>
+              </div>
+              <div class="flex items-end justify-between">
+                <div>
+                  <div class="text-2xl font-semibold">
+                    <span id="cc-growth-score">--</span>
+                    <span class="text-sm text-cordobaMuted">/100</span>
                   </div>
-                </div>
-                <div class="border border-cordobaBorder rounded-2xl px-3 py-3 bg-[#FFFCF9]">
-                  <div class="text-[10px] uppercase tracking-[0.22em] text-cordobaMuted mb-1">Inflation Engine</div>
-                  <div class="text-xl font-semibold leading-none mb-1">54<span class="text-xs text-cordobaMuted">/100</span></div>
-                  <div class="text-[11px] text-cordobaMuted">
-                    61st percentile vs 10-year history
-                  </div>
-                </div>
-                <div class="border border-cordobaBorder rounded-2xl px-3 py-3 bg-[#FFFCF9]">
-                  <div class="text-[10px] uppercase tracking-[0.22em] text-cordobaMuted mb-1">Liquidity Engine</div>
-                  <div class="text-xl font-semibold leading-none mb-1">41<span class="text-xs text-cordobaMuted">/100</span></div>
-                  <div class="text-[11px] text-cordobaMuted">
-                    32nd percentile vs 10-year history
-                  </div>
-                </div>
-                <div class="border border-cordobaBorder rounded-2xl px-3 py-3 bg-[#FFFCF9]">
-                  <div class="text-[10px] uppercase tracking-[0.22em] text-cordobaMuted mb-1">External Engine</div>
-                  <div class="text-xl font-semibold leading-none mb-1">58<span class="text-xs text-cordobaMuted">/100</span></div>
-                  <div class="text-[11px] text-cordobaMuted">
-                    67th percentile vs 10-year history
+                  <div class="text-[11px] text-cordobaMuted mt-0.5" id="cc-growth-regime">
+                    Waiting for data…
                   </div>
                 </div>
               </div>
-            </section>
+            </div>
+
+            <!-- Inflation Engine -->
+            <div class="bg-white border border-cordobaBorder rounded-3xl px-4 py-3 flex flex-col gap-3">
+              <div class="flex items-center justify-between text-[11px] uppercase tracking-[0.2em] text-cordobaMuted">
+                <span>Inflation Engine</span>
+                <span class="text-cordobaMuted">Composite</span>
+              </div>
+              <div class="flex items-end justify-between">
+                <div>
+                  <div class="text-2xl font-semibold">
+                    <span id="cc-inflation-score">--</span>
+                    <span class="text-sm text-cordobaMuted">/100</span>
+                  </div>
+                  <div class="text-[11px] text-cordobaMuted mt-0.5" id="cc-inflation-regime">
+                    Waiting for data…
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Liquidity Engine -->
+            <div class="bg-white border border-cordobaBorder rounded-3xl px-4 py-3 flex flex-col gap-3">
+              <div class="flex items-center justify-between text-[11px] uppercase tracking-[0.2em] text-cordobaMuted">
+                <span>Liquidity Engine</span>
+                <span class="text-cordobaMuted">Composite</span>
+              </div>
+              <div class="flex items-end justify-between">
+                <div>
+                  <div class="text-2xl font-semibold">
+                    <span id="cc-liquidity-score">--</span>
+                    <span class="text-sm text-cordobaMuted">/100</span>
+                  </div>
+                  <div class="text-[11px] text-cordobaMuted mt-0.5" id="cc-liquidity-regime">
+                    Waiting for data…
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- External Engine -->
+            <div class="bg-white border border-cordobaBorder rounded-3xl px-4 py-3 flex flex-col gap-3">
+              <div class="flex items-center justify-between text-[11px] uppercase tracking-[0.2em] text-cordobaMuted">
+                <span>External Engine</span>
+                <span class="text-cordobaMuted">Composite</span>
+              </div>
+              <div class="flex items-end justify-between">
+                <div>
+                  <div class="text-2xl font-semibold">
+                    <span id="cc-external-score">--</span>
+                    <span class="text-sm text-cordobaMuted">/100</span>
+                  </div>
+                  <div class="text-[11px] text-cordobaMuted mt-0.5" id="cc-external-regime">
+                    Waiting for data…
+                  </div>
+                </div>
+              </div>
+            </div>
+
           </div>
 
-          <!-- Row 3: Indicator grid (wired to real World Bank data) -->
+          <!-- ROW 4: Indicator grid (now with more live indicators) -->
           <section class="bg-white border border-cordobaBorder rounded-3xl px-5 py-4">
             <div class="flex items-center justify-between mb-3">
               <div>
@@ -449,10 +494,9 @@
                   </tr>
                 </thead>
 
-                <!-- REAL DATA ROWS (World Bank) -->
                 <tbody class="divide-y divide-[#F1E6D9] text-sm">
 
-                  <!-- GDP growth row (NY.GDP.MKTP.KD.ZG) -->
+                  <!-- GDP growth (NY.GDP.MKTP.KD.ZG) -->
                   <tr class="hover:bg-[#FFFCF9]">
                     <td class="py-2 pr-3 text-cordobaInk">GDP growth (annual %)</td>
                     <td class="py-2 pr-3 text-cordobaMuted">Growth</td>
@@ -477,7 +521,7 @@
                     </td>
                   </tr>
 
-                  <!-- CPI inflation row (FP.CPI.TOTL.ZG) -->
+                  <!-- CPI inflation (FP.CPI.TOTL.ZG) -->
                   <tr class="hover:bg-[#FFFCF9]">
                     <td class="py-2 pr-3 text-cordobaInk">Inflation – CPI (annual %)</td>
                     <td class="py-2 pr-3 text-cordobaMuted">Inflation</td>
@@ -502,7 +546,82 @@
                     </td>
                   </tr>
 
-                  <!-- You can keep adding more rows here (static or later wired) -->
+                  <!-- Unemployment rate (SL.UEM.TOTL.ZS) -->
+                  <tr class="hover:bg-[#FFFCF9]">
+                    <td class="py-2 pr-3 text-cordobaInk">Unemployment rate (% of labour force)</td>
+                    <td class="py-2 pr-3 text-cordobaMuted">Growth</td>
+                    <td class="py-2 pr-3 text-cordobaMuted">Lagging</td>
+                    <td class="py-2 pr-3">
+                      <span id="cc-unemp-signal-pill"
+                            class="inline-flex items-center gap-1 rounded-full border border-[#D4C5B5] bg-[#F7F1EA] px-2 py-0.5 text-[11px] text-cordobaMuted">
+                        <span id="cc-unemp-signal-text">Loading…</span>
+                      </span>
+                    </td>
+                    <td class="py-2 pr-3 text-right text-cordobaInk">
+                      <span id="cc-unemp-last">–</span>
+                      <span class="text-xs text-cordobaMuted"> %</span>
+                    </td>
+                    <td class="py-2 pr-3 text-right text-cordobaMuted">
+                      <span id="cc-unemp-year">–</span>
+                    </td>
+                    <td class="py-2 text-cordobaMuted text-xs">
+                      <span id="cc-unemp-comment">
+                        Loading from World Bank…
+                      </span>
+                    </td>
+                  </tr>
+
+                  <!-- Current account (% of GDP) (BN.CAB.XOKA.GD.ZS) -->
+                  <tr class="hover:bg-[#FFFCF9]">
+                    <td class="py-2 pr-3 text-cordobaInk">Current account balance (% of GDP)</td>
+                    <td class="py-2 pr-3 text-cordobaMuted">External</td>
+                    <td class="py-2 pr-3 text-cordobaMuted">Lagging</td>
+                    <td class="py-2 pr-3">
+                      <span id="cc-ca-signal-pill"
+                            class="inline-flex items-center gap-1 rounded-full border border-[#D4C5B5] bg-[#F7F1EA] px-2 py-0.5 text-[11px] text-cordobaMuted">
+                        <span id="cc-ca-signal-text">Loading…</span>
+                      </span>
+                    </td>
+                    <td class="py-2 pr-3 text-right text-cordobaInk">
+                      <span id="cc-ca-last">–</span>
+                      <span class="text-xs text-cordobaMuted"> %</span>
+                    </td>
+                    <td class="py-2 pr-3 text-right text-cordobaMuted">
+                      <span id="cc-ca-year">–</span>
+                    </td>
+                    <td class="py-2 text-cordobaMuted text-xs">
+                      <span id="cc-ca-comment">
+                        Loading from World Bank…
+                      </span>
+                    </td>
+                  </tr>
+
+                  <!-- Broad money growth (FM.LBL.BMNY.ZG) -->
+                  <tr class="hover:bg-[#FFFCF9]">
+                    <td class="py-2 pr-3 text-cordobaInk">Broad money growth (annual %)</td>
+                    <td class="py-2 pr-3 text-cordobaMuted">Liquidity</td>
+                    <td class="py-2 pr-3 text-cordobaMuted">Coincident</td>
+                    <td class="py-2 pr-3">
+                      <span id="cc-money-signal-pill"
+                            class="inline-flex items-center gap-1 rounded-full border border-[#D4C5B5] bg-[#F7F1EA] px-2 py-0.5 text-[11px] text-cordobaMuted">
+                        <span id="cc-money-signal-text">Loading…</span>
+                      </span>
+                    </td>
+                    <td class="py-2 pr-3 text-right text-cordobaInk">
+                      <span id="cc-money-last">–</span>
+                      <span class="text-xs text-cordobaMuted"> %</span>
+                    </td>
+                    <td class="py-2 pr-3 text-right text-cordobaMuted">
+                      <span id="cc-money-year">–</span>
+                    </td>
+                    <td class="py-2 text-cordobaMuted text-xs">
+                      <span id="cc-money-comment">
+                        Loading from World Bank…
+                      </span>
+                    </td>
+                  </tr>
+
+                  <!-- 10s–2s curve (still static placeholder) -->
                   <tr class="hover:bg-[#FFFCF9]">
                     <td class="py-2 pr-3 text-cordobaInk">10s–2s yield curve slope</td>
                     <td class="py-2 pr-3 text-cordobaMuted">Liquidity</td>
@@ -524,7 +643,7 @@
             </div>
           </section>
 
-          <!-- Row 4: From the Cordoba Desk (static links to site) -->
+          <!-- ROW 5: From the Cordoba Desk -->
           <section class="bg-white border border-cordobaBorder rounded-3xl px-5 py-4">
             <div class="flex items-center justify-between mb-3">
               <div>
@@ -600,9 +719,9 @@
     </main>
   </div>
 
-  <!-- Chart.js (for future charts, safe to leave even if unused yet) -->
+  <!-- Chart.js (for future charts) -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <!-- Main JS logic -->
+  <!-- Main JS -->
   <script src="main.js"></script>
 </body>
 </html>
