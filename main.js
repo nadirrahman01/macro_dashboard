@@ -3,17 +3,17 @@
 // Uses World Bank WDI data (annual) to drive all numbers & labels.
 
 // ---------------------------------------------------------------------------
-// Country metadata
+// Country metadata (includes World Bank 3-letter codes)
 // ---------------------------------------------------------------------------
 const COUNTRY_META = {
-  US: { name: "United States", region: "G-20 · DM" },
-  GB: { name: "United Kingdom", region: "G-20 · DM" },
-  DE: { name: "Germany", region: "G-20 · DM" },
-  FR: { name: "France", region: "G-20 · DM" },
-  JP: { name: "Japan", region: "G-20 · DM" },
-  CN: { name: "China", region: "G-20 · EM" },
-  IN: { name: "India", region: "G-20 · EM" },
-  BR: { name: "Brazil", region: "G-20 · EM" }
+  US: { name: "United States", region: "G-20 · DM", wb: "USA" },
+  GB: { name: "United Kingdom", region: "G-20 · DM", wb: "GBR" },
+  DE: { name: "Germany", region: "G-20 · DM", wb: "DEU" },
+  FR: { name: "France", region: "G-20 · DM", wb: "FRA" },
+  JP: { name: "Japan", region: "G-20 · DM", wb: "JPN" },
+  CN: { name: "China", region: "G-20 · EM", wb: "CHN" },
+  IN: { name: "India", region: "G-20 · EM", wb: "IND" },
+  BR: { name: "Brazil", region: "G-20 · EM", wb: "BRA" }
 };
 
 // ---------------------------------------------------------------------------
@@ -52,7 +52,7 @@ const INDICATORS = [
   },
   {
     id: "money",
-    wb: "FM.LBL.MQMY.ZG", // Money & quasi-money (M2) growth (annual %)
+    wb: "FM.LBL.MQMY.ZG", // Broad money (M2) growth (annual %)
     label: "Broad money (M2) growth (annual %)",
     engine: "Liquidity",
     bucket: "Leading",
@@ -78,8 +78,12 @@ const macroCache = {};
 // ---------------------------------------------------------------------------
 // World Bank fetch with localStorage cache
 // ---------------------------------------------------------------------------
-async function fetchWorldBankSeries(countryCode, indicatorCode) {
-  const cacheKey = `wb_${countryCode}_${indicatorCode}`;
+async function fetchWorldBankSeries(countryKey, indicatorCode) {
+  // Map our country key (US, GB, etc.) to World Bank code (USA, GBR, etc.)
+  const meta = COUNTRY_META[countryKey] || {};
+  const wbCode = meta.wb || countryKey; // fallback: use key directly
+
+  const cacheKey = `wb_${wbCode}_${indicatorCode}`;
 
   // 1) Try localStorage cache first
   try {
@@ -96,7 +100,7 @@ async function fetchWorldBankSeries(countryCode, indicatorCode) {
   }
 
   // 2) Live call to World Bank (HTTPS is essential for GitHub Pages)
-  const url = `https://api.worldbank.org/v2/country/${countryCode}/indicator/${indicatorCode}?format=json&per_page=200`;
+  const url = `https://api.worldbank.org/v2/country/${wbCode}/indicator/${indicatorCode}?format=json&per_page=200`;
   try {
     const res = await fetch(url);
     if (!res.ok) {
@@ -130,7 +134,7 @@ async function fetchWorldBankSeries(countryCode, indicatorCode) {
 
     return series;
   } catch (err) {
-    console.error("World Bank fetch error:", countryCode, indicatorCode, err);
+    console.error("World Bank fetch error:", countryKey, indicatorCode, err);
     return [];
   }
 }
@@ -281,8 +285,8 @@ function average(arr) {
 // ---------------------------------------------------------------------------
 // Rendering – Macro regime
 // ---------------------------------------------------------------------------
-function renderRegimeSummary(countryCode, statsById, engines) {
-  const meta = COUNTRY_META[countryCode] || { name: countryCode, region: "" };
+function renderRegimeSummary(countryKey, statsById, engines) {
+  const meta = COUNTRY_META[countryKey] || { name: countryKey, region: "" };
   const titleEl = document.getElementById("cc-regime-title");
   const bodyEl = document.getElementById("cc-regime-body");
   const confEl = document.getElementById("cc-regime-confidence");
@@ -421,7 +425,7 @@ function renderRegimeSummary(countryCode, statsById, engines) {
 // ---------------------------------------------------------------------------
 // Rendering – Engine cards
 // ---------------------------------------------------------------------------
-function renderEngineCards(engines, statsById) {
+function renderEngineCards(engines) {
   const container = document.getElementById("cc-engine-cards");
   if (!container) return;
   container.innerHTML = "";
@@ -579,12 +583,12 @@ function renderInflectionSignals(statsById) {
 // ---------------------------------------------------------------------------
 // Rendering – Indicator table
 // ---------------------------------------------------------------------------
-function renderIndicatorGrid(statsById, countryCode) {
+function renderIndicatorGrid(statsById, countryKey) {
   const tbody = document.getElementById("cc-indicator-rows");
   const countryLabel = document.getElementById("cc-signals-country");
   if (!tbody) return;
 
-  const meta = COUNTRY_META[countryCode] || { name: countryCode };
+  const meta = COUNTRY_META[countryKey] || { name: countryKey };
   if (countryLabel) countryLabel.textContent = meta.name;
 
   tbody.innerHTML = "";
@@ -664,26 +668,25 @@ function renderMeta(statsById) {
 // ---------------------------------------------------------------------------
 // Country loader (parallel + cached)
 // ---------------------------------------------------------------------------
-async function loadCountry(countryCode) {
+async function loadCountry(countryKey) {
   // Use computed cache if we already have stats this session
-  if (macroCache[countryCode]) {
-    const statsById = macroCache[countryCode];
+  if (macroCache[countryKey]) {
+    const statsById = macroCache[countryKey];
     const engines = engineScoreFromIndicators(statsById);
-    renderRegimeSummary(countryCode, statsById, engines);
-    renderEngineCards(engines, statsById);
+    renderRegimeSummary(countryKey, statsById, engines);
+    renderEngineCards(engines);
     renderInflectionSignals(statsById);
-    renderIndicatorGrid(statsById, countryCode);
+    renderIndicatorGrid(statsById, countryKey);
     renderMeta(statsById);
     return;
   }
 
-  // Light loading hint (optional – you can style .cc-loading in CSS)
   document.body.classList.add("cc-loading");
 
   try {
     // Fetch all indicator series in parallel
     const requests = INDICATORS.map(cfg =>
-      fetchWorldBankSeries(countryCode, cfg.wb).then(series => ({
+      fetchWorldBankSeries(countryKey, cfg.wb).then(series => ({
         cfg,
         series
       }))
@@ -697,13 +700,13 @@ async function loadCountry(countryCode) {
       statsById[cfg.id] = stats;
     });
 
-    macroCache[countryCode] = statsById;
+    macroCache[countryKey] = statsById;
 
     const engines = engineScoreFromIndicators(statsById);
-    renderRegimeSummary(countryCode, statsById, engines);
-    renderEngineCards(engines, statsById);
+    renderRegimeSummary(countryKey, statsById, engines);
+    renderEngineCards(engines);
     renderInflectionSignals(statsById);
-    renderIndicatorGrid(statsById, countryCode);
+    renderIndicatorGrid(statsById, countryKey);
     renderMeta(statsById);
   } catch (err) {
     console.error("Failed to load country data", err);
@@ -765,7 +768,6 @@ function setupLiveToggle() {
 
     const mode = btn.getAttribute("data-cc-live-toggle");
     console.log("Mode switched to:", mode);
-    // For now, mode is cosmetic – World Bank is annual
   });
 }
 
@@ -804,5 +806,5 @@ document.addEventListener("DOMContentLoaded", () => {
   setupCountryDropdown();
   setupLiveToggle();
   setupFilters();
-  loadCountry("US"); // default country on load
+  loadCountry("US"); // default on load (maps to USA via wb code)
 });
