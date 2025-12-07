@@ -1,95 +1,43 @@
-/* ================
-   Cordoba Capital – Custom Styling
-   ================= */
-
-/* Smooth scrolling */
 html, body {
   scroll-behavior: smooth;
+  background: #ffffff;
+  color: #1A1A1A;
 }
 
-/* Hide scrollbars only visually (insti dashboards usually do this) */
 ::-webkit-scrollbar {
   width: 6px;
-  height: 6px;
   background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #2b2b2b;
+  background: #d1c7bc;
   border-radius: 10px;
 }
 
-::-webkit-scrollbar-thumb:hover {
-  background: #4a4a4a;
+/* Card system */
+.cc-card {
+  background: #ffffff;
+  border: 1px solid #E6E0D9;
+  border-radius: 1.25rem;
 }
 
-/* Fade-in animation for cards */
-.cc-fade {
-  opacity: 0;
-  transform: translateY(6px);
-  animation: ccFadeIn 0.5s ease forwards;
+/* Accent sections */
+.cc-accent {
+  background: #FBF4EC;
+  border: 1px solid #EFE7DD;
 }
 
-@keyframes ccFadeIn {
-  to {
-    opacity: 1;
-    transform: translateY(0px);
-  }
-}
-
-/* Pulse animation for LIVE bubbles */
-.cc-pulse {
-  animation: ccPulse 1.2s ease-in-out infinite;
-}
-
-@keyframes ccPulse {
-  0% {
-    transform: scale(1);
-    opacity: 0.8;
-  }
-  50% {
-    transform: scale(1.2);
-    opacity: 1;
-  }
-  100% {
-    transform: scale(1);
-    opacity: 0.8;
-  }
-}
-
-/* Card hover upgrade */
+/* Soft hover */
 .cc-card:hover {
   border-color: #9A690F;
-  background: rgba(154,105,15,0.05);
+  background: #FFFCF9;
   transition: 0.25s ease;
 }
 
-/* Institutional chart placeholder styling */
-.chart-placeholder {
-  background: linear-gradient(
-    to bottom,
-    rgba(255, 255, 255, 0.04),
-    rgba(0, 0, 0, 0.1)
-  );
-  border: 1px solid rgba(255,255,255,0.08);
-  border-radius: 0.75rem;
-}
-
-/* Heatmap cell glow */
-.heat-cell {
-  transition: 0.2s ease;
-}
-
-.heat-cell:hover {
-  transform: scale(1.06);
-  box-shadow: 0 0 8px rgba(154, 105, 15, 0.4);
-  z-index: 5;
-}
-
-/* Typography improvements */
+/* Typography */
 h1, h2, h3 {
-  font-family: "Times New Roman", serif;
-  letter-spacing: 0.02em;
+  font-family: "Playfair Display", serif;
+  color: #1A1A1A;
 }
 
 .smallcaps {
@@ -97,46 +45,27 @@ h1, h2, h3 {
   letter-spacing: 0.12em;
 }
 
-/* Subtle borders for institutional UI */
-.cc-border {
-  border: 1px solid rgba(255,255,255,0.08);
+p, span, div {
+  font-family: "Inter", sans-serif;
 }
 
-/* Button micro-interaction */
-.cc-btn:hover {
-  background: rgba(154, 105, 15, 0.15);
-  border-color: #9A690F;
-  transition: 0.25s ease;
+/* Buttons */
+.cc-btn {
+  border: 1px solid #9A690F;
+  background: #9A690F;
+  color: white;
+  border-radius: 999px;
+  padding: 0.4rem 0.9rem;
 }
 
-/* Disable text selection where needed */
-.noselect {
-  user-select: none;
+.cc-btn-outline {
+  border: 1px solid #9A690F;
+  background: transparent;
+  color: #9A690F;
+  border-radius: 999px;
 }
 
-/* Cordoba Macro Engine – responsive stance pills */
-
-.cc-stance-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;            /* ~4px */
-  border-radius: 9999px;
-  padding: 0.25rem 0.6rem; /* tight chip */
-  font-size: 0.7rem;       /* between 10–11px */
-  white-space: nowrap;     /* keep that label on one line */
-}
-
-.cc-stance-dot {
-  width: 0.375rem;  /* 6px */
-  height: 0.375rem;
-  border-radius: 9999px;
-}
-
-/* Help the top summary row stack better on small screens */
-@media (max-width: 768px) {
-  .cc-top-flex {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.75rem;
-  }
+/* Muted labels */
+.cc-muted {
+  color: #6B6B6B;
 }
