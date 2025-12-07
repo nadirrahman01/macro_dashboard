@@ -1,7 +1,3 @@
-// main.js – Cordoba Capital Macro Engine
-// Uses World Bank API for a small live indicator set and rolls them
-// into simple Growth / Inflation / Liquidity / External engine scores.
-
 const COUNTRY_MAP = {
   US: { wb: 'USA', name: 'United States', region: 'G-20 · DM' },
   GB: { wb: 'GBR', name: 'United Kingdom', region: 'G-20 · DM' },
@@ -10,14 +6,15 @@ const COUNTRY_MAP = {
   IN: { wb: 'IND', name: 'India', region: 'G-20 · EM' }
 };
 
+let currentCountryCode = 'US';
+
 document.addEventListener('DOMContentLoaded', () => {
   setupCountryMenu();
   setupLiveToggle();
-  // Default to US
   loadCountryData('US');
 });
 
-/* ---------- UI WIRING ---------- */
+/* ---------- UI wiring ---------- */
 
 function setupCountryMenu() {
   const toggle = document.getElementById('cc-country-toggle');
@@ -40,7 +37,9 @@ function setupCountryMenu() {
       const region = btn.getAttribute('data-cc-region') || '';
       const cfg = COUNTRY_MAP[code];
       if (!cfg) return;
-      // Update labels
+
+      currentCountryCode = code;
+
       document.querySelectorAll('[data-cc-country-label]').forEach(el => {
         el.textContent = cfg.name;
       });
@@ -48,6 +47,7 @@ function setupCountryMenu() {
       if (regionSpan) regionSpan.textContent = region;
       const signalsCountry = document.querySelector('[data-cc-signals-country]');
       if (signalsCountry) signalsCountry.textContent = cfg.name;
+
       menu.classList.add('hidden');
       loadCountryData(code);
     });
@@ -69,7 +69,7 @@ function setupLiveToggle() {
   });
 }
 
-/* ---------- DATA FETCH HELPERS ---------- */
+/* ---------- World Bank fetch ---------- */
 
 async function fetchWorldBankSeries(countryIso3, indicator) {
   const url = `https://api.worldbank.org/v2/country/${countryIso3}/indicator/${indicator}?format=json&per_page=60`;
@@ -79,18 +79,16 @@ async function fetchWorldBankSeries(countryIso3, indicator) {
     throw new Error('Unexpected World Bank response');
   }
   const series = json[1];
+  const out = [];
   for (const obs of series) {
     if (obs && obs.value !== null) {
-      return {
-        value: obs.value,
-        year: obs.date
-      };
+      out.push({ value: obs.value, year: obs.date });
     }
   }
-  return null;
+  return out; // ordered from most recent year downwards
 }
 
-/* ---------- CLASSIFICATION HELPERS ---------- */
+/* ---------- Indicator classifiers ---------- */
 
 function classifyGdpGrowth(g) {
   if (g == null) return { signal: 'N/A', comment: 'No recent GDP data available.' };
@@ -102,12 +100,12 @@ function classifyGdpGrowth(g) {
   if (g >= 1)
     return {
       signal: 'Moderate',
-      comment: 'Growth is positive but not overheating, broadly consistent with a mid-cycle backdrop.'
+      comment: 'Growth is positive but not overheating; broadly consistent with a mid-cycle backdrop.'
     };
   if (g > -1)
     return {
       signal: 'Soft patch',
-      comment: 'Activity is near stall-speed; policy and credit conditions are key to avoid a recession.'
+      comment: 'Activity is near stall-speed; growth-sensitive assets care about policy and credit conditions.'
     };
   return {
     signal: 'Contraction',
@@ -125,17 +123,17 @@ function classifyCpi(infl) {
   if (infl > 3)
     return {
       signal: 'Elevated',
-      comment: 'Inflation is above target but no longer accelerating; disinflation path matters for cuts timing.'
+      comment: 'Inflation is above target but no longer accelerating; the disinflation path shapes cut timing.'
     };
   if (infl >= 1)
     return {
       signal: 'On target',
-      comment: 'Price growth is close to typical central-bank targets; policy can refocus on growth and labour market.'
+      comment: 'Price growth is close to typical targets; policy can refocus on growth and labour-market data.'
     };
   if (infl > -1)
     return {
       signal: 'Low',
-      comment: 'Inflation is subdued; deflation risk is limited but persistent weakness would warrant easier policy.'
+      comment: 'Inflation is subdued; prolonged weakness would eventually warrant easier policy.'
     };
   return {
     signal: 'Deflation risk',
@@ -153,12 +151,12 @@ function classifyUnemployment(u) {
   if (u < 7)
     return {
       signal: 'Balanced',
-      comment: 'Unemployment is consistent with a broadly balanced labour market.'
+      comment: 'Unemployment is broadly consistent with a balanced labour market.'
     };
   if (u < 10)
     return {
       signal: 'Slack',
-      comment: 'Slack is building; growth risks are skewed to the downside but wage pressure is limited.'
+      comment: 'Slack is building; growth risks tilt to the downside while wage pressure fades.'
     };
   return {
     signal: 'Severe slack',
@@ -171,21 +169,21 @@ function classifyCurrentAccount(ca) {
   if (ca > 3)
     return {
       signal: 'Surplus',
-      comment: 'External position is in surplus; buffer against funding shocks and FX volatility.'
+      comment: 'External position is in surplus; this buffers funding shocks and FX volatility.'
     };
   if (ca > -3)
     return {
       signal: 'Balanced',
-      comment: 'Current account is near balance; external vulnerabilities look contained for now.'
+      comment: 'Current account is near balance; external vulnerabilities look contained.'
     };
   if (ca > -6)
     return {
       signal: 'Deficit',
-      comment: 'Moderate deficit; funding conditions and FX behaviour need monitoring if global liquidity tightens.'
+      comment: 'Moderate deficit; funding conditions and FX behaviour matter if global liquidity tightens.'
     };
   return {
     signal: 'Large deficit',
-    comment: 'Large external deficit; reliant on foreign capital and vulnerable to risk-off episodes.'
+    comment: 'Large external deficit; reliant on foreign capital and more exposed to risk-off episodes.'
   };
 }
 
@@ -194,25 +192,25 @@ function classifyMoneyGrowth(m) {
   if (m < 0)
     return {
       signal: 'Tight',
-      comment: 'Broad money is contracting; liquidity backdrop is restrictive and growth-sensitive assets are vulnerable.'
+      comment: 'Broad money is contracting; liquidity is restrictive and growth-sensitive assets are vulnerable.'
     };
   if (m < 5)
     return {
       signal: 'Soft',
-      comment: 'Money growth is subdued; liquidity is not a strong tailwind and risk assets trade on micro and carry.'
+      comment: 'Money growth is subdued; liquidity is not a strong tailwind.'
     };
   if (m < 15)
     return {
       signal: 'Neutral',
-      comment: 'Money growth is in a typical range; liquidity is supportive without being destabilising.'
+      comment: 'Money growth is in a normal range; liquidity is supportive without being destabilising.'
     };
   return {
     signal: 'Very loose',
-    comment: 'Rapid money growth; liquidity is ample but raises questions about future inflation and asset valuations.'
-  };
+      comment: 'Rapid money growth; liquidity is ample but raises questions about future inflation and valuations.'
+    };
 }
 
-/* ---------- ENGINE SCORE HELPERS ---------- */
+/* ---------- Engine scoring ---------- */
 
 function scaleTo100(x, min, max) {
   if (x == null) return null;
@@ -221,37 +219,34 @@ function scaleTo100(x, min, max) {
 }
 
 function scoreGrowthEngine(gdp, unemp) {
-  const s1 = scaleTo100(gdp, -2, 6); // -2% -> 0, 6% -> 100
+  const s1 = scaleTo100(gdp, -2, 6);          // -2% -> 0, 6% -> 100
   const s2 = unemp == null ? null : 100 - scaleTo100(unemp, 3, 12); // 3% -> 100, 12% -> 0
   if (s1 == null && s2 == null) return null;
   if (s1 != null && s2 != null) return Math.round((s1 + s2) / 2);
-  return Math.round((s1 || s2));
+  return Math.round(s1 != null ? s1 : s2);
 }
 
 function scoreInflationEngine(cpi) {
   if (cpi == null) return null;
-  // Penalise distance from 2% target
-  const penalty = Math.min(100, Math.abs(cpi - 2) * 12);
+  const penalty = Math.min(100, Math.abs(cpi - 2) * 12); // distance from 2% target
   return Math.max(0, Math.round(100 - penalty));
 }
 
 function scoreLiquidityEngine(money) {
   if (money == null) return null;
-  // Ideal around 8%; symmetric penalty
-  const distance = Math.abs(money - 8);
+  const distance = Math.abs(money - 8); // around 8% feels "healthy"
   const score = Math.max(20, 100 - distance * 8);
   return Math.round(score);
 }
 
 function scoreExternalEngine(ca) {
   if (ca == null) return null;
-  // Balanced near 0, large deficits bad
-  const penalty = Math.min(100, Math.abs(ca) * 10);
+  const penalty = Math.min(100, Math.abs(ca) * 10); // big deficits or surpluses move away from neutral
   return Math.max(0, Math.round(100 - penalty));
 }
 
 function describeGrowthRegime(score) {
-  if (score == null) return 'N/A';
+  if (score == null) return 'No growth signal – data incomplete.';
   if (score >= 70) return 'Above-trend growth backdrop.';
   if (score >= 50) return 'Growth roughly in line with trend.';
   if (score >= 30) return 'Soft patch; growth is fragile.';
@@ -259,15 +254,15 @@ function describeGrowthRegime(score) {
 }
 
 function describeInflationRegime(score) {
-  if (score == null) return 'N/A';
-  if (score >= 70) return 'Inflation close to a “comfortable” range.';
-  if (score >= 50) return 'Inflation somewhat away from target but manageable.';
+  if (score == null) return 'No inflation signal – data incomplete.';
+  if (score >= 70) return 'Inflation is close to a comfortable range.';
+  if (score >= 50) return 'Inflation is somewhat away from target but manageable.';
   if (score >= 30) return 'Inflation is a clear policy constraint.';
   return 'Inflation dynamics are highly problematic.';
 }
 
 function describeLiquidityRegime(score) {
-  if (score == null) return 'N/A';
+  if (score == null) return 'No liquidity signal – data incomplete.';
   if (score >= 70) return 'Liquidity backdrop is broadly supportive.';
   if (score >= 50) return 'Liquidity is neutral; not a major driver.';
   if (score >= 30) return 'Liquidity is a headwind for risk assets.';
@@ -275,51 +270,177 @@ function describeLiquidityRegime(score) {
 }
 
 function describeExternalRegime(score) {
-  if (score == null) return 'N/A';
+  if (score == null) return 'No external signal – data incomplete.';
   if (score >= 70) return 'External position provides a buffer to shocks.';
   if (score >= 50) return 'External risks are contained but worth monitoring.';
   if (score >= 30) return 'External vulnerabilities are building.';
   return 'External position is a key macro fragility.';
 }
 
-/* ---------- MAIN COUNTRY LOAD ---------- */
+/* ---------- Regime summary + risk flags ---------- */
+
+function riskLabelFromScore(score) {
+  if (score == null) return 'unknown';
+  if (score >= 70) return 'low';
+  if (score >= 40) return 'medium';
+  return 'high';
+}
+
+function generateRegimeLabel(growthScore, inflScore, liqScore) {
+  if (growthScore == null || inflScore == null) return 'Macro regime overview';
+
+  if (growthScore >= 65 && inflScore >= 65) return 'Late-cycle expansion';
+  if (growthScore >= 60 && inflScore < 60) return 'Growth-friendly disinflation';
+  if (growthScore < 45 && inflScore > 60) return 'Stagflation risk';
+  if (growthScore < 40 && inflScore < 55) return 'Growth slowdown';
+  if (liqScore != null && liqScore < 40 && growthScore >= 55) return 'Tight-liquidity expansion';
+
+  return 'Mixed macro signals';
+}
+
+function updateRegimeSummary(countryName, scores, values) {
+  const { growth, inflation, liquidity, external } = scores;
+  const { gdp, cpi, unemp, ca, money } = values;
+
+  const titleEl = document.getElementById('cc-regime-title');
+  const summaryEl = document.getElementById('cc-regime-summary');
+  const confidenceEl = document.getElementById('cc-confidence');
+  const riskContainer = document.getElementById('cc-risk-flags');
+
+  const label = generateRegimeLabel(growth, inflation, liquidity);
+  if (titleEl) titleEl.textContent = `${label} – ${countryName}`;
+
+  const parts = [];
+
+  if (growth != null && gdp != null && unemp != null) {
+    parts.push(
+      `Real GDP growth is around ${gdp.toFixed(1)}% with unemployment near ${unemp.toFixed(1)}%, ` +
+      `giving a growth engine score of ${growth}/100.`
+    );
+  } else if (growth != null) {
+    parts.push(`The growth engine score is ${growth}/100.`);
+  }
+
+  if (inflation != null && cpi != null) {
+    parts.push(
+      `Headline CPI is roughly ${cpi.toFixed(1)}% and the inflation engine scores ${inflation}/100.`
+    );
+  }
+
+  if (liquidity != null && money != null) {
+    parts.push(
+      `Broad money growth is about ${money.toFixed(1)}%, translating into a liquidity score of ${liquidity}/100.`
+    );
+  }
+
+  if (external != null && ca != null) {
+    parts.push(
+      `The current account stands near ${ca.toFixed(1)}% of GDP, giving an external score of ${external}/100.`
+    );
+  }
+
+  if (summaryEl) {
+    summaryEl.textContent =
+      parts.length > 0
+        ? parts.join(' ')
+        : 'Not enough data yet to form a view – World Bank series are incomplete for this country.';
+  }
+
+  // Confidence = simple average of available engine scores
+  const available = [growth, inflation, liquidity, external].filter(v => v != null);
+  let confidence = '--';
+  if (available.length > 0) {
+    confidence = Math.round(
+      available.reduce((a, b) => a + b, 0) / available.length
+    );
+  }
+  if (confidenceEl) confidenceEl.textContent = confidence === '--' ? '--' : `${confidence}%`;
+
+  // Risk flags
+  if (riskContainer) {
+    riskContainer.innerHTML = '';
+
+    const flags = [];
+
+    if (growth != null) {
+      flags.push({ label: `Growth risk: ${riskLabelFromScore(growth)}` });
+    }
+    if (inflation != null) {
+      flags.push({ label: `Inflation risk: ${riskLabelFromScore(inflation)}` });
+    }
+    if (liquidity != null) {
+      flags.push({ label: `Liquidity risk: ${riskLabelFromScore(liquidity)}` });
+    }
+    if (external != null) {
+      flags.push({ label: `External risk: ${riskLabelFromScore(external)}` });
+    }
+
+    if (flags.length === 0) {
+      const span = document.createElement('span');
+      span.className =
+        'px-3 py-1 rounded-full border border-cordobaBorder bg-[#FFFCF9] text-cordobaInk text-xs';
+      span.textContent = 'Not enough data to score risks yet.';
+      riskContainer.appendChild(span);
+    } else {
+      flags.forEach(f => {
+        const span = document.createElement('span');
+        span.className =
+          'px-3 py-1 rounded-full border border-cordobaBorder bg-[#FFFCF9] text-cordobaInk text-xs';
+        span.textContent = f.label;
+        riskContainer.appendChild(span);
+      });
+    }
+  }
+}
+
+/* ---------- Utility ---------- */
 
 function setText(id, value) {
   const el = document.getElementById(id);
   if (el) el.textContent = value;
 }
 
-function setPillSignal(idText, idPill, label) {
+function setPillSignal(idText, label) {
   const txt = document.getElementById(idText);
   if (txt) txt.textContent = label;
-  // You could add colour changes on idPill here later if you want.
 }
+
+/* ---------- Main loader ---------- */
 
 function loadCountryData(countryIso2) {
   const cfg = COUNTRY_MAP[countryIso2];
   if (!cfg) return;
   const iso3 = cfg.wb;
+  const countryName = cfg.name;
 
-  // Reset basic labels
   const signalsCountry = document.querySelector('[data-cc-signals-country]');
-  if (signalsCountry) signalsCountry.textContent = cfg.name;
+  if (signalsCountry) signalsCountry.textContent = countryName;
 
-  // Show placeholders while loading
-  ['cc-gdp-last','cc-gdp-year','cc-cpi-last','cc-cpi-year',
-   'cc-unemp-last','cc-unemp-year','cc-ca-last','cc-ca-year',
-   'cc-money-last','cc-money-year'].forEach(id => setText(id, '–'));
+  // Reset visible fields
+  [
+    'cc-gdp-last','cc-gdp-year','cc-cpi-last','cc-cpi-year',
+    'cc-unemp-last','cc-unemp-year','cc-ca-last','cc-ca-year',
+    'cc-money-last','cc-money-year'
+  ].forEach(id => setText(id, '–'));
+
+  setText('cc-gdp-comment', 'Loading from World Bank…');
+  setText('cc-cpi-comment', 'Loading from World Bank…');
+  setText('cc-unemp-comment', 'Loading from World Bank…');
+  setText('cc-ca-comment', 'Loading from World Bank…');
+  setText('cc-money-comment', 'Loading from World Bank…');
 
   // GDP
   const gdpPromise = fetchWorldBankSeries(iso3, 'NY.GDP.MKTP.KD.ZG')
-    .then(data => {
-      if (!data) return null;
-      const v = Number(data.value.toFixed(1));
+    .then(series => {
+      if (!series || series.length === 0) return null;
+      const latest = series[0];
+      const v = Number(latest.value.toFixed(1));
       setText('cc-gdp-last', v.toString());
-      setText('cc-gdp-year', data.year);
+      setText('cc-gdp-year', latest.year);
       const { signal, comment } = classifyGdpGrowth(v);
-      setPillSignal('cc-gdp-signal-text', 'cc-gdp-signal-pill', signal);
+      setPillSignal('cc-gdp-signal-text', signal);
       setText('cc-gdp-comment', comment);
-      return { value: v, year: data.year };
+      return v;
     })
     .catch(() => {
       setText('cc-gdp-comment', 'Unable to load GDP data from World Bank.');
@@ -328,15 +449,16 @@ function loadCountryData(countryIso2) {
 
   // CPI
   const cpiPromise = fetchWorldBankSeries(iso3, 'FP.CPI.TOTL.ZG')
-    .then(data => {
-      if (!data) return null;
-      const v = Number(data.value.toFixed(1));
+    .then(series => {
+      if (!series || series.length === 0) return null;
+      const latest = series[0];
+      const v = Number(latest.value.toFixed(1));
       setText('cc-cpi-last', v.toString());
-      setText('cc-cpi-year', data.year);
+      setText('cc-cpi-year', latest.year);
       const { signal, comment } = classifyCpi(v);
-      setPillSignal('cc-cpi-signal-text', 'cc-cpi-signal-pill', signal);
+      setPillSignal('cc-cpi-signal-text', signal);
       setText('cc-cpi-comment', comment);
-      return { value: v, year: data.year };
+      return v;
     })
     .catch(() => {
       setText('cc-cpi-comment', 'Unable to load CPI data from World Bank.');
@@ -345,68 +467,65 @@ function loadCountryData(countryIso2) {
 
   // Unemployment
   const unempPromise = fetchWorldBankSeries(iso3, 'SL.UEM.TOTL.ZS')
-    .then(data => {
-      if (!data) return null;
-      const v = Number(data.value.toFixed(1));
+    .then(series => {
+      if (!series || series.length === 0) return null;
+      const latest = series[0];
+      const v = Number(latest.value.toFixed(1));
       setText('cc-unemp-last', v.toString());
-      setText('cc-unemp-year', data.year);
+      setText('cc-unemp-year', latest.year);
       const { signal, comment } = classifyUnemployment(v);
-      setPillSignal('cc-unemp-signal-text', 'cc-unemp-signal-pill', signal);
+      setPillSignal('cc-unemp-signal-text', signal);
       setText('cc-unemp-comment', comment);
-      return { value: v, year: data.year };
+      return v;
     })
     .catch(() => {
       setText('cc-unemp-comment', 'Unable to load unemployment data from World Bank.');
       return null;
     });
 
-  // Current account balance
+  // Current account
   const caPromise = fetchWorldBankSeries(iso3, 'BN.CAB.XOKA.GD.ZS')
-    .then(data => {
-      if (!data) return null;
-      const v = Number(data.value.toFixed(1));
+    .then(series => {
+      if (!series || series.length === 0) return null;
+      const latest = series[0];
+      const v = Number(latest.value.toFixed(1));
       setText('cc-ca-last', v.toString());
-      setText('cc-ca-year', data.year);
+      setText('cc-ca-year', latest.year);
       const { signal, comment } = classifyCurrentAccount(v);
-      setPillSignal('cc-ca-signal-text', 'cc-ca-signal-pill', signal);
+      setPillSignal('cc-ca-signal-text', signal);
       setText('cc-ca-comment', comment);
-      return { value: v, year: data.year };
+      return v;
     })
     .catch(() => {
       setText('cc-ca-comment', 'Unable to load current-account data from World Bank.');
       return null;
     });
 
-  // Broad money growth
+  // Broad money
   const moneyPromise = fetchWorldBankSeries(iso3, 'FM.LBL.BMNY.ZG')
-    .then(data => {
-      if (!data) return null;
-      const v = Number(data.value.toFixed(1));
+    .then(series => {
+      if (!series || series.length === 0) return null;
+      const latest = series[0];
+      const v = Number(latest.value.toFixed(1));
       setText('cc-money-last', v.toString());
-      setText('cc-money-year', data.year);
+      setText('cc-money-year', latest.year);
       const { signal, comment } = classifyMoneyGrowth(v);
-      setPillSignal('cc-money-signal-text', 'cc-money-signal-pill', signal);
+      setPillSignal('cc-money-signal-text', signal);
       setText('cc-money-comment', comment);
-      return { value: v, year: data.year };
+      return v;
     })
     .catch(() => {
       setText('cc-money-comment', 'Unable to load money-growth data from World Bank.');
       return null;
     });
 
-  // Once all are in, update the 4 engine scorecards
+  // Once all are loaded, compute engine scores + regime
   Promise.all([gdpPromise, cpiPromise, unempPromise, caPromise, moneyPromise])
     .then(([gdp, cpi, unemp, ca, money]) => {
-      const gdpVal = gdp && gdp.value;
-      const cpiVal = cpi && cpi.value;
-      const unempVal = unemp && unemp.value;
-      const caVal = ca && ca.value;
-      const moneyVal = money && money.value;
-
-      const growthScore = scoreGrowthEngine(gdpVal, unempVal);
-      const inflScore = scoreInflationEngine(cpiVal);
-      const liqScore = scoreLiquidityEngine(moneyVal);
-      const extScore = scoreExternalEngine(caVal);
+      const growthScore = scoreGrowthEngine(gdp, unemp);
+      const inflScore = scoreInflationEngine(cpi);
+      const liqScore = scoreLiquidityEngine(money);
+      const extScore = scoreExternalEngine(ca);
 
       if (growthScore != null) setText('cc-growth-score', growthScore.toString());
       else setText('cc-growth-score', '--');
@@ -423,6 +542,18 @@ function loadCountryData(countryIso2) {
       if (extScore != null) setText('cc-external-score', extScore.toString());
       else setText('cc-external-score', '--');
       setText('cc-external-regime', describeExternalRegime(extScore));
+
+      updateRegimeSummary(countryName,
+        {
+          growth: growthScore,
+          inflation: inflScore,
+          liquidity: liqScore,
+          external: extScore
+        },
+        {
+          gdp, cpi, unemp, ca, money
+        }
+      );
     })
     .catch(err => {
       console.error('Error computing engine scores', err);
