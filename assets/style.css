@@ -99,27 +99,43 @@ h3 {
   border-radius: 999px;
 }
 
-/* Table base styles */
+/* Table headers */
 
 table th {
   font-weight: 500;
 }
 
-/* === Indicator Grid & Rankings – clarity === */
+/* === Indicator Grid & Rankings – normal + hover === */
 
-/* Normal state: black text on white */
+/* Base style for any table body */
 table tbody td {
-  color: #1a1a1a;           /* solid black text */
   background-color: #ffffff;
 }
 
-/* No zebra striping */
-table tbody tr:nth-child(even) td {
-  background-color: #ffffff;
-}
-
-/* Hover: very light cream background, black text */
+/* Hover: cream background */
 table tbody tr:hover td {
-  background-color: #fffcf9; /* hover background */
-  color: #1a1a1a;
+  background-color: #fffcf9;
+}
+
+/* --- HARD OVERRIDES for the two macro tables --- */
+
+/* Indicator grid cells: always solid black, no opacity */
+#cc-signals-tbody,
+#cc-signals-tbody * {
+  color: #1a1a1a !important;
+  opacity: 1 !important;
+}
+
+/* Rankings table cells: always solid black, no opacity */
+#cc-ranking-tbody,
+#cc-ranking-tbody * {
+  color: #1a1a1a !important;
+  opacity: 1 !important;
+}
+
+/* Keep hover background but not text fade */
+#cc-signals-tbody tr:hover td,
+#cc-ranking-tbody tr:hover td {
+  background-color: #fffcf9 !important;
+  color: #1a1a1a !important;
 }
