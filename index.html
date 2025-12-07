@@ -175,7 +175,7 @@
           <!-- Top row: Country + Stance + Macro Snapshot -->
           <div class="grid grid-cols-1 xl:grid-cols-3 gap-5">
 
-            <!-- Country + stance (spans 2 cols) -->
+            <!-- Country + stance -->
             <div class="col-span-1 xl:col-span-2 cc-card px-5 py-4 flex flex-col md:flex-row md:items-start md:justify-between gap-4">
               <div class="space-y-3 flex-1">
                 <div class="text-[11px] uppercase tracking-[0.25em] text-cordobaMuted">
@@ -561,151 +561,108 @@
                     Growth Engine – <span data-cc-timeseries-country>United States</span>
                   </div>
                 </div>
-              <div class="flex items-center gap-2 text-[11px]">
-                <button
-                  class="px-2.5 py-0.5 rounded-full border border-cordobaGold bg-cordobaGold text-white"
-                  data-cc-chart-tab="level"
-                  type="button"
-                >
-                  Level
-                </button>
-                <button
-                  class="px-2.5 py-0.5 rounded-full border border-cordobaBorder text-cordobaMuted hover:border-cordobaGold"
-                  data-cc-chart-tab="zscore"
-                  type="button"
-                >
-                  z-Score
-                </button>
-                <button
-                  class="px-2.5 py-0.5 rounded-full border border-cordobaBorder text-cordobaMuted hover:border-cordobaGold"
-                  data-cc-chart-tab="components"
-                  type="button"
-                >
-                  Components
-                </button>
+                <div class="flex items-center gap-2 text-[11px]">
+                  <button
+                    class="px-2.5 py-0.5 rounded-full border border-cordobaGold bg-cordobaGold text-white"
+                    data-cc-chart-tab="level"
+                    type="button"
+                  >
+                    Level
+                  </button>
+                  <button
+                    class="px-2.5 py-0.5 rounded-full border border-cordobaBorder text-cordobaMuted hover:border-cordobaGold"
+                    data-cc-chart-tab="zscore"
+                    type="button"
+                  >
+                    z-Score
+                  </button>
+                  <button
+                    class="px-2.5 py-0.5 rounded-full border border-cordobaBorder text-cordobaMuted hover:border-cordobaGold"
+                    data-cc-chart-tab="components"
+                    type="button"
+                  >
+                    Components
+                  </button>
+                </div>
               </div>
-            </div>
 
-            <div
-              class="h-11 rounded-xl bg-cordobaAccent border border-cordobaBorder flex items-center justify-center text-xs text-cordobaMuted px-3 text-center"
-              id="cc-chart-placeholder"
-            >
-              <span data-cc-chart-caption>
-                Chart – Level view: growth composite vs time; switch tabs for z-score and components.
-              </span>
-            </div>
-
-            <div class="h-44">
-              <canvas id="cc-growth-chart"></canvas>
-            </div>
-
-            <div class="flex flex-wrap items-center justify-between gap-2 text-[11px] text-cordobaMuted">
-              <div class="flex flex-wrap gap-2">
-                <span class="inline-flex items-center gap-1">
-                  <span class="h-2 w-4 rounded-full bg-emerald-500"></span>
-                  Composite
-                </span>
-                <span class="inline-flex items-center gap-1">
-                  <span class="h-2 w-4 rounded-full bg-sky-500"></span>
-                  Leading
-                </span>
-                <span class="inline-flex items-center gap-1">
-                  <span class="h-2 w-4 rounded-full bg-amber-400"></span>
-                  Coincident
-                </span>
-                <span class="inline-flex items-center gap-1">
-                  <span class="h-2 w-4 rounded-full bg-rose-400"></span>
-                  Lagging
+              <div
+                class="h-11 rounded-xl bg-cordobaAccent border border-cordobaBorder flex items-center justify-center text-xs text-cordobaMuted px-3 text-center"
+                id="cc-chart-placeholder"
+              >
+                <span data-cc-chart-caption>
+                  Chart – Level view: growth composite vs time; switch tabs for z-score and components.
                 </span>
               </div>
-              <div>
-                Last update: <span class="text-cordobaInk" data-cc-last-update>Prelim 2025-10</span>
+
+              <div class="h-44">
+                <canvas id="cc-growth-chart"></canvas>
+              </div>
+
+              <div class="flex flex-wrap items-center justify-between gap-2 text-[11px] text-cordobaMuted">
+                <div class="flex flex-wrap gap-2">
+                  <span class="inline-flex items-center gap-1">
+                    <span class="h-2 w-4 rounded-full bg-emerald-500"></span>
+                    Composite
+                  </span>
+                  <span class="inline-flex items-center gap-1">
+                    <span class="h-2 w-4 rounded-full bg-sky-500"></span>
+                    Leading
+                  </span>
+                  <span class="inline-flex items-center gap-1">
+                    <span class="h-2 w-4 rounded-full bg-amber-400"></span>
+                    Coincident
+                  </span>
+                  <span class="inline-flex items-center gap-1">
+                    <span class="h-2 w-4 rounded-full bg-rose-400"></span>
+                    Lagging
+                  </span>
+                </div>
+                <div>
+                  Last update: <span class="text-cordobaInk" data-cc-last-update>Prelim 2025-10</span>
+                </div>
               </div>
             </div>
           </div>
-        </div>
 
-          <!-- Indicator Grid + Rankings row -->
-          <div class="grid grid-cols-1 xl:grid-cols-2 gap-5">
-            <!-- Indicator Grid -->
-            <div class="cc-card px-4 py-3">
-              <div class="flex items-center justify-between mb-3">
-                <div>
-                  <div class="text-[11px] uppercase tracking-[0.2em] text-cordobaMuted">
-                    Indicator Grid
-                  </div>
-                  <div class="font-heading text-lg mt-1">
-                    Key Signals – <span data-cc-signals-country>United States</span>
-                  </div>
+          <!-- FULL-WIDTH: Indicator Grid -->
+          <div class="cc-card px-4 py-3">
+            <div class="flex items-center justify-between mb-3">
+              <div>
+                <div class="text-[11px] uppercase tracking-[0.2em] text-cordobaMuted">
+                  Indicator Grid
                 </div>
-                <div class="flex items-center gap-2 text-[11px]">
-                  <button class="px-2.5 py-0.5 rounded-full border border-cordobaBorder text-cordobaMuted hover:border-cordobaGold">
-                    All Engines
-                  </button>
-                  <button class="px-2.5 py-0.5 rounded-full border border-cordobaBorder text-cordobaMuted hover:border-cordobaGold">
-                    Only Top-of-Book
-                  </button>
+                <div class="font-heading text-lg mt-1">
+                  Key Signals – <span data-cc-signals-country>United States</span>
                 </div>
               </div>
-
-              <div class="overflow-x-auto">
-                <table class="min-w-full text-xs">
-                  <thead>
-                    <tr class="text-[11px] uppercase tracking-[0.16em] text-cordobaMuted border-b border-cordobaBorder bg-[#FFF6EC]">
-                      <th class="py-2 text-left">Indicator</th>
-                      <th class="py-2 text-left">Engine</th>
-                      <th class="py-2 text-left">Bucket</th>
-                      <th class="py-2 text-left">Signal</th>
-                      <th class="py-2 text-right">Last</th>
-                      <th class="py-2 text-right">z-Score</th>
-                      <th class="py-2 text-left">Comment</th>
-                    </tr>
-                  </thead>
-                  <tbody id="cc-signals-tbody" class="divide-y divide-cordobaBorder/70">
-                    <!-- Populated by JS -->
-                  </tbody>
-                </table>
+              <div class="flex items-center gap-2 text-[11px]">
+                <button class="px-2.5 py-0.5 rounded-full border border-cordobaBorder text-cordobaMuted hover:border-cordobaGold">
+                  All Engines
+                </button>
+                <button class="px-2.5 py-0.5 rounded-full border border-cordobaBorder text-cordobaMuted hover:border-cordobaGold">
+                  Only Top-of-Book
+                </button>
               </div>
             </div>
 
-            <!-- Relative Macro Rankings -->
-            <div class="cc-card px-4 py-3">
-              <div class="flex items-center justify-between mb-3">
-                <div>
-                  <div class="text-[11px] uppercase tracking-[0.2em] text-cordobaMuted">
-                    Cross-Country Rankings
-                  </div>
-                  <div class="font-heading text-lg mt-1">
-                    Relative macro scores – G-20 focus set
-                  </div>
-                </div>
-                <div class="flex items-center gap-2 text-[11px] text-cordobaMuted">
-                  <span>Sorted by:</span>
-                  <span id="cc-ranking-sort-label" class="rounded-full border border-cordobaBorder px-2 py-0.5">
-                    Overall Macro Score
-                  </span>
-                </div>
-              </div>
-
-              <div class="overflow-x-auto">
-                <table class="min-w-full text-xs">
-                  <thead>
-                    <tr class="text-[11px] uppercase tracking-[0.16em] text-cordobaMuted border-b border-cordobaBorder bg-[#FFF6EC]">
-                      <th class="py-2 text-left">Rank</th>
-                      <th class="py-2 text-left">Country</th>
-                      <th class="py-2 text-left">Regime</th>
-                      <th class="py-2 text-right">Growth</th>
-                      <th class="py-2 text-right">Inflation</th>
-                      <th class="py-2 text-right">Liquidity</th>
-                      <th class="py-2 text-right">External</th>
-                      <th class="py-2 text-right">Overall</th>
-                    </tr>
-                  </thead>
-                  <tbody id="cc-ranking-tbody" class="divide-y divide-cordobaBorder/70">
-                    <!-- Filled dynamically -->
-                  </tbody>
-                </table>
-              </div>
+            <div class="overflow-x-auto">
+              <table class="min-w-full text-xs">
+                <thead>
+                  <tr class="text-[11px] uppercase tracking-[0.16em] text-cordobaMuted border-b border-cordobaBorder bg-[#FFF6EC]">
+                    <th class="py-2 text-left">Indicator</th>
+                    <th class="py-2 text-left">Engine</th>
+                    <th class="py-2 text-left">Bucket</th>
+                    <th class="py-2 text-left">Signal</th>
+                    <th class="py-2 text-right">Last</th>
+                    <th class="py-2 text-right">z-Score</th>
+                    <th class="py-2 text-left">Comment</th>
+                  </tr>
+                </thead>
+                <tbody id="cc-signals-tbody" class="divide-y divide-cordobaBorder/70">
+                  <!-- Populated by JS -->
+                </tbody>
+              </table>
             </div>
           </div>
 
@@ -720,3 +677,4 @@
   <script src="main.js"></script>
 </body>
 </html>
+
