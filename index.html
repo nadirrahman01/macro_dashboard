@@ -83,10 +83,22 @@
         </button>
       </nav>
 
-      <div class="mt-auto text-[11px] text-neutral-500 border-t border-neutral-200 pt-3">
-        Built for internal use by Cordoba Capital.<br />
-        Sources: World Bank World Development Indicators (WDI).<br />
-        Data is annual and may be revised.
+      <div class="mt-auto text-[11px] text-neutral-500 border-t border-neutral-200 pt-3 space-y-1">
+        <div>
+          Built for internal use by Cordoba Capital.<br />
+          Sources: World Bank World Development Indicators (WDI).<br />
+          Data is annual and may be revised.
+        </div>
+        <div class="text-[10px] text-neutral-500">
+          Macro Engine v0.3 · Last major update: Dec 2025 · Internal use only.
+        </div>
+        <button
+          id="cc-methodology-open"
+          class="mt-1 text-[11px] text-cordobaGold underline decoration-1 underline-offset-2 hover:text-neutral-900"
+          type="button"
+        >
+          Methodology &amp; data notes
+        </button>
       </div>
     </aside>
 
@@ -161,28 +173,22 @@
               </button>
             </div>
           </div>
-          
+
+          <!-- Support / Login -->
           <div class="flex items-center gap-1 text-xs bg-white border border-neutral-200 rounded-full p-0.5 shadow-subtle">
-            
-            <!-- Support button -->
             <a
               href="mailto:help@cordobacapital.co.uk"
               class="px-3 py-1 rounded-full bg-cordobaGold text-white font-medium hover:opacity-90 transition"
             >
               Support
             </a>
-          
-            <!-- Login button -->
             <a
               href="https://cordobacapital.co.uk/login/"
               class="px-3 py-1 rounded-full text-neutral-500 hover:bg-cordobaSoft hover:text-neutral-900 transition"
             >
               Login
             </a>
-          
           </div>
-
-
         </div>
       </header>
 
@@ -360,6 +366,7 @@
                 <th class="py-2 text-left">Engine</th>
                 <th class="py-2 text-left">Bucket</th>
                 <th class="py-2 text-left">Signal</th>
+                <th class="py-2 text-left">Trend (10y)</th>
                 <th class="py-2 text-right">Last</th>
                 <th class="py-2 text-right">z-Score</th>
                 <th class="py-2 text-left">Note</th>
@@ -386,7 +393,7 @@
               </div>
             </div>
             <div class="text-[11px] text-neutral-500">
-            Auto-generated from current engine configuration
+              Auto-generated from current engine configuration
             </div>
           </div>
           <textarea
@@ -402,6 +409,14 @@
               <!-- Filled by JS -->
             </ul>
           </div>
+          <div class="mt-3">
+            <div class="text-[11px] uppercase tracking-[0.18em] text-neutral-500 mb-1">
+              Next 3 questions to ask
+            </div>
+            <ul id="cc-next-questions" class="list-disc list-inside space-y-1 text-xs text-neutral-700">
+              <!-- Filled by JS -->
+            </ul>
+          </div>
         </div>
 
         <!-- Cordoba research suggestions -->
@@ -410,7 +425,7 @@
             <div class="text-[11px] uppercase tracking-[0.2em] text-neutral-500">
               Cordoba Research Matches
             </div>
-              <div class="text-sm text-neutral-700">
+            <div class="text-sm text-neutral-700">
               Notes most relevant to this regime
             </div>
             <div class="text-[11px] text-neutral-600 mt-1">
@@ -432,9 +447,62 @@
     </main>
   </div>
 
+  <!-- Methodology modal -->
+  <div
+    id="cc-methodology-modal"
+    class="fixed inset-0 z-40 hidden"
+  >
+    <div
+      class="absolute inset-0 bg-black/20"
+      data-cc-methodology-close
+    ></div>
+    <div
+      class="absolute inset-x-4 sm:inset-x-0 top-16 mx-auto max-w-xl rounded-2xl bg-white shadow-subtle border border-neutral-200 px-5 py-4"
+    >
+      <div class="flex items-start justify-between gap-3">
+        <div>
+          <div class="text-[11px] uppercase tracking-[0.2em] text-neutral-500">
+            Methodology &amp; data notes
+          </div>
+          <div class="text-sm text-neutral-800 mt-1">
+            How the Cordoba Macro Engine builds its scores
+          </div>
+        </div>
+        <button
+          id="cc-methodology-close"
+          type="button"
+          class="text-[11px] text-neutral-500 hover:text-neutral-800"
+        >
+          ✕
+        </button>
+      </div>
+      <div class="mt-3 space-y-2 text-xs text-neutral-700 leading-relaxed">
+        <p>
+          Indicators are taken from the World Bank World Development Indicators (WDI) database.
+          For each series, we calculate a 10-year rolling mean and standard deviation and express
+          the latest reading as a z-score relative to that history.
+        </p>
+        <p>
+          Engine scores (Growth, Inflation, Liquidity, External) combine these z-scores using simple
+          weights. Scores are rescaled to a 10–90 range, so values around 50 indicate readings close
+          to the past decade, while higher or lower scores flag stretched conditions.
+        </p>
+        <p>
+          Data is annual and subject to revision. Some indicators may only be available with a lag,
+          or may be interpolated by the World Bank. The dashboard should therefore be treated as a
+          structured starting point for analysis rather than a real-time trading signal.
+        </p>
+        <p class="text-[11px] text-neutral-500">
+          This tool is for internal and educational use only. It does not constitute investment research
+          or investment advice. Always cross-check figures against primary sources before use.
+        </p>
+      </div>
+    </div>
+  </div>
+
   <!-- JS -->
   <script src="main.js"></script>
-  <!-- Export libraries (already added) -->
+  <!-- Export libraries -->
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
