@@ -74,7 +74,7 @@ const INDICATORS = [
 ];
 
 // ---------------------------------------------------------------------------
-// Cordoba research metadata (hand-curated mapping)
+// Cordoba research metadata
 // ---------------------------------------------------------------------------
 const CORDOBA_RESEARCH = [
   {
@@ -117,17 +117,17 @@ const CORDOBA_RESEARCH = [
   }
 ];
 
-// Simple in-memory cache for stats
+// In-memory stats cache
 const macroCache = {};
 
 // ---------------------------------------------------------------------------
-// World Bank fetch with localStorage cache (annual data for now)
+// WB fetch + cache (now returns {series, updatedAt})
 // ---------------------------------------------------------------------------
 async function fetchWorldBankSeries(countryKey, indicatorCode) {
   const meta = COUNTRY_META[countryKey];
   if (!meta) {
     console.warn("Unknown country:", countryKey);
-    return [];
+    return { series: [], updatedAt: null };
   }
   const wbCode = meta.wb;
   const cacheKey = `wb_${wbCode}_${indicatorCode}`;
@@ -139,7 +139,10 @@ async function fetchWorldBankSeries(countryKey, indicatorCode) {
       const cached = JSON.parse(cachedRaw);
       const maxAgeMs = 7 * 24 * 60 * 60 * 1000;
       if (cached.timestamp && Date.now() - cached.timestamp < maxAgeMs) {
-        return cached.series || [];
+        return {
+          series: cached.series || [],
+          updatedAt: cached.updatedAt || null
+        };
       }
     }
   } catch (err) {
@@ -152,13 +155,17 @@ async function fetchWorldBankSeries(countryKey, indicatorCode) {
     const res = await fetch(url);
     if (!res.ok) {
       console.error("World Bank error:", res.status, url);
-      return [];
+      return { series: [], updatedAt: null };
     }
     const json = await res.json();
+    const header = Array.isArray(json) ? json[0] : null;
     const data = Array.isArray(json) ? json[1] : null;
+
+    const updatedAt = header && header.lastupdated ? header.lastupdated : null;
+
     if (!Array.isArray(data)) {
       console.warn("World Bank: no data array for", wbCode, indicatorCode);
-      return [];
+      return { series: [], updatedAt };
     }
 
     const series = data
@@ -179,29 +186,36 @@ async function fetchWorldBankSeries(countryKey, indicatorCode) {
         cacheKey,
         JSON.stringify({
           timestamp: Date.now(),
-          series
+          series,
+          updatedAt
         })
       );
     } catch (err) {
       console.warn("localStorage write error:", err);
     }
 
-    return series;
+    return { series, updatedAt };
   } catch (err) {
     console.error("World Bank fetch failed:", err);
-    return [];
+    return { series: [], updatedAt: null };
   }
 }
 
 // ---------------------------------------------------------------------------
-// Date helpers – infer year/month and format MMM-YYYY
+// Date helpers
 // ---------------------------------------------------------------------------
-const MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const MONTH_SHORT = [
+  "Jan","Feb","Mar","Apr","May","Jun",
+  "Jul","Aug","Sep","Oct","Nov","Dec"
+];
+const MONTH_FULL = [
+  "January","February","March","April","May","June",
+  "July","August","September","October","November","December"
+];
 
 function inferYearFromPoint(p) {
   if (!p) return undefined;
   if (typeof p.year === "number" && !isNaN(p.year)) return p.year;
-
   if (p.period) {
     const s = String(p.period);
     const m = s.match(/^(\d{4})/);
@@ -217,22 +231,19 @@ function inferMonthFromPoint(p) {
   if (p.period) {
     const s = String(p.period);
 
-    // YYYYMM
-    let m = s.match(/^\d{4}(\d{2})$/);
+    let m = s.match(/^\d{4}(\d{2})$/); // YYYYMM
     if (m) {
       const mm = parseInt(m[1], 10);
       if (mm >= 1 && mm <= 12) return mm;
     }
 
-    // YYYY-MM or YYYY-MM-DD
-    m = s.match(/^\d{4}-(\d{2})/);
+    m = s.match(/^\d{4}-(\d{2})/);      // YYYY-MM / YYYY-MM-DD
     if (m) {
       const mm = parseInt(m[1], 10);
       if (mm >= 1 && mm <= 12) return mm;
     }
   }
 
-  // Default to December if only annual info
   return 12;
 }
 
@@ -241,13 +252,22 @@ function formatPeriodLabel(p) {
   if (!year) return "n/a";
   const month = inferMonthFromPoint(p);
   const idx = Math.min(Math.max(month - 1, 0), 11);
-  return `${MONTH_NAMES[idx]}-${year}`;
+  return `${MONTH_SHORT[idx]}-${year}`;
+}
+
+function formatUpdatedAt(dateStr) {
+  if (!dateStr) return null;
+  const d = new Date(dateStr);
+  if (Number.isNaN(d.getTime())) return null;
+  const monthName = MONTH_FULL[d.getMonth()];
+  const year = d.getFullYear();
+  return `${monthName} ${year}`;
 }
 
 // ---------------------------------------------------------------------------
 // Stats and helpers
 // ---------------------------------------------------------------------------
-function computeStats(series, lookbackYears = 10) {
+function computeStats(series, lookbackYears = 10, updatedAt = null) {
   if (!series.length) return null;
 
   const latest = series[series.length - 1];
@@ -258,7 +278,7 @@ function computeStats(series, lookbackYears = 10) {
 
   const window = cutoffYear
     ? series.filter((p) => (inferYearFromPoint(p) || 0) >= cutoffYear)
-    : series.slice(); // fallback: use all
+    : series.slice();
 
   const values = window.map((p) => p.value);
   const mean =
@@ -299,7 +319,8 @@ function computeStats(series, lookbackYears = 10) {
     z,
     delta,
     analogues,
-    windowYears: window.length
+    windowYears: window.length,
+    updatedAt
   };
 }
 
@@ -375,7 +396,7 @@ function engineScoreFromIndicators(statsById) {
 
   const growthZ =
     (gdp ? (gdp.z || 0) : 0) - (u ? (u.z || 0) * 0.4 : 0);
-  const inflationZ = infl ? -infl.z : 0; // lower inflation "better"
+  const inflationZ = infl ? -infl.z : 0;
   const liquidityZ = m2 ? m2.z : 0;
   const externalZ = ca ? ca.z : 0;
 
@@ -396,8 +417,7 @@ function riskLevelFromZ(z) {
 }
 
 // ---------------------------------------------------------------------------
-// Note helper & research suggestions
-// (unchanged – omitted comments for brevity)
+// Note helper & research suggestions (unchanged logic)
 // ---------------------------------------------------------------------------
 function buildNoteDraft(countryKey, statsById, engines) {
   const meta = COUNTRY_META[countryKey] || { name: countryKey, region: "" };
@@ -803,7 +823,6 @@ function renderRegimeSummary(countryKey, statsById, engines) {
   confidence = Math.round(confidence * 100);
   if (confEl) confEl.textContent = `${confidence}%`;
 
-  // Analogues (from GDP)
   if (analogEl) {
     analogEl.innerHTML = "";
     const analogueYears = gdp ? gdp.analogues : [];
@@ -821,7 +840,6 @@ function renderRegimeSummary(countryKey, statsById, engines) {
     }
   }
 
-  // Risk flags
   if (riskEl) {
     riskEl.innerHTML = "";
 
@@ -937,10 +955,9 @@ function renderHeadlineTiles(statsById) {
   };
 
   if (gdp) {
-    const label = formatPeriodLabel(gdp.latest);
     setText(
       "cc-gdp-latest",
-      `${formatNumber(gdp.latest.value, 1, "%")} (${label})`
+      `${formatNumber(gdp.latest.value, 1, "%")}`
     );
     setText(
       "cc-gdp-extra",
@@ -953,10 +970,9 @@ function renderHeadlineTiles(statsById) {
   }
 
   if (infl) {
-    const label = formatPeriodLabel(infl.latest);
     setText(
       "cc-inflation-latest",
-      `${formatNumber(infl.latest.value, 1, "%")} (${label})`
+      `${formatNumber(infl.latest.value, 1, "%")}`
     );
     setText(
       "cc-inflation-extra",
@@ -969,10 +985,9 @@ function renderHeadlineTiles(statsById) {
   }
 
   if (unemp) {
-    const label = formatPeriodLabel(unemp.latest);
     setText(
       "cc-unemployment-latest",
-      `${formatNumber(unemp.latest.value, 1, "%")} (${label})`
+      `${formatNumber(unemp.latest.value, 1, "%")}`
     );
     setText(
       "cc-unemployment-extra",
@@ -985,10 +1000,9 @@ function renderHeadlineTiles(statsById) {
   }
 
   if (money) {
-    const label = formatPeriodLabel(money.latest);
     setText(
       "cc-money-latest",
-      `${formatNumber(money.latest.value, 1, "%")} (${label})`
+      `${formatNumber(money.latest.value, 1, "%")}`
     );
     setText(
       "cc-money-extra",
@@ -1001,10 +1015,9 @@ function renderHeadlineTiles(statsById) {
   }
 
   if (ca) {
-    const label = formatPeriodLabel(ca.latest);
     setText(
       "cc-ca-latest",
-      `${formatNumber(ca.latest.value, 1, "% of GDP")} (${label})`
+      `${formatNumber(ca.latest.value, 1, "% of GDP")}`
     );
     setText(
       "cc-ca-extra",
@@ -1169,7 +1182,7 @@ function renderIndicatorGrid(statsById, countryKey) {
 }
 
 // ---------------------------------------------------------------------------
-// Meta (data as of)
+// Meta – "latest: Month YYYY" using WB lastupdated
 // ---------------------------------------------------------------------------
 function renderMeta(statsById) {
   const dataAsOf = document.getElementById("cc-data-as-of");
@@ -1181,22 +1194,26 @@ function renderMeta(statsById) {
     return;
   }
 
-  const latest = allStats.reduce((acc, s) => {
-    const stamp =
-      (inferYearFromPoint(s.latest) || 0) * 100 + inferMonthFromPoint(s.latest);
-    if (!acc || stamp > acc.stamp) return { stamp, point: s.latest };
-    return acc;
-  }, null);
+  const dates = allStats
+    .map((s) => s.updatedAt)
+    .filter(Boolean);
 
-  if (!latest) {
+  if (!dates.length) {
     dataAsOf.textContent = "latest: n/a";
-  } else {
-    dataAsOf.textContent = `latest: ${formatPeriodLabel(latest.point)}`;
+    return;
   }
+
+  let latest = dates[0];
+  dates.forEach((d) => {
+    if (new Date(d) > new Date(latest)) latest = d;
+  });
+
+  const label = formatUpdatedAt(latest) || "n/a";
+  dataAsOf.textContent = `latest: ${label}`;
 }
 
 // ---------------------------------------------------------------------------
-// "Next 3 questions to ask" – simple logic
+// Next questions
 // ---------------------------------------------------------------------------
 function renderNextQuestions(statsById, engines) {
   const list = document.getElementById("cc-question-list");
@@ -1252,7 +1269,7 @@ async function loadCountry(countryKey) {
   if (labelEl) labelEl.textContent = meta.name;
   if (regionEl) regionEl.textContent = meta.region || "";
 
-  // Use cached stats if available
+  // Cached?
   if (macroCache[countryKey]) {
     const statsById = macroCache[countryKey];
     const engines = engineScoreFromIndicators(statsById);
@@ -1272,17 +1289,23 @@ async function loadCountry(countryKey) {
 
   try {
     const requests = INDICATORS.map((cfg) =>
-      fetchWorldBankSeries(countryKey, cfg.wb).then((series) => ({
-        cfg,
-        series
-      }))
+      fetchWorldBankSeries(countryKey, cfg.wb).then(
+        ({ series, updatedAt }) => ({
+          cfg,
+          series,
+          updatedAt
+        })
+      )
     );
 
     const results = await Promise.all(requests);
 
     const statsById = {};
-    results.forEach(({ cfg, series }) => {
-      const stats = series && series.length ? computeStats(series) : null;
+    results.forEach(({ cfg, series, updatedAt }) => {
+      const stats =
+        series && series.length
+          ? computeStats(series, 10, updatedAt)
+          : null;
       statsById[cfg.id] = stats;
     });
 
@@ -1349,7 +1372,9 @@ function setupMethodologyModal() {
   const openBtn = document.getElementById("cc-methodology-open");
   const closeBtn = document.getElementById("cc-methodology-close");
   const modal = document.getElementById("cc-methodology-modal");
-  const overlay = modal ? modal.querySelector("[data-cc-overlay]") : null;
+  const overlay = modal
+    ? modal.querySelector("[data-cc-methodology-overlay]")
+    : null;
 
   if (!modal || !openBtn || !closeBtn || !overlay) return;
 
@@ -1396,5 +1421,5 @@ document.addEventListener("DOMContentLoaded", () => {
   setupCountryDropdown();
   setupMethodologyModal();
   setupFilters();
-  loadCountry("US"); // default view: United States
+  loadCountry("US"); // default
 });
