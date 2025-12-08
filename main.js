@@ -828,7 +828,8 @@ function renderEngineCards(engines) {
     card.appendChild(header);
 
     const main = document.createElement("div");
-    main.className = "mt-2 flex items-center justify-between gap-3";
+    // Stack score + pill vertically so text isn't squashed
+    main.className = "mt-3 flex flex-col gap-2";
 
     const scoreEl = document.createElement("div");
     scoreEl.innerHTML = `
