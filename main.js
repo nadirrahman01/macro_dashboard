@@ -15,6 +15,7 @@ const COUNTRY_META = {
   CN: { name: "China", region: "G-20 · EM", wb: "CHN" },
   IN: { name: "India", region: "G-20 · EM", wb: "IND" },
   BR: { name: "Brazil", region: "G-20 · EM", wb: "BRA" }
+  UZ: { name: "Uzbekistan", region: "Central Asia · EM", wb: "UZB" }
 };
 
 // ---------------------------------------------------------------------------
@@ -53,7 +54,7 @@ const INDICATORS = [
   },
   {
     id: "money",
-    wb: "FM.LBL.MQMY.ZG",
+    wb: "FM.LBL.MQMY.GD.ZS",
     label: "Broad money (M2) growth (annual %)",
     engine: "Liquidity",
     bucket: "Leading",
