@@ -1,13 +1,14 @@
 // main.js
-// Cordoba Capital – Global Macro Engine (World Bank WDI powered)
+// Cordoba Capital – Global Macro Engine (Beta)
+// Data source: World Bank World Development Indicators (WDI)
 
 // ---------------------------------------------------------------------------
-// 1. Country metadata (incl. World Bank 3-letter codes + aliases)
+// Country metadata (2-letter UI code → 3-letter WB code)
 // ---------------------------------------------------------------------------
 const COUNTRY_META = {
   US: { name: "United States", region: "G-20 · DM", wb: "USA" },
+  UK: { name: "United Kingdom", region: "G-20 · DM", wb: "GBR" },
   GB: { name: "United Kingdom", region: "G-20 · DM", wb: "GBR" },
-  UK: { name: "United Kingdom", region: "G-20 · DM", wb: "GBR" }, // alias
   DE: { name: "Germany", region: "G-20 · DM", wb: "DEU" },
   FR: { name: "France", region: "G-20 · DM", wb: "FRA" },
   JP: { name: "Japan", region: "G-20 · DM", wb: "JPN" },
@@ -17,12 +18,12 @@ const COUNTRY_META = {
 };
 
 // ---------------------------------------------------------------------------
-// 2. Indicator definitions (World Bank codes)
+// Indicator definitions (World Bank codes)
 // ---------------------------------------------------------------------------
 const INDICATORS = [
   {
     id: "gdp_growth",
-    wb: "NY.GDP.MKTP.KD.ZG", // Real GDP growth (annual %)
+    wb: "NY.GDP.MKTP.KD.ZG",
     label: "GDP growth (annual %)",
     engine: "Growth",
     bucket: "Coincident",
@@ -32,7 +33,7 @@ const INDICATORS = [
   },
   {
     id: "inflation",
-    wb: "FP.CPI.TOTL.ZG", // Headline CPI (annual %)
+    wb: "FP.CPI.TOTL.ZG",
     label: "Inflation, CPI (annual %)",
     engine: "Inflation",
     bucket: "Coincident",
@@ -42,7 +43,7 @@ const INDICATORS = [
   },
   {
     id: "unemployment",
-    wb: "SL.UEM.TOTL.ZS", // Unemployment rate (% labour force)
+    wb: "SL.UEM.TOTL.ZS",
     label: "Unemployment rate (% labour force)",
     engine: "Growth",
     bucket: "Lagging",
@@ -52,7 +53,7 @@ const INDICATORS = [
   },
   {
     id: "money",
-    wb: "FM.LBL.MQMY.ZG", // Broad money growth (annual %)
+    wb: "FM.LBL.MQMY.ZG",
     label: "Broad money (M2) growth (annual %)",
     engine: "Liquidity",
     bucket: "Leading",
@@ -62,7 +63,7 @@ const INDICATORS = [
   },
   {
     id: "current_account",
-    wb: "BN.CAB.XOKA.GD.ZS", // CA balance (% GDP)
+    wb: "BN.CAB.XOKA.GD.ZS",
     label: "Current account balance (% of GDP)",
     engine: "External",
     bucket: "Coincident",
@@ -72,48 +73,47 @@ const INDICATORS = [
   }
 ];
 
-// in-memory computed stats cache (per session)
+// Simple in-memory cache for stats
 const macroCache = {};
 
 // ---------------------------------------------------------------------------
-// 3. World Bank fetch (with 3-letter mapping + localStorage cache)
+// World Bank fetch with localStorage cache
 // ---------------------------------------------------------------------------
 async function fetchWorldBankSeries(countryKey, indicatorCode) {
-  const meta = COUNTRY_META[countryKey] || {};
-  const wbCode = meta.wb || countryKey; // fallback: use key directly
-
+  const meta = COUNTRY_META[countryKey];
+  if (!meta) {
+    console.warn("Unknown country:", countryKey);
+    return [];
+  }
+  const wbCode = meta.wb;
   const cacheKey = `wb_${wbCode}_${indicatorCode}`;
 
-  // Try localStorage cache first
+  // Try cache (7 days)
   try {
     const cachedRaw = localStorage.getItem(cacheKey);
     if (cachedRaw) {
       const cached = JSON.parse(cachedRaw);
-      const maxAgeMs = 7 * 24 * 60 * 60 * 1000; // 7 days
+      const maxAgeMs = 7 * 24 * 60 * 60 * 1000;
       if (cached.timestamp && Date.now() - cached.timestamp < maxAgeMs) {
-        console.log(`[WB][cache] ${wbCode} ${indicatorCode} →`, cached.series.length, "points");
         return cached.series || [];
       }
     }
   } catch (err) {
-    console.warn("LocalStorage read error:", err);
+    console.warn("localStorage read error:", err);
   }
 
   const url = `https://api.worldbank.org/v2/country/${wbCode}/indicator/${indicatorCode}?format=json&per_page=200`;
-  console.log("[WB][fetch]", url);
 
   try {
     const res = await fetch(url);
-
     if (!res.ok) {
-      console.error("World Bank request failed:", res.status, url);
+      console.error("World Bank error:", res.status, url);
       return [];
     }
-
     const json = await res.json();
     const data = Array.isArray(json) ? json[1] : null;
     if (!Array.isArray(data)) {
-      console.warn("World Bank: no data array for", wbCode, indicatorCode, json);
+      console.warn("World Bank: no data array for", wbCode, indicatorCode);
       return [];
     }
 
@@ -123,9 +123,7 @@ async function fetchWorldBankSeries(countryKey, indicatorCode) {
         year: parseInt(d.date, 10),
         value: Number(d.value)
       }))
-      .sort((a, b) => a.year - b.year);
-
-    console.log(`[WB][ok] ${wbCode} ${indicatorCode} →`, series.length, "points");
+      .sort((a, b) => a.year - b.year); // oldest → newest
 
     try {
       localStorage.setItem(
@@ -136,18 +134,18 @@ async function fetchWorldBankSeries(countryKey, indicatorCode) {
         })
       );
     } catch (err) {
-      console.warn("LocalStorage write error:", err);
+      console.warn("localStorage write error:", err);
     }
 
     return series;
   } catch (err) {
-    console.error("World Bank fetch error:", wbCode, indicatorCode, err);
+    console.error("World Bank fetch failed:", err);
     return [];
   }
 }
 
 // ---------------------------------------------------------------------------
-// 4. Stats & helpers
+// Stats and helpers
 // ---------------------------------------------------------------------------
 function computeStats(series, lookbackYears = 10) {
   if (!series.length) return null;
@@ -204,13 +202,13 @@ function formatNumber(val, decimals = 1, unit = "", fallback = "n/a") {
   return num;
 }
 
-function capitaliseFirst(str) {
-  return str ? str.charAt(0).toUpperCase() + str.slice(1) : "";
-}
-
 function average(arr) {
   if (!arr.length) return 0;
   return arr.reduce((s, v) => s + v, 0) / arr.length;
+}
+
+function capitaliseFirst(str) {
+  return str ? str.charAt(0).toUpperCase() + str.slice(1) : "";
 }
 
 function classifySignal(stat, cfg) {
@@ -269,7 +267,7 @@ function engineScoreFromIndicators(statsById) {
 
   const growthZ =
     (gdp ? (gdp.z || 0) : 0) - (u ? (u.z || 0) * 0.4 : 0);
-  const inflationZ = infl ? -infl.z : 0;
+  const inflationZ = infl ? -infl.z : 0; // lower inflation "better"
   const liquidityZ = m2 ? m2.z : 0;
   const externalZ = ca ? ca.z : 0;
 
@@ -290,7 +288,7 @@ function riskLevelFromZ(z) {
 }
 
 // ---------------------------------------------------------------------------
-// 5. Rendering – Regime summary
+// Rendering – Regime summary
 // ---------------------------------------------------------------------------
 function renderRegimeSummary(countryKey, statsById, engines) {
   const meta = COUNTRY_META[countryKey] || { name: countryKey, region: "" };
@@ -379,7 +377,7 @@ function renderRegimeSummary(countryKey, statsById, engines) {
   confidence = Math.round(confidence * 100);
   if (confEl) confEl.textContent = `${confidence}%`;
 
-  // Analogue years (from GDP)
+  // Analogues (from GDP)
   if (analogEl) {
     analogEl.innerHTML = "";
     const analogueYears = gdp ? gdp.analogues : [];
@@ -420,14 +418,11 @@ function renderRegimeSummary(countryKey, statsById, engines) {
 }
 
 // ---------------------------------------------------------------------------
-// 6. Rendering – Engine cards
+// Rendering – Engine cards
 // ---------------------------------------------------------------------------
 function renderEngineCards(engines) {
   const container = document.getElementById("cc-engine-cards");
-  if (!container) {
-    console.warn("Missing #cc-engine-cards container");
-    return;
-  }
+  if (!container) return;
   container.innerHTML = "";
 
   const meta = [
@@ -464,24 +459,24 @@ function renderEngineCards(engines) {
 
     const card = document.createElement("div");
     card.className =
-      "rounded-2xl border bg-cordobaSoft px-4 py-3 flex flex-col justify-between " +
+      "rounded-2xl border bg-cordobaSoft px-3 py-2 flex flex-col justify-between " +
       m.color;
 
     const header = document.createElement("div");
     header.className =
-      "flex items-baseline justify-between text-[11px] tracking-[0.18em] uppercase text-neutral-500";
-    header.innerHTML = `<span>${m.title}</span><span>z-score ${
+      "flex items-baseline justify-between text-[10px] tracking-[0.18em] uppercase text-neutral-500";
+    header.innerHTML = `<span>${m.title}</span><span>z ${
       z ? z.toFixed(1) : "0.0"
     }</span>`;
     card.appendChild(header);
 
     const main = document.createElement("div");
-    main.className = "mt-2 flex items-end justify-between gap-2";
+    main.className = "mt-1 flex items-end justify-between gap-2";
 
     const scoreEl = document.createElement("div");
     scoreEl.innerHTML = `
-      <div class="text-2xl font-semibold">${score}<span class="text-sm text-neutral-400">/100</span></div>
-      <div class="text-[11px] text-neutral-500 mt-1">vs own 10-year history</div>
+      <div class="text-lg font-semibold">${score}<span class="text-xs text-neutral-400">/100</span></div>
+      <div class="text-[10px] text-neutral-500 mt-0.5">vs 10-year history</div>
     `;
     main.appendChild(scoreEl);
 
@@ -489,7 +484,7 @@ function renderEngineCards(engines) {
       Math.abs(z) < 0.5 ? "Near trend" : z > 0 ? "Above trend" : "Below trend";
     const labelEl = document.createElement("span");
     labelEl.className =
-      "inline-flex items-center px-2 py-0.5 rounded-full border text-[11px] " +
+      "inline-flex items-center px-2 py-0.5 rounded-full border text-[10px] " +
       m.text +
       " border-neutral-300 bg-white";
     labelEl.textContent = qualitative;
@@ -501,14 +496,99 @@ function renderEngineCards(engines) {
 }
 
 // ---------------------------------------------------------------------------
-// 7. Rendering – Key inflection signals
+// Rendering – Headline tiles & inflection signals
 // ---------------------------------------------------------------------------
+function renderHeadlineTiles(statsById) {
+  const gdp = statsById.gdp_growth;
+  const infl = statsById.inflation;
+  const unemp = statsById.unemployment;
+  const money = statsById.money;
+  const ca = statsById.current_account;
+
+  const setText = (id, text) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = text;
+  };
+
+  if (gdp) {
+    setText(
+      "cc-gdp-latest",
+      `${formatNumber(gdp.latest.value, 1, "%")} (${gdp.latest.year})`
+    );
+    setText(
+      "cc-gdp-extra",
+      `10-year avg ${formatNumber(gdp.mean, 1, "%")}; change vs prior year ${formatNumber(
+        gdp.delta,
+        1,
+        "%"
+      )}.`
+    );
+  }
+
+  if (infl) {
+    setText(
+      "cc-inflation-latest",
+      `${formatNumber(infl.latest.value, 1, "%")} (${infl.latest.year})`
+    );
+    setText(
+      "cc-inflation-extra",
+      `10-year avg ${formatNumber(
+        infl.mean,
+        1,
+        "%"
+      )}; latest vs target depends on central bank regime.`
+    );
+  }
+
+  if (unemp) {
+    setText(
+      "cc-unemployment-latest",
+      `${formatNumber(unemp.latest.value, 1, "%")} (${unemp.latest.year})`
+    );
+    setText(
+      "cc-unemployment-extra",
+      `10-year avg ${formatNumber(
+        unemp.mean,
+        1,
+        "%"
+      )}; a proxy for slack vs overheating.`
+    );
+  }
+
+  if (money) {
+    setText(
+      "cc-money-latest",
+      `${formatNumber(money.latest.value, 1, "%")} (${money.latest.year})`
+    );
+    setText(
+      "cc-money-extra",
+      `10-year avg ${formatNumber(
+        money.mean,
+        1,
+        "%"
+      )}; a rough liquidity pulse.`
+    );
+  }
+
+  if (ca) {
+    setText(
+      "cc-ca-latest",
+      `${formatNumber(ca.latest.value, 1, "% of GDP")} (${ca.latest.year})`
+    );
+    setText(
+      "cc-ca-extra",
+      `10-year avg ${formatNumber(
+        ca.mean,
+        1,
+        "% of GDP"
+      )}; sign and size flag external pressure.`
+    );
+  }
+}
+
 function renderInflectionSignals(statsById) {
   const container = document.getElementById("cc-inflection-list");
-  if (!container) {
-    console.warn("Missing #cc-inflection-list container");
-    return;
-  }
+  if (!container) return;
   container.innerHTML = "";
 
   const ordered = [
@@ -534,12 +614,12 @@ function renderInflectionSignals(statsById) {
     left.className = "flex-1";
 
     const title = document.createElement("div");
-    title.className = "font-medium text-sm";
+    title.className = "font-medium text-xs";
     title.textContent = cfg.label;
     left.appendChild(title);
 
     const small = document.createElement("div");
-    small.className = "text-xs text-neutral-600";
+    small.className = "text-[11px] text-neutral-600";
     const latest = stat.latest;
     const directionText =
       stat.delta > 0
@@ -564,7 +644,7 @@ function renderInflectionSignals(statsById) {
     row.appendChild(left);
 
     const right = document.createElement("div");
-    right.className = "text-right text-xs text-neutral-500 whitespace-nowrap";
+    right.className = "text-right text-[11px] text-neutral-500 whitespace-nowrap";
     const dirArrow =
       signal.direction === "up"
         ? "↑"
@@ -584,15 +664,12 @@ function renderInflectionSignals(statsById) {
 }
 
 // ---------------------------------------------------------------------------
-// 8. Rendering – Indicator Grid
+// Rendering – Indicator grid
 // ---------------------------------------------------------------------------
 function renderIndicatorGrid(statsById, countryKey) {
   const tbody = document.getElementById("cc-indicator-rows");
   const countryLabel = document.getElementById("cc-signals-country");
-  if (!tbody) {
-    console.warn("Missing #cc-indicator-rows tbody");
-    return;
-  }
+  if (!tbody) return;
 
   const meta = COUNTRY_META[countryKey] || { name: countryKey };
   if (countryLabel) countryLabel.textContent = meta.name;
@@ -655,7 +732,7 @@ function renderIndicatorGrid(statsById, countryKey) {
 }
 
 // ---------------------------------------------------------------------------
-// 9. Rendering – Meta
+// Meta (data as of)
 // ---------------------------------------------------------------------------
 function renderMeta(statsById) {
   const dataAsOf = document.getElementById("cc-data-as-of");
@@ -672,16 +749,26 @@ function renderMeta(statsById) {
 }
 
 // ---------------------------------------------------------------------------
-// 10. Country loader (parallel + cached)
+// Country loader
 // ---------------------------------------------------------------------------
 async function loadCountry(countryKey) {
-  console.log("[Engine] loadCountry", countryKey);
+  const meta = COUNTRY_META[countryKey] || { name: countryKey, region: "" };
 
+  const labelEl = document.getElementById("cc-country-current-label");
+  const regionEl = document.getElementById("cc-country-current-region");
+  if (labelEl) labelEl.textContent = meta.name;
+  if (regionEl) regionEl.textContent = meta.region || "";
+
+  // Use cached stats if available
   if (macroCache[countryKey]) {
-    console.log("[Engine] using in-memory cache for", countryKey);
     const statsById = macroCache[countryKey];
     const engines = engineScoreFromIndicators(statsById);
-    safeRender(countryKey, statsById, engines);
+    renderRegimeSummary(countryKey, statsById, engines);
+    renderEngineCards(engines);
+    renderHeadlineTiles(statsById);
+    renderInflectionSignals(statsById);
+    renderIndicatorGrid(statsById, countryKey);
+    renderMeta(statsById);
     return;
   }
 
@@ -696,8 +783,8 @@ async function loadCountry(countryKey) {
     );
 
     const results = await Promise.all(requests);
-    const statsById = {};
 
+    const statsById = {};
     results.forEach(({ cfg, series }) => {
       const stats = series && series.length ? computeStats(series) : null;
       statsById[cfg.id] = stats;
@@ -706,52 +793,26 @@ async function loadCountry(countryKey) {
     macroCache[countryKey] = statsById;
 
     const engines = engineScoreFromIndicators(statsById);
-    safeRender(countryKey, statsById, engines);
+    renderRegimeSummary(countryKey, statsById, engines);
+    renderEngineCards(engines);
+    renderHeadlineTiles(statsById);
+    renderInflectionSignals(statsById);
+    renderIndicatorGrid(statsById, countryKey);
+    renderMeta(statsById);
   } catch (err) {
-    console.error("Failed to load country data", err);
+    console.error("Failed to load country data:", err);
   } finally {
     document.body.classList.remove("cc-loading");
   }
 }
 
-function safeRender(countryKey, statsById, engines) {
-  try {
-    renderRegimeSummary(countryKey, statsById, engines);
-  } catch (e) {
-    console.error("renderRegimeSummary error:", e);
-  }
-  try {
-    renderEngineCards(engines);
-  } catch (e) {
-    console.error("renderEngineCards error:", e);
-  }
-  try {
-    renderInflectionSignals(statsById);
-  } catch (e) {
-    console.error("renderInflectionSignals error:", e);
-  }
-  try {
-    renderIndicatorGrid(statsById, countryKey);
-  } catch (e) {
-    console.error("renderIndicatorGrid error:", e);
-  }
-  try {
-    renderMeta(statsById);
-  } catch (e) {
-    console.error("renderMeta error:", e);
-  }
-}
-
 // ---------------------------------------------------------------------------
-// 11. UI wiring
+// UI wiring
 // ---------------------------------------------------------------------------
 function setupCountryDropdown() {
   const toggle = document.getElementById("cc-country-toggle");
   const menu = document.getElementById("cc-country-menu");
-  if (!toggle || !menu) {
-    console.warn("Missing #cc-country-toggle or #cc-country-menu");
-    return;
-  }
+  if (!toggle || !menu) return;
 
   toggle.addEventListener("click", () => {
     menu.classList.toggle("hidden");
@@ -765,8 +826,12 @@ function setupCountryDropdown() {
     menu.classList.add("hidden");
 
     const meta = COUNTRY_META[code] || { name: code, region };
-    const labelSpan = document.querySelector("[data-cc-country-label]") || document.getElementById("cc-country-label");
-    const regionSpan = document.querySelector("[data-cc-country-region]") || document.getElementById("cc-country-region");
+    const labelSpan =
+      document.querySelector("[data-cc-country-label]") ||
+      document.getElementById("cc-country-current-label");
+    const regionSpan =
+      document.querySelector("[data-cc-country-region]") ||
+      document.getElementById("cc-country-current-region");
 
     if (labelSpan) labelSpan.textContent = meta.name;
     if (regionSpan) regionSpan.textContent = meta.region || region;
@@ -796,9 +861,6 @@ function setupLiveToggle() {
 
     btn.classList.add("bg-cordobaGold", "text-white");
     btn.classList.remove("text-neutral-500");
-
-    const mode = btn.getAttribute("data-cc-live-toggle");
-    console.log("Mode switched to:", mode);
   });
 }
 
@@ -831,11 +893,11 @@ function setupFilters() {
 }
 
 // ---------------------------------------------------------------------------
-// 12. Init
+// Init
 // ---------------------------------------------------------------------------
 document.addEventListener("DOMContentLoaded", () => {
   setupCountryDropdown();
   setupLiveToggle();
   setupFilters();
-  loadCountry("US"); // default
+  loadCountry("US"); // default view: United States
 });
