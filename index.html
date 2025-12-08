@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Cordoba Capital - GME</title>
+  <title>Cordoba Capital – Global Macro Engine (Beta)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <!-- Custom CSS -->
@@ -30,10 +30,10 @@
     }
   </script>
 </head>
-<body class="bg-[#FFFCF9] text-neutral-900 font-body min-h-screen">
+<body class="bg-[#FFFCF9] text-neutral-900 font-body min-h-screen flex flex-col">
 
   <!-- Page wrapper -->
-  <div class="min-h-screen flex flex-col lg:flex-row">
+  <div class="flex-1 flex flex-col lg:flex-row">
 
     <!-- Sidebar -->
     <aside class="w-full lg:w-72 border-b lg:border-b-0 lg:border-r border-neutral-200 bg-white/80 backdrop-blur px-5 py-4 flex flex-col gap-4">
@@ -82,22 +82,6 @@
           External balance
         </button>
       </nav>
-
-      <!-- Footer / methodology at bottom -->
-      <div class="mt-auto border-t border-neutral-200 pt-3 text-[11px] text-neutral-500">
-        <button
-          id="cc-methodology-open"
-          type="button"
-          class="mb-2 inline-flex items-center gap-2 text-[11px] text-neutral-600 hover:text-neutral-900 hover:underline underline-offset-2"
-        >
-          Methodology &amp; data notes
-        </button>
-        <div>
-          Built for internal use by Cordoba Capital.<br />
-          Sources: World Bank World Development Indicators (WDI) and other public data.<br />
-          Data is subject to revision and lag.
-        </div>
-      </div>
     </aside>
 
     <!-- Main content -->
@@ -450,13 +434,50 @@
     </main>
   </div>
 
+  <!-- Institutional footer -->
+  <footer class="border-t border-neutral-200 bg-white/95 backdrop-blur text-[11px] text-neutral-500">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-2.5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+      <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
+        <span class="font-semibold">Cordoba Capital – Global Macro Engine</span>
+        <span>v0.3.0 (Beta)</span>
+        <span>·</span>
+        <span>Window: last 10 observations per series</span>
+        <span>·</span>
+        <span>Latest data cut: <span id="cc-footer-data-as-of">n/a</span></span>
+      </div>
+      <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
+        <a href="https://cordobacapital.co.uk" target="_blank" rel="noopener noreferrer" class="hover:text-neutral-800">
+          cordobacapital.co.uk
+        </a>
+        <a href="https://cordobacapital.co.uk/insights/" target="_blank" rel="noopener noreferrer" class="hover:text-neutral-800">
+          Insights
+        </a>
+        <a href="https://databank.worldbank.org/source/world-development-indicators" target="_blank" rel="noopener noreferrer" class="hover:text-neutral-800">
+          World Bank WDI
+        </a>
+        <button
+          id="cc-methodology-open"
+          type="button"
+          class="underline underline-offset-2 decoration-neutral-400 hover:text-neutral-800"
+        >
+          Methodology &amp; data notes
+        </button>
+      </div>
+    </div>
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pb-2 text-[10px] text-neutral-400">
+      Built for internal and educational use by Cordoba Capital. Sources: World Bank World Development Indicators (WDI) and other public datasets where noted.
+      Data is subject to revision and publication lag and may differ from live market estimates. This dashboard does not constitute investment research,
+      investment advice, or an offer or solicitation to buy or sell any security or instrument.
+    </div>
+  </footer>
+
   <!-- Methodology & data notes modal -->
   <div
     id="cc-methodology-modal"
     class="fixed inset-0 z-40 hidden"
   >
     <div
-      data-cc-overlay
+      data-cc-methodology-overlay
       class="absolute inset-0 bg-black/30"
     ></div>
     <div class="relative z-10 flex min-h-full items-end sm:items-center justify-center p-4">
@@ -480,28 +501,28 @@
         </div>
         <div class="text-xs text-neutral-700 space-y-2 max-h-80 overflow-y-auto pr-1">
           <p>
-            1. <span class="font-semibold">Data frequency.</span> The engine can ingest annual, quarterly, or monthly data. For now, most series are sourced from the World Bank WDI on an annual basis, with scope to plug in fresher national or FRED/OECD feeds over time.
+            1. <span class="font-semibold">Data frequency.</span> The engine can ingest annual, quarterly, or monthly data. At present, most series are sourced from the World Bank WDI on an annual basis, with scope to plug in fresher national or FRED/OECD feeds over time.
           </p>
           <p>
-            2. <span class="font-semibold">History window.</span> For each indicator we work with a rolling history window (up to the last 40 observations). This ensures signals are anchored in recent behaviour rather than very old regimes.
+            2. <span class="font-semibold">History window.</span> For each indicator we work with a rolling history window (up to the last 40 observations). This keeps signals anchored in recent regimes rather than very old cycles.
           </p>
           <p>
-            3. <span class="font-semibold">Standardisation.</span> We compute a simple z-score for the latest observation: (latest − mean) / standard deviation, using the history window. This allows us to compare indicators in “how unusual is this?” terms.
+            3. <span class="font-semibold">Standardisation.</span> We compute z-scores for the latest observation using (latest − mean) / standard deviation over the history window. This lets us talk about how unusual a level is in standard-deviation terms.
           </p>
           <p>
-            4. <span class="font-semibold">Signals.</span> Qualitative labels such as “Strengthening above trend” or “Elevated but cooling” are derived from the z-score and the direction of change versus the prior observation.
+            4. <span class="font-semibold">Signals.</span> Qualitative labels such as “Strengthening above trend” or “Elevated but cooling” combine the z-score with the direction of change versus the prior observation.
           </p>
           <p>
-            5. <span class="font-semibold">Composite engines.</span> The Growth, Inflation, Liquidity, and External engines are simple weighted combinations of indicator z-scores, rescaled to a 10–90 score range for ease of interpretation.
+            5. <span class="font-semibold">Composite engines.</span> The Growth, Inflation, Liquidity, and External engines are simple weighted combinations of indicator z-scores, rescaled to a 10–90 range for ease of interpretation.
           </p>
           <p>
-            6. <span class="font-semibold">Analogues.</span> The “closest analogue periods” show the history observations whose z-scores are closest to today’s reading, as a quick pointer to prior regimes that looked similar.
+            6. <span class="font-semibold">Analogues.</span> “Closest analogue periods” highlight historical points where the z-score profile is closest to today, as a quick pointer to prior regimes that looked similar.
           </p>
           <p>
-            7. <span class="font-semibold">Caveats.</span> All data is subject to revision and publication lag. Some series may be missing or interpolated for certain countries. The dashboard is designed as a qualitative screening tool, not a replacement for full due diligence.
+            7. <span class="font-semibold">Caveats.</span> All data is subject to revision and publication lag. Some series may be missing or interpolated for certain countries. The dashboard is designed as a qualitative screening tool, not a replacement for detailed country and asset-level work.
           </p>
           <p class="text-[11px] text-neutral-500">
-            This tool is for educational and internal use only and does not constitute investment advice or a recommendation to buy or sell any security or asset.
+            This tool is for internal and educational use only and does not constitute investment advice or a recommendation to buy or sell any security or asset.
           </p>
         </div>
       </div>
