@@ -1,11 +1,6 @@
 // main.js
 // Cordoba Capital – Global Macro Engine (Beta)
-// Data source: World Bank World Development Indicators (WDI) + future macro API
-
-// ---------------------------------------------------------------------------
-// Optional backend macro API (set to a base URL when ready)
-// ---------------------------------------------------------------------------
-const MACRO_API_BASE = null; // e.g. "https://macro.cordobacapital.co.uk/api"
+// Data source: World Bank World Development Indicators (WDI)
 
 // ---------------------------------------------------------------------------
 // Country metadata (2-letter UI code → 3-letter WB code)
@@ -122,22 +117,25 @@ const CORDOBA_RESEARCH = [
   }
 ];
 
+// Optional future macro API base (leave null to only use World Bank)
+const MACRO_API_BASE = null;
+
 // Simple in-memory caches
-const macroCache = {};   // countryKey → statsById
-const macroSeries = {};  // countryKey → seriesById (for sparklines)
+const macroCache = {};   // stats
+const macroSeries = {};  // raw series
 
 // ---------------------------------------------------------------------------
-// World Bank fallback fetch (annual data)
-// series shape: [{ period: "YYYY", value: number }] oldest → newest
+// World Bank fetch with localStorage cache (annual data)
+// returns [{ period: "2024", value: number }, ...]
 // ---------------------------------------------------------------------------
-async function fetchWorldBankSeries(countryKey, indicatorCfg) {
+async function fetchWorldBankSeries(countryKey, indicatorCode) {
   const meta = COUNTRY_META[countryKey];
   if (!meta) {
     console.warn("Unknown country:", countryKey);
     return [];
   }
   const wbCode = meta.wb;
-  const cacheKey = `wb_${wbCode}_${indicatorCfg.wb}`;
+  const cacheKey = `wb_${wbCode}_${indicatorCode}`;
 
   // Try cache (7 days)
   try {
@@ -153,7 +151,7 @@ async function fetchWorldBankSeries(countryKey, indicatorCfg) {
     console.warn("localStorage read error:", err);
   }
 
-  const url = `https://api.worldbank.org/v2/country/${wbCode}/indicator/${indicatorCfg.wb}?format=json&per_page=200`;
+  const url = `https://api.worldbank.org/v2/country/${wbCode}/indicator/${indicatorCode}?format=json&per_page=200`;
 
   try {
     const res = await fetch(url);
@@ -164,17 +162,17 @@ async function fetchWorldBankSeries(countryKey, indicatorCfg) {
     const json = await res.json();
     const data = Array.isArray(json) ? json[1] : null;
     if (!Array.isArray(data)) {
-      console.warn("World Bank: no data array for", wbCode, indicatorCfg.wb);
+      console.warn("World Bank: no data array for", wbCode, indicatorCode);
       return [];
     }
 
     const series = data
       .filter((d) => d && d.value != null)
       .map((d) => ({
-        period: String(d.date), // "2024", "2023"
+        period: String(d.date), // year string
         value: Number(d.value)
       }))
-      .sort((a, b) => a.period.localeCompare(b.period)); // oldest → newest
+      .sort((a, b) => (a.period > b.period ? 1 : a.period < b.period ? -1 : 0)); // oldest → newest
 
     try {
       localStorage.setItem(
@@ -196,55 +194,30 @@ async function fetchWorldBankSeries(countryKey, indicatorCfg) {
 }
 
 // ---------------------------------------------------------------------------
-// Macro series router (future: monthly/quarterly via your own API)
-// Returns [{ period: "YYYY-MM" | "YYYY-Qx" | "YYYY", value }] oldest → newest
+// Macro series router – ready for higher-frequency API in future
+// For now: uses World Bank as the underlying source.
 // ---------------------------------------------------------------------------
 async function fetchMacroSeries(countryKey, indicatorId) {
-  const indicatorCfg = INDICATORS.find((i) => i.id === indicatorId);
-  if (!indicatorCfg) return [];
-
-  // 1) Optional: your own macro API (set MACRO_API_BASE to enable)
-  if (MACRO_API_BASE) {
-    try {
-      const url = `${MACRO_API_BASE}?country=${encodeURIComponent(
-        countryKey
-      )}&indicator=${encodeURIComponent(indicatorId)}`;
-      const res = await fetch(url);
-      if (res.ok) {
-        const json = await res.json();
-        if (Array.isArray(json) && json.length) {
-          // Expect [{ period: "YYYY-MM" or "YYYY-Qx", value }, ...] oldest → newest
-          return json
-            .filter((p) => p && p.value != null && p.period)
-            .sort((a, b) => a.period.localeCompare(b.period));
-        }
-      }
-    } catch (e) {
-      console.warn("Macro API fetch failed, falling back to WDI.", e);
-    }
-  }
-
-  // 2) Fallback: World Bank annual
-  return fetchWorldBankSeries(countryKey, indicatorCfg);
+  // If you later wire a custom macro API, plug it here using MACRO_API_BASE.
+  const cfg = INDICATORS.find((i) => i.id === indicatorId);
+  if (!cfg) return [];
+  // Fallback: World Bank
+  return await fetchWorldBankSeries(countryKey, cfg.wb);
 }
 
 // ---------------------------------------------------------------------------
-// Stats and helpers (period-aware, works for any frequency)
+// Stats and helpers (period-agnostic)
 // ---------------------------------------------------------------------------
 function computeStats(series, lookbackPoints = 40) {
-  // series: [{ period: "YYYY" | "YYYY-MM" | "YYYY-Qx", value }], oldest → newest
-  if (!series.length) return null;
+  if (!series || !series.length) return null;
 
   const latest = series[series.length - 1];
   const prev = series.length >= 2 ? series[series.length - 2] : null;
 
-  // Last N observations as the "history window"
-  const window =
-    series.length > lookbackPoints
-      ? series.slice(series.length - lookbackPoints)
-      : series.slice();
-  const values = window.map((p) => p.value);
+  const cutoffIndex = Math.max(0, series.length - lookbackPoints);
+  const window = series.slice(cutoffIndex);
 
+  const values = window.map((p) => p.value);
   const mean =
     values.length > 0
       ? values.reduce((sum, v) => sum + v, 0) / values.length
@@ -260,12 +233,12 @@ function computeStats(series, lookbackPoints = 40) {
   const z = stdev > 0 ? (latest.value - mean) / stdev : 0;
   const delta = prev ? latest.value - prev.value : 0;
 
-  const zByObs = window.map((p) => ({
+  const zByPeriod = window.map((p) => ({
     period: p.period,
     z: stdev > 0 ? (p.value - mean) / stdev : 0
   }));
 
-  const analogues = zByObs
+  const analogues = zByPeriod
     .map((p) => ({ ...p, diff: Math.abs(p.z - z) }))
     .sort((a, b) => a.diff - b.diff)
     .slice(0, 3)
@@ -279,7 +252,7 @@ function computeStats(series, lookbackPoints = 40) {
     z,
     delta,
     analogues,
-    windowCount: window.length
+    windowPoints: window.length
   };
 }
 
@@ -329,13 +302,13 @@ function classifySignal(stat, cfg) {
     else if (z > 0.5 && direction === "down") label = "Above trend, easing";
     else if (z < -0.5 && direction === "down") label = "Weak and deteriorating";
     else if (z < -0.5 && direction === "up") label = "Weak but stabilising";
-    else label = "Close to its history average";
+    else label = "Close to trend";
   } else {
     if (z > 0.5 && direction === "up") label = "Elevated and rising";
     else if (z > 0.5 && direction === "down") label = "Elevated but cooling";
     else if (z < -0.5 && direction === "down") label = "Subdued and falling";
     else if (z < -0.5 && direction === "up") label = "Subdued but firming";
-    else label = "Close to its history average";
+    else label = "Close to trend";
   }
 
   return { level, strength, label, direction };
@@ -353,7 +326,8 @@ function engineScoreFromIndicators(statsById) {
   const m2 = statsById.money;
   const ca = statsById.current_account;
 
-  const growthZ = (gdp ? (gdp.z || 0) : 0) - (u ? (u.z || 0) * 0.4 : 0);
+  const growthZ =
+    (gdp ? (gdp.z || 0) : 0) - (u ? (u.z || 0) * 0.4 : 0);
   const inflationZ = infl ? -infl.z : 0; // lower inflation "better"
   const liquidityZ = m2 ? m2.z : 0;
   const externalZ = ca ? ca.z : 0;
@@ -386,12 +360,14 @@ function buildNoteDraft(countryKey, statsById, engines) {
   const ca = statsById.current_account;
 
   const allStats = Object.values(statsById).filter(Boolean);
-  let lastPeriod = "n/a";
-  if (allStats.length) {
-    const periods = allStats.map((s) => s.latest.period);
-    periods.sort((a, b) => a.localeCompare(b));
-    lastPeriod = periods[periods.length - 1];
-  }
+  const lastPeriod = allStats.length
+    ? allStats.reduce((max, s) => {
+        const p = s.latest?.period;
+        if (!p) return max;
+        if (!max) return p;
+        return p > max ? p : max;
+      }, null)
+    : "n/a";
 
   const growthZ = engines.growth?.z || 0;
   const inflZ = engines.inflation?.z || 0;
@@ -407,7 +383,7 @@ function buildNoteDraft(countryKey, statsById, engines) {
   const lines = [];
 
   lines.push(
-    `${meta.name} – Macro snapshot (${lastPeriod}, latest available data).`
+    `${meta.name} – Macro snapshot (${lastPeriod}, mixed-frequency data normalised to history).`
   );
   lines.push(
     `The macro backdrop is characterised by ${growthPhrase} alongside ${inflationPhrase}.`
@@ -435,7 +411,7 @@ function buildNoteDraft(countryKey, statsById, engines) {
         gdp.latest.value,
         1,
         "%"
-      )} versus its history average of ${formatNumber(gdp.mean, 1, "%")}.`
+      )} versus a history average of ${formatNumber(gdp.mean, 1, "%")}.`
     );
   } else if (infl) {
     lines.push(
@@ -443,7 +419,7 @@ function buildNoteDraft(countryKey, statsById, engines) {
         infl.latest.value,
         1,
         "%"
-      )} versus its history average of ${formatNumber(infl.mean, 1, "%")}.`
+      )} versus an historical average of ${formatNumber(infl.mean, 1, "%")}.`
     );
   }
 
@@ -453,11 +429,11 @@ function buildNoteDraft(countryKey, statsById, engines) {
         unemp.latest.value,
         1,
         "%"
-      )} versus an historical average of ${formatNumber(
+      )} versus a history average of ${formatNumber(
         unemp.mean,
         1,
         "%"
-      )}, providing a read on slack versus overheating.`
+      )}, providing a read on slack vs overheating.`
     );
   }
 
@@ -467,7 +443,7 @@ function buildNoteDraft(countryKey, statsById, engines) {
         money.latest.value,
         1,
         "%"
-      )}, compared with an historical average of ${formatNumber(
+      )}, compared with a history average of ${formatNumber(
         money.mean,
         1,
         "%"
@@ -481,7 +457,7 @@ function buildNoteDraft(countryKey, statsById, engines) {
         ca.latest.value,
         1,
         "% of GDP"
-      )} against an historical average of ${formatNumber(
+      )} against a history average of ${formatNumber(
         ca.mean,
         1,
         "% of GDP"
@@ -490,7 +466,7 @@ function buildNoteDraft(countryKey, statsById, engines) {
   }
 
   lines.push(
-    `Engine scores – Growth: ${engines.growth.score}/100, Inflation: ${engines.inflation.score}/100, Liquidity: ${engines.liquidity.score}/100, External: ${engines.external.score}/100 – provide a compact view of where the country sits versus its own history.`
+    `Engine scores – Growth: ${engines.growth.score}/100, Inflation: ${engines.inflation.score}/100, Liquidity: ${engines.liquidity.score}/100, External: ${engines.external.score}/100 – provide a compact view of where the country sits vs its own recent history.`
   );
 
   return lines.join("\n\n");
@@ -518,7 +494,7 @@ function renderNoteHelper(countryKey, statsById, engines) {
 
     if (gdp && Math.abs(gdp.z) > 0.7) {
       bullets.push(
-        `Growth is ${gdp.z > 0 ? "well above" : "well below"} its recent history (z-score ${gdp.z.toFixed(
+        `Growth is ${gdp.z > 0 ? "well above" : "well below"} its usual range (z-score ${gdp.z.toFixed(
           1
         )}); think about where we are in the cycle and how that lines up with earnings and credit.`
       );
@@ -526,7 +502,7 @@ function renderNoteHelper(countryKey, statsById, engines) {
 
     if (infl && Math.abs(infl.z) > 0.7) {
       bullets.push(
-        `Inflation is ${infl.z > 0 ? "elevated" : "subdued"} versus history (z-score ${infl.z.toFixed(
+        `Inflation is ${infl.z > 0 ? "elevated" : "subdued"} vs history (z-score ${infl.z.toFixed(
           1
         )}); note whether this supports or challenges the market’s current rate path.`
       );
@@ -540,7 +516,7 @@ function renderNoteHelper(countryKey, statsById, engines) {
 
     if (ca && Math.abs(ca.z) > 0.7) {
       bullets.push(
-        `The current account is ${ca.z > 0 ? "stronger" : "weaker"} than usual; think about FX vulnerability, funding channels, and how this sits versus peers.`
+        `The current account is ${ca.z > 0 ? "stronger" : "weaker"} than usual; think about FX vulnerability, funding channels, and how this sits vs peers.`
       );
     }
 
@@ -565,7 +541,7 @@ function renderNoteHelper(countryKey, statsById, engines) {
 
     if (!bullets.length) {
       bullets.push(
-        "Most indicators are close to their recent-history ranges. Focus the note on what could shift the regime: policy surprises, global shocks, or structural reforms."
+        "Most indicators are close to their historical ranges. Focus the note on what could shift the regime: policy surprises, global shocks, or structural reforms."
       );
     }
 
@@ -633,7 +609,9 @@ function renderResearchSuggestions(countryKey, statsById, engines) {
 
     const nameLower = countryName.toLowerCase();
     if (
-      article.regions.some((r) => nameLower.includes(r.toLowerCase()))
+      article.regions.some((r) =>
+        nameLower.includes(r.toLowerCase())
+      )
     ) {
       score += 2;
     }
@@ -687,11 +665,12 @@ function renderResearchSuggestions(countryKey, statsById, engines) {
 }
 
 // ---------------------------------------------------------------------------
-// “Next 3 questions to ask” box
+// "Next 3 questions to ask" helper
 // ---------------------------------------------------------------------------
 function renderQuestionPrompts(countryKey, statsById, engines) {
   const listEl = document.getElementById("cc-question-list");
   if (!listEl) return;
+
   listEl.innerHTML = "";
 
   const gdp = statsById.gdp_growth;
@@ -700,51 +679,52 @@ function renderQuestionPrompts(countryKey, statsById, engines) {
   const money = statsById.money;
   const ca = statsById.current_account;
 
-  const qs = [];
+  const questions = [];
 
   if (ca && Math.abs(ca.z) > 0.7) {
-    qs.push(
-      `Why has the current-account position moved ${ca.z > 0 ? "above" : "below"} its usual range, and how does that change the funding or FX narrative for this country?`
+    questions.push(
+      "Why has the current-account position moved this far away from its usual range, and how does that square with broader risk sentiment in FX and credit?"
     );
   }
 
-  if (gdp && unemp && Math.abs(gdp.z - unemp.z) > 0.8) {
-    qs.push(
-      `What is driving the gap between activity and labour data – does the combination of growth (${gdp.z.toFixed(
+  if (gdp && unemp && Math.abs(gdp.z - (unemp.z || 0)) > 0.7) {
+    questions.push(
+      "What is driving the gap between activity data and labour-market conditions, and does that argue for a change in how we read the cycle here?"
+    );
+  }
+
+  if (money && engines.external && Math.abs(money.z) > 0.5 && Math.abs(engines.external.z) > 0.5) {
+    questions.push(
+      "Is domestic liquidity moving in a way that can offset the external pressure signalled by the balance-of-payments side, or are we setting up a clash between the two?"
+    );
+  }
+
+  const engineArray = [
+    { id: "growth", label: "Growth", z: engines.growth?.z || 0 },
+    { id: "inflation", label: "Inflation", z: engines.inflation?.z || 0 },
+    { id: "liquidity", label: "Liquidity", z: engines.liquidity?.z || 0 },
+    { id: "external", label: "External", z: engines.external?.z || 0 }
+  ].sort((a, b) => Math.abs(b.z) - Math.abs(a.z));
+
+  const dom = engineArray[0];
+  if (dom && Math.abs(dom.z) > 0.5) {
+    questions.push(
+      `If ${dom.label.toLowerCase()} is the dominant engine right now (z-score ${dom.z.toFixed(
         1
-      )} z) and unemployment (${unemp.z.toFixed(
-        1
-      )} z) suggest a turning point in the cycle?`
+      )}), where are markets already pricing this and where might the pricing still be slow to adjust?`
     );
   }
 
-  if (money && ca && Math.sign(money.z) !== Math.sign(ca.z)) {
-    qs.push(
-      `Liquidity and external balances are pointing in different directions; is domestic easing (${money.z.toFixed(
-        1
-      )} z) enough to offset the external pressure (${ca.z.toFixed(
-        1
-      )} z) in this regime?`
+  if (!questions.length) {
+    questions.push(
+      "Most indicators are close to normal ranges. What are the two or three things that could genuinely shift this regime over the next year?"
     );
   }
 
-  if (infl && Math.abs(infl.z) > 0.7) {
-    qs.push(
-      `If inflation is ${infl.z > 0 ? "persistently above" : "well below"} its history, how credible is the local policy path implied by markets and what would force a repricing?`
-    );
-  }
-
-  if (!qs.length) {
-    qs.push(
-      "Most indicators are close to their recent-history ranges. What would have to change – on policy, growth, or external conditions – for this regime to break?"
-    );
-  }
-
-  const trimmed = qs.slice(0, 3);
-  trimmed.forEach((text) => {
+  questions.slice(0, 3).forEach((q) => {
     const li = document.createElement("li");
     li.className = "text-xs text-neutral-700 mb-1";
-    li.textContent = text;
+    li.textContent = q;
     listEl.appendChild(li);
   });
 }
@@ -835,11 +815,11 @@ function renderRegimeSummary(countryKey, statsById, engines) {
   const avgWindow = average(
     Object.values(statsById)
       .filter(Boolean)
-      .map((s) => s.windowCount || 0)
+      .map((s) => s.windowPoints || 0)
   );
   let confidence =
     0.4 * (indicatorsWithData / INDICATORS.length) +
-    0.6 * Math.min(avgWindow / 20, 1);
+    0.6 * Math.min(avgWindow / 40, 1);
   confidence = Math.round(confidence * 100);
   if (confEl) confEl.textContent = `${confidence}%`;
 
@@ -950,9 +930,7 @@ function renderEngineCards(engines) {
       Math.abs(z) < 0.5 ? "Near trend" : z > 0 ? "Above trend" : "Below trend";
     const labelEl = document.createElement("span");
     labelEl.className =
-      "inline-flex items-center justify-center whitespace-nowrap " +
-      "px-3 py-1 rounded-full border text-[11px] font-medium " +
-      "border-neutral-300 bg-white " +
+      "inline-flex items-center justify-center whitespace-nowrap px-3 py-1 rounded-full border text-[11px] font-medium border-neutral-300 bg-white " +
       m.text;
     labelEl.textContent = qualitative;
     main.appendChild(labelEl);
@@ -1100,7 +1078,7 @@ function renderInflectionSignals(statsById) {
       cfg.unit
     )} (${latest.period}), ${directionText} the prior observation and ${
       signal.label
-    } versus the history average of ${formatNumber(
+    } vs the history average of ${formatNumber(
       stat.mean,
       cfg.decimals,
       cfg.unit
@@ -1131,52 +1109,46 @@ function renderInflectionSignals(statsById) {
 }
 
 // ---------------------------------------------------------------------------
-// Sparklines – inline SVG for last observations
+// Sparklines
 // ---------------------------------------------------------------------------
 function buildSparklineSVG(series, maxPoints = 10) {
-  if (!series || series.length < 2) return null;
+  if (!series || series.length < 2) return "";
+  const points = series.slice(-maxPoints);
+  const values = points.map((p) => p.value);
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const range = max - min || 1;
 
-  const slice =
-    series.length > maxPoints
-      ? series.slice(series.length - maxPoints)
-      : series.slice();
-
-  const values = slice.map((p) => p.value);
-  const minVal = Math.min(...values);
-  const maxVal = Math.max(...values);
-  const width = 80;
+  const width = 60;
   const height = 24;
+  const step = width / (points.length - 1);
 
-  const range = maxVal - minVal || 1;
-
-  const points = slice
+  const coords = points
     .map((p, idx) => {
-      const x =
-        slice.length === 1
-          ? width / 2
-          : (idx / (slice.length - 1)) * (width - 4) + 2;
-      const norm = (p.value - minVal) / range;
-      const y = height - 2 - norm * (height - 4);
+      const x = idx * step;
+      const y = height - ((p.value - min) / range) * height;
       return `${x.toFixed(1)},${y.toFixed(1)}`;
     })
     .join(" ");
 
   return `
-    <svg viewBox="0 0 ${width} ${height}" class="w-20 h-6">
+    <svg viewBox="0 0 ${width} ${height}" class="w-16 h-5">
       <polyline
         fill="none"
-        stroke="currentColor"
-        stroke-width="1"
-        points="${points}"
+        stroke="#9A690F"
+        stroke-width="1.3"
+        points="${coords}"
+        stroke-linejoin="round"
+        stroke-linecap="round"
       />
     </svg>
   `;
 }
 
 // ---------------------------------------------------------------------------
-// Rendering – Indicator grid (with sparklines)
+// Rendering – Indicator grid
 // ---------------------------------------------------------------------------
-function renderIndicatorGrid(statsById, countryKey, seriesById = {}) {
+function renderIndicatorGrid(statsById, seriesById, countryKey) {
   const tbody = document.getElementById("cc-indicator-rows");
   const countryLabel = document.getElementById("cc-signals-country");
   if (!tbody) return;
@@ -1189,6 +1161,9 @@ function renderIndicatorGrid(statsById, countryKey, seriesById = {}) {
   INDICATORS.forEach((cfg) => {
     const stat = statsById[cfg.id];
     if (!stat) return;
+
+    const series = seriesById[cfg.id] || [];
+    const spark = buildSparklineSVG(series);
 
     const signal = classifySignal(stat, cfg);
     const tr = document.createElement("tr");
@@ -1203,44 +1178,33 @@ function renderIndicatorGrid(statsById, countryKey, seriesById = {}) {
     const zFormatted =
       stat.z != null && !isNaN(stat.z) ? stat.z.toFixed(1) : "0.0";
 
-    const commentText = `Latest ${stat.latest.period} reading of ${lastVal} versus history average ${formatNumber(
+    const commentText = `Latest ${stat.latest.period} reading of ${lastVal} vs history average ${formatNumber(
       stat.mean,
       cfg.decimals,
       cfg.unit
-    )}; change versus prior observation ${formatNumber(
+    )}; change vs prior observation ${formatNumber(
       stat.delta,
       cfg.decimals,
       cfg.unit
     )}.`;
 
     tr.innerHTML = `
-      <td class="py-2 pr-3 text-neutral-900 align-middle">${cfg.label}</td>
-      <td class="py-2 pr-3 text-neutral-600 align-middle">${cfg.engine}</td>
-      <td class="py-2 pr-3 text-neutral-600 align-middle">${cfg.bucket}</td>
-      <td class="py-2 pr-3 align-middle"></td>
-      <td class="py-2 pr-3 align-middle text-neutral-500 text-xs"></td>
-      <td class="py-2 pr-3 text-right text-neutral-900 align-middle">${lastVal}</td>
-      <td class="py-2 pr-3 text-right text-neutral-700 align-middle">${zFormatted}</td>
-      <td class="py-2 pr-3 text-neutral-600 align-middle">${commentText}</td>
+      <td class="py-2 pr-3 text-neutral-900">${cfg.label}</td>
+      <td class="py-2 pr-3 text-neutral-600">${cfg.engine}</td>
+      <td class="py-2 pr-3 text-neutral-600">${cfg.bucket}</td>
+      <td class="py-2 pr-3"></td>
+      <td class="py-2 pr-3 text-right">${spark || ""}</td>
+      <td class="py-2 pr-3 text-right text-neutral-900">${lastVal}</td>
+      <td class="py-2 pr-3 text-right text-neutral-700">${zFormatted}</td>
+      <td class="py-2 pr-3 text-neutral-600">${commentText}</td>
     `;
 
-    // Signal badge
     const signalCell = tr.children[3];
     const signalBadge = document.createElement("span");
     signalBadge.className =
       "inline-flex items-center px-2 py-0.5 rounded-full border bg-white text-[11px] border-neutral-300";
     signalBadge.textContent = signal.label;
     signalCell.appendChild(signalBadge);
-
-    // Sparkline
-    const sparkCell = tr.children[4];
-    const series = seriesById[cfg.id] || [];
-    const svg = buildSparklineSVG(series);
-    if (svg) {
-      sparkCell.innerHTML = `<div class="inline-flex items-center text-neutral-400">${svg}</div>`;
-    } else {
-      sparkCell.textContent = "";
-    }
 
     tbody.appendChild(tr);
   });
@@ -1266,11 +1230,37 @@ function renderMeta(statsById) {
     return;
   }
 
-  const periods = allStats.map((s) => s.latest.period);
-  periods.sort((a, b) => a.localeCompare(b));
-  const lastPeriod = periods[periods.length - 1];
+  const lastPeriod = allStats.reduce((max, s) => {
+    const p = s.latest?.period;
+    if (!p) return max;
+    if (!max) return p;
+    return p > max ? p : max;
+  }, null);
 
-  dataAsOf.textContent = `latest: ${lastPeriod}`;
+  dataAsOf.textContent = `latest: ${lastPeriod || "n/a"}`;
+}
+
+// ---------------------------------------------------------------------------
+// Methodology modal
+// ---------------------------------------------------------------------------
+function setupMethodologyModal() {
+  const openBtn = document.getElementById("cc-methodology-open");
+  const modal = document.getElementById("cc-methodology-modal");
+  if (!openBtn || !modal) return;
+
+  const closeBtn = document.getElementById("cc-methodology-close");
+  const overlay = modal.querySelector("[data-cc-overlay]");
+
+  const open = () => {
+    modal.classList.remove("hidden");
+  };
+  const close = () => {
+    modal.classList.add("hidden");
+  };
+
+  openBtn.addEventListener("click", open);
+  if (closeBtn) closeBtn.addEventListener("click", close);
+  if (overlay) overlay.addEventListener("click", close);
 }
 
 // ---------------------------------------------------------------------------
@@ -1285,15 +1275,15 @@ async function loadCountry(countryKey) {
   if (regionEl) regionEl.textContent = meta.region || "";
 
   // Use cached stats if available
-  if (macroCache[countryKey]) {
+  if (macroCache[countryKey] && macroSeries[countryKey]) {
     const statsById = macroCache[countryKey];
-    const seriesById = macroSeries[countryKey] || {};
+    const seriesById = macroSeries[countryKey];
     const engines = engineScoreFromIndicators(statsById);
     renderRegimeSummary(countryKey, statsById, engines);
     renderEngineCards(engines);
     renderHeadlineTiles(statsById);
     renderInflectionSignals(statsById);
-    renderIndicatorGrid(statsById, countryKey, seriesById);
+    renderIndicatorGrid(statsById, seriesById, countryKey);
     renderMeta(statsById);
     renderNoteHelper(countryKey, statsById, engines);
     renderResearchSuggestions(countryKey, statsById, engines);
@@ -1315,12 +1305,10 @@ async function loadCountry(countryKey) {
 
     const statsById = {};
     const seriesById = {};
-
     results.forEach(({ cfg, series }) => {
-      seriesById[cfg.id] = series || [];
-      const stats =
-        series && series.length ? computeStats(series) : null;
+      const stats = series && series.length ? computeStats(series) : null;
       statsById[cfg.id] = stats;
+      seriesById[cfg.id] = series;
     });
 
     macroCache[countryKey] = statsById;
@@ -1331,7 +1319,7 @@ async function loadCountry(countryKey) {
     renderEngineCards(engines);
     renderHeadlineTiles(statsById);
     renderInflectionSignals(statsById);
-    renderIndicatorGrid(statsById, countryKey, seriesById);
+    renderIndicatorGrid(statsById, seriesById, countryKey);
     renderMeta(statsById);
     renderNoteHelper(countryKey, statsById, engines);
     renderResearchSuggestions(countryKey, statsById, engines);
@@ -1383,25 +1371,6 @@ function setupCountryDropdown() {
   });
 }
 
-// Kept for future (no live toggle in UI now, so this safely no-ops)
-function setupLiveToggle() {
-  const group = document.getElementById("cc-live-toggle-group");
-  if (!group) return;
-
-  group.addEventListener("click", (evt) => {
-    const btn = evt.target.closest("[data-cc-live-toggle]");
-    if (!btn) return;
-
-    Array.from(group.querySelectorAll("button")).forEach((b) => {
-      b.classList.remove("bg-cordobaGold", "text-white");
-      b.classList.add("text-neutral-500");
-    });
-
-    btn.classList.add("bg-cordobaGold", "text-white");
-    btn.classList.remove("text-neutral-500");
-  });
-}
-
 function setupFilters() {
   const allBtn = document.getElementById("cc-filter-all");
   const topBtn = document.getElementById("cc-filter-top");
@@ -1418,7 +1387,7 @@ function setupFilters() {
 
   topBtn.addEventListener("click", () => {
     Array.from(tbody.querySelectorAll("tr")).forEach((tr) => {
-      const zCell = tr.children[6]; // z-Score column (0-based index)
+      const zCell = tr.children[6];
       if (!zCell) return;
       const z = parseFloat(zCell.textContent);
       if (isNaN(z)) return;
@@ -1430,36 +1399,11 @@ function setupFilters() {
   });
 }
 
-function setupMethodologyModal() {
-  const openBtn = document.getElementById("cc-methodology-open");
-  const modal = document.getElementById("cc-methodology-modal");
-  const closeBtn = document.getElementById("cc-methodology-close");
-
-  if (!openBtn || !modal || !closeBtn) return;
-
-  const overlay = modal.querySelector("[data-cc-methodology-overlay]");
-
-  openBtn.addEventListener("click", () => {
-    modal.classList.remove("hidden");
-  });
-
-  closeBtn.addEventListener("click", () => {
-    modal.classList.add("hidden");
-  });
-
-  if (overlay) {
-    overlay.addEventListener("click", () => {
-      modal.classList.add("hidden");
-    });
-  }
-}
-
 // ---------------------------------------------------------------------------
 // Init
 // ---------------------------------------------------------------------------
 document.addEventListener("DOMContentLoaded", () => {
   setupCountryDropdown();
-  setupLiveToggle();
   setupFilters();
   setupMethodologyModal();
   loadCountry("US"); // default view: United States
