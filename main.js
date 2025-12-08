@@ -54,7 +54,7 @@ const INDICATORS = [
   },
   {
     id: "money",
-    wb: "FM.LBL.MQMY.GD.ZS",
+    wb: "FM.LBL.BMNY.ZG",
     label: "Broad money (M2) growth (annual %)",
     engine: "Liquidity",
     bucket: "Leading",
