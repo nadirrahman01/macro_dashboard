@@ -1154,8 +1154,6 @@ function renderIndicatorGrid(statsById, countryKey) {
     if (!stat) return;
 
     const signal = classifySignal(stat, cfg);
-    const tr = document.createElement("tr");
-    tr.className = "hover:bg-cordobaSoft";
 
     const lastVal = formatNumber(
       stat.latest.value,
@@ -1163,6 +1161,7 @@ function renderIndicatorGrid(statsById, countryKey) {
       cfg.unit,
       "n/a"
     );
+
     const zFormatted =
       stat.z != null && !isNaN(stat.z) ? stat.z.toFixed(1) : "0.0";
 
@@ -1178,16 +1177,48 @@ function renderIndicatorGrid(statsById, countryKey) {
       cfg.unit
     )}.`;
 
+    const tr = document.createElement("tr");
+    tr.className = "hover:bg-cordobaSoft";
+
     tr.innerHTML = `
       <td class="py-2 pr-3 text-neutral-900">${cfg.label}</td>
-      <td class="py-2 pr-3 text-neutral-600">${cfg.engine}</td>
-      <td class="py-2 pr-3 text-neutral-600">${cfg.bucket}</td>
-      <td class="py-2 pr-3"></td>  <!-- signal pill -->
-      <td class="py-2 pr-3 align-middle"></td>  <!-- sparkline -->
+
+      <!-- SIGNAL -->
+      <td class="py-2 pr-3">
+        <span class="inline-flex items-center px-2 py-0.5 rounded-full border bg-white text-[11px] border-neutral-300">
+          ${signal.label}
+        </span>
+      </td>
+
+      <!-- TREND (10YR) + SPARKLINE -->
+      <td class="py-2 pr-3 text-left text-neutral-600">${formatPeriodLabel(
+        stat.latest
+      )}</td>
+
+      <td class="py-2 pr-3 text-left">
+        <svg width="70" height="22"></svg>
+      </td>
+
+      <!-- LAST -->
       <td class="py-2 pr-3 text-right text-neutral-900">${lastVal}</td>
+
+      <!-- Z SCORE -->
       <td class="py-2 pr-3 text-right text-neutral-700">${zFormatted}</td>
+
+      <!-- NOTE -->
       <td class="py-2 pr-3 text-neutral-600">${commentText}</td>
     `;
+
+    tbody.appendChild(tr);
+  });
+
+  if (!tbody.children.length) {
+    const row = document.createElement("tr");
+    row.innerHTML =
+      '<td colspan="7" class="py-3 text-center text-neutral-400">No indicators available for this country.</td>';
+    tbody.appendChild(row);
+  }
+}
 
     // Signal pill
     const signalCell = tr.children[3];
