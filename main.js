@@ -299,7 +299,7 @@ function computeStats(series, lookbackYears = 10, updatedAt = null) {
   const zByYear = window.map((p) => {
     const y = inferYearFromPoint(p);
     return {
-      year,
+      year: y,
       z: stdev > 0 ? (p.value - mean) / stdev : 0
     };
   });
@@ -1150,12 +1150,14 @@ function renderIndicatorGrid(statsById, countryKey) {
       cfg.unit
     )}.`;
 
-    // 7 columns: Indicator, Bucket, Signal, Trend (10yr), Last, ZS, Note
     tr.innerHTML = `
       <td class="py-2 pr-3 text-neutral-900">${cfg.label}</td>
       <td class="py-2 pr-3 text-neutral-600">${cfg.engine}</td>
       <td class="py-2 pr-3 text-neutral-600">${cfg.bucket}</td>
       <td class="py-2 pr-3"></td>
+      <td class="py-2 pr-3 text-left text-neutral-600">${formatPeriodLabel(
+        stat.latest
+      )}</td>
       <td class="py-2 pr-3 text-right text-neutral-900">${lastVal}</td>
       <td class="py-2 pr-3 text-right text-neutral-700">${zFormatted}</td>
       <td class="py-2 pr-3 text-neutral-600">${commentText}</td>
@@ -1174,7 +1176,7 @@ function renderIndicatorGrid(statsById, countryKey) {
   if (!tbody.children.length) {
     const row = document.createElement("tr");
     row.innerHTML =
-      '<td colspan="7" class="py-3 text-center text-neutral-400">No indicators available for this country.</td>';
+      '<td colspan="8" class="py-3 text-center text-neutral-400">No indicators available for this country.</td>';
     tbody.appendChild(row);
   }
 }
@@ -1400,7 +1402,7 @@ function setupFilters() {
 
   topBtn.addEventListener("click", () => {
     Array.from(tbody.querySelectorAll("tr")).forEach((tr) => {
-      const zCell = tr.children[5]; // Z-score column (index adjusted after removing date col)
+      const zCell = tr.children[6];
       if (!zCell) return;
       const z = parseFloat(zCell.textContent);
       if (isNaN(z)) return;
