@@ -367,73 +367,83 @@
         </div>
       </section>
 
-      <!-- Analyst note helper + Cordoba research row -->
-      <section class="grid grid-cols-1 xl:grid-cols-3 gap-4">
-        <!-- Note helper -->
-        <div class="xl:col-span-2 rounded-2xl border border-neutral-200 bg-white shadow-subtle px-4 py-4 flex flex-col gap-3">
-          <div class="flex items-center justify-between">
-            <div>
-              <div class="text-[11px] uppercase tracking-[0.2em] text-neutral-500">
-                Analyst Note Helper
-              </div>
-              <div class="text-sm text-neutral-700">
-                Draft macro commentary for the selected country
-              </div>
-            </div>
-            <div class="text-[11px] text-neutral-500">
-              Auto-generated from current engine configuration
-            </div>
+<!-- Analyst note helper + Cordoba research row -->
+<section class="rounded-2xl border border-neutral-200 bg-white shadow-subtle px-4 py-4">
+  <div class="grid grid-cols-1 xl:grid-cols-3 gap-4">
+    
+    <!-- Note helper -->
+    <div class="xl:col-span-2 flex flex-col gap-3">
+      <div class="flex items-center justify-between">
+        <div>
+          <div class="text-[11px] uppercase tracking-[0.2em] text-neutral-500">
+            Analyst Note Helper
           </div>
-          <textarea
-            id="cc-note-draft"
-            class="mt-2 w-full h-48 rounded-xl border border-neutral-200 bg-[#FFFCF9] px-3 py-2 text-xs leading-relaxed text-neutral-800 focus:outline-none focus:ring-1 focus:ring-cordobaGold focus:border-cordobaGold"
-            placeholder="A short macro note will appear here once the data has loaded. You can edit freely before sending."
-          ></textarea>
-          <div class="mt-2">
-            <div class="text-[11px] uppercase tracking-[0.18em] text-neutral-500 mb-1">
-              Pointers to structure your note
-            </div>
-            <ul id="cc-note-bullets" class="list-disc list-inside space-y-1 text-xs text-neutral-700">
-              <!-- Filled by JS -->
-            </ul>
-          </div>
-
-          <!-- Next 3 questions box -->
-          <div class="mt-4 rounded-xl border border-neutral-200 bg-[#FFFCF9] px-3 py-3">
-            <div class="text-[11px] uppercase tracking-[0.18em] text-neutral-500 mb-1">
-              Next 3 questions to ask
-            </div>
-            <ul id="cc-question-list" class="list-disc list-inside space-y-1 text-xs text-neutral-700">
-              <!-- Filled by JS -->
-            </ul>
+          <div class="text-sm text-neutral-700">
+            Draft macro commentary for the selected country
           </div>
         </div>
-
-        <!-- Cordoba research suggestions -->
-        <div class="rounded-2xl border border-neutral-200 bg-white shadow-subtle px-4 py-4 flex flex-col gap-3">
-          <div>
-            <div class="text-[11px] uppercase tracking-[0.2em] text-neutral-500">
-              Cordoba Research Matches
-            </div>
-            <div class="text-sm text-neutral-700">
-              Notes most relevant to this regime
-            </div>
-            <div class="text-[11px] text-neutral-600 mt-1">
-              Suggested directly from the main Cordoba Capital site based on current engine scores.
-            </div>
-          </div>
-          <div id="cc-research-list" class="mt-2 space-y-2 text-xs">
-            <!-- Filled by JS -->
-          </div>
-          <div class="mt-2 text-[11px] text-neutral-500">
-            Full library:&nbsp;
-            <a href="https://cordobacapital.co.uk/insights/" target="_blank" rel="noopener noreferrer" class="underline decoration-cordobaGold decoration-1 underline-offset-2">
-              cordobacapital.co.uk/insights
-            </a>
-          </div>
+        <div class="text-[11px] text-neutral-500">
+          Auto-generated from current engine configuration
         </div>
-      </section>
+      </div>
 
+      <textarea
+        id="cc-note-draft"
+        class="mt-2 w-full h-48 rounded-xl border border-neutral-200 bg-[#FFFCF9] px-3 py-2 text-xs leading-relaxed text-neutral-800 focus:outline-none focus:ring-1 focus:ring-cordobaGold focus:border-cordobaGold"
+        placeholder="A short macro note will appear here once the data has loaded. You can edit freely before sending."
+      ></textarea>
+
+      <div class="mt-2">
+        <div class="text-[11px] uppercase tracking-[0.18em] text-neutral-500 mb-1">
+          Pointers to structure your note
+        </div>
+        <ul id="cc-note-bullets" class="list-disc list-inside space-y-1 text-xs text-neutral-700">
+          <!-- Filled by JS -->
+        </ul>
+      </div>
+
+      <!-- Next 3 questions box -->
+      <div class="mt-4 rounded-xl border border-neutral-200 bg-[#FFFCF9] px-3 py-3">
+        <div class="text-[11px] uppercase tracking-[0.18em] text-neutral-500 mb-1">
+          Next 3 questions to ask
+        </div>
+        <ul id="cc-question-list" class="list-disc list-inside space-y-1 text-xs text-neutral-700">
+          <!-- Filled by JS -->
+        </ul>
+      </div>
+    </div>
+
+    <!-- Cordoba research suggestions -->
+    <div class="flex flex-col gap-3">
+      <div>
+        <div class="text-[11px] uppercase tracking-[0.2em] text-neutral-500">
+          Cordoba Research Matches
+        </div>
+        <div class="text-sm text-neutral-700">
+          Notes most relevant to this regime
+        </div>
+        <div class="text-[11px] text-neutral-600 mt-1">
+          Suggested directly from the main Cordoba Capital site based on current engine scores.
+        </div>
+      </div>
+      <div id="cc-research-list" class="mt-2 space-y-2 text-xs">
+        <!-- Filled by JS -->
+      </div>
+      <div class="mt-2 text-[11px] text-neutral-500">
+        Full library:&nbsp;
+        <a
+          href="https://cordobacapital.co.uk/insights/"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="underline decoration-cordobaGold decoration-1 underline-offset-2"
+        >
+          cordobacapital.co.uk/insights
+        </a>
+      </div>
+    </div>
+
+  </div>
+</section>
     </main>
   </div>
 
