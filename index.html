@@ -343,21 +343,24 @@
           </div>
         </div>
 
-        <div class="overflow-x-auto">
-          <table class="min-w-full text-xs">
-            <thead>
-              <tr class="text-[11px] uppercase tracking-[0.16em] text-neutral-500 border-b border-neutral-200">
-                <th class="py-2 text-left">Indicator</th>
-                <th class="py-2 text-left">Bucket</th>
-                <th class="py-2 text-left">Signal</th>
-                <th class="py-2 text-left">Trend (10yr)</th>
-                <th class="py-2 text-right">Last</th>
-                <th class="py-2 text-right">ZS</th>
-                <th class="py-2 text-left">Note</th>
-              </tr>
-            </thead>
-            <tbody id="cc-indicator-rows" class="divide-y divide-neutral-100">
-              
+            <div class="overflow-x-auto">
+            <table class="min-w-full text-xs">
+              <thead>
+                <tr class="text-[11px] uppercase tracking-[0.16em] text-neutral-500 border-b border-neutral-200">
+                  <th class="py-2 text-left">Indicator</th>
+                  <th class="py-2 text-left">Signal</th>
+                  <th class="py-2 text-left">Trend (10yr)</th>
+                  <th class="py-2 text-left"></th> <!-- sparkline -->
+                  <th class="py-2 text-right">Last</th>
+                  <th class="py-2 text-right">ZS</th>
+                  <th class="py-2 text-left">Note</th>
+                </tr>
+              </thead>
+          
+              <tbody id="cc-indicator-rows" class="divide-y divide-neutral-100"></tbody>
+            </table>
+          </div>
+
               <!-- Filled by JS -->
             </tbody>
           </table>
