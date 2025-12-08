@@ -53,7 +53,7 @@ const INDICATORS = [
   },
   {
     id: "money",
-    wb: "FM.LBL.MQMY.GD.ZS",
+    wb: "FM.LBL.MQMY.ZG",
     label: "Broad money (M2) growth (annual %)",
     engine: "Liquidity",
     bucket: "Leading",
@@ -417,7 +417,7 @@ function riskLevelFromZ(z) {
 }
 
 // ---------------------------------------------------------------------------
-// Note helper & research suggestions (unchanged logic)
+// Note helper & research suggestions
 // ---------------------------------------------------------------------------
 function buildNoteDraft(countryKey, statsById, engines) {
   const meta = COUNTRY_META[countryKey] || { name: countryKey, region: "" };
@@ -1109,7 +1109,59 @@ function renderInflectionSignals(statsById) {
 }
 
 // ---------------------------------------------------------------------------
-// Rendering – Indicator grid
+// Sparklines – tiny 10-year value path
+// ---------------------------------------------------------------------------
+function createSparkline(points) {
+  if (!points || !points.length) return null;
+
+  const values = points.map((p) => p.value);
+  if (!values.length) return null;
+
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+
+  const width = 80;
+  const height = 24;
+  const paddingX = 2;
+  const paddingY = 4;
+
+  const step =
+    values.length > 1
+      ? (width - 2 * paddingX) / (values.length - 1)
+      : 0;
+
+  const scaleY = (v) => {
+    if (max === min) return height / 2;
+    return (
+      paddingY +
+      ((max - v) * (height - 2 * paddingY)) / (max - min)
+    );
+  };
+
+  const svgNS = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(svgNS, "svg");
+  svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+  svg.setAttribute("preserveAspectRatio", "none");
+  svg.classList.add("w-full", "h-6");
+
+  const path = document.createElementNS(svgNS, "path");
+  let d = "";
+  values.forEach((v, i) => {
+    const x = paddingX + step * i;
+    const y = scaleY(v);
+    d += (i === 0 ? "M" : "L") + x + " " + y + " ";
+  });
+  path.setAttribute("d", d.trim());
+  path.setAttribute("fill", "none");
+  path.setAttribute("stroke", "currentColor");
+  path.setAttribute("stroke-width", "1.2");
+  svg.appendChild(path);
+
+  return svg;
+}
+
+// ---------------------------------------------------------------------------
+// Rendering – Indicator grid (with sparklines under Trend 10yr)
 // ---------------------------------------------------------------------------
 function renderIndicatorGrid(statsById, countryKey) {
   const tbody = document.getElementById("cc-indicator-rows");
@@ -1163,12 +1215,28 @@ function renderIndicatorGrid(statsById, countryKey) {
       <td class="py-2 pr-3 text-neutral-600">${commentText}</td>
     `;
 
-    const signalCell = tr.children[3];
-    const signalBadge = document.createElement("span");
-    signalBadge.className =
-      "inline-flex items-center px-2 py-0.5 rounded-full border bg-white text-[11px] border-neutral-300";
-    signalBadge.textContent = signal.label;
-    signalCell.appendChild(signalBadge);
+    // Signal badge goes in the "Signal" column (2nd col)
+    const signalCell = tr.children[1];
+    if (signalCell) {
+      const badge = document.createElement("span");
+      badge.className =
+        "inline-flex items-center px-2 py-0.5 rounded-full border bg-white text-[11px] border-neutral-300 mt-1";
+      badge.textContent = signal.label;
+      signalCell.appendChild(document.createElement("br"));
+      signalCell.appendChild(badge);
+    }
+
+    // Sparkline goes under the "Trend (10yr)" column (3rd col, index 2)
+    if (stat.spark && stat.spark.length) {
+      const trendCell = tr.children[2];
+      if (trendCell) {
+        const wrapper = document.createElement("div");
+        wrapper.className = "mt-1 text-neutral-500";
+        const svg = createSparkline(stat.spark);
+        if (svg) wrapper.appendChild(svg);
+        trendCell.appendChild(wrapper);
+      }
+    }
 
     tbody.appendChild(tr);
   });
@@ -1306,6 +1374,17 @@ async function loadCountry(countryKey) {
         series && series.length
           ? computeStats(series, 10, updatedAt)
           : null;
+
+      // Store last ~10 observations for sparklines
+      if (stats && series && series.length) {
+        const lastN = series.slice(-10);
+        stats.spark = lastN.map((p) => ({
+          value: p.value,
+          year: inferYearFromPoint(p),
+          month: inferMonthFromPoint(p)
+        }));
+      }
+
       statsById[cfg.id] = stats;
     });
 
