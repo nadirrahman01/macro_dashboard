@@ -1,141 +1,28 @@
-html,
-body {
-  scroll-behavior: smooth;
-  background: #ffffff;
-  color: #1a1a1a;
+/* Cordoba Capital – Global Macro Engine custom styles */
+
+:root {
+  --cordoba-gold: #9A690F;
+  --cordoba-soft: #FFF7F0;
 }
 
-/* Base font: Inter everywhere by default */
-body {
-  font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
-    sans-serif;
+/* Utility classes (used alongside Tailwind) */
+.bg-cordobaSoft {
+  background-color: var(--cordoba-soft);
 }
 
-::-webkit-scrollbar {
-  width: 6px;
-  background: transparent;
+.text-cordobaGold {
+  color: var(--cordoba-gold);
 }
 
-::-webkit-scrollbar-thumb {
-  background: #d1c7bc;
-  border-radius: 10px;
+/* Simple loading state (optional: when body has .cc-loading) */
+body.cc-loading {
+  cursor: progress;
 }
 
-/* Typography */
-
-h1,
-h2,
-h3 {
-  color: #1a1a1a;
+body.cc-loading * {
+  transition: opacity 0.15s ease-out;
 }
 
-/* Any element with font-heading (and its children) use Playfair */
-.font-heading,
-.font-heading * {
-  font-family: "Playfair Display", serif !important;
-}
-
-/* Small caps helper */
-.smallcaps {
-  font-variant: small-caps;
-  letter-spacing: 0.12em;
-}
-
-/* Card system */
-.cc-card {
-  background: #ffffff;
-  border: 1px solid #e6e0d9;
-  border-radius: 1.5rem;
-  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.03);
-}
-
-/* Accent sections */
-.cc-accent {
-  background: #fbf4ec;
-  border: 1px solid #efe7dd;
-}
-
-/* Card hover */
-.cc-card:hover {
-  border-color: #9a690f;
-  background: #fffcf9;
-  transition: 0.25s ease;
-}
-
-/* Buttons */
-.cc-btn {
-  border: 1px solid #9a690f;
-  background: #9a690f;
-  color: white;
-  border-radius: 999px;
-  padding: 0.4rem 0.9rem;
-  font-size: 0.8rem;
-}
-
-.cc-btn-outline {
-  border: 1px solid #9a690f;
-  background: transparent;
-  color: #9a690f;
-  border-radius: 999px;
-  padding: 0.4rem 0.9rem;
-  font-size: 0.8rem;
-}
-
-/* Muted labels */
-.cc-muted {
-  color: #6b6b6b;
-}
-
-/* Stance pills */
-.cc-stance-pill {
-  border-radius: 999px;
-  padding: 0.25rem 0.7rem;
-}
-
-.cc-stance-dot {
-  display: inline-block;
-  width: 0.4rem;
-  height: 0.4rem;
-  border-radius: 999px;
-}
-
-/* Table headers */
-
-table th {
-  font-weight: 500;
-}
-
-/* === Indicator Grid & Rankings – normal + hover === */
-
-/* Base style for any table body */
-table tbody td {
-  background-color: #ffffff;
-}
-
-/* Hover: cream background */
-table tbody tr:hover td {
-  background-color: #fffcf9;
-}
-
-/* --- HARD OVERRIDES for the two macro tables --- */
-
-/* Indicator grid cells: always solid black, no opacity */
-#cc-signals-tbody,
-#cc-signals-tbody * {
-  color: #1a1a1a !important;
-  opacity: 1 !important;
-}
-
-/* Rankings table cells: always solid black, no opacity */
-#cc-ranking-tbody,
-#cc-ranking-tbody * {
-  color: #1a1a1a !important;
-  opacity: 1 !important;
-}
-
-/* Keep hover background but not text fade */
-#cc-signals-tbody tr:hover td,
-#cc-ranking-tbody tr:hover td {
-  background-color: #fffcf9 !important;
-  color: #1a1a1a !important;
+body.cc-loading main {
+  opacity: 0.7;
 }
