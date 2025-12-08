@@ -1,14 +1,9 @@
 // main.js
 // Cordoba Capital – Global Macro Engine (Beta)
-// Live data: World Bank WDI + Proprietary Cordoba Engine
+// Data source: World Bank World Development Indicators (WDI)
 
 // ---------------------------------------------------------------------------
-// GLOBAL SETTINGS
-// ---------------------------------------------------------------------------
-const CACHE_TTL = 6 * 60 * 60 * 1000; // 6 hours
-
-// ---------------------------------------------------------------------------
-// Country metadata
+// Country metadata (2-letter UI code → 3-letter WB code)
 // ---------------------------------------------------------------------------
 const COUNTRY_META = {
   US: { name: "United States", region: "G-20 · DM", wb: "USA" },
@@ -23,240 +18,886 @@ const COUNTRY_META = {
 };
 
 // ---------------------------------------------------------------------------
-// Macro indicator definitions
+// Indicator definitions (World Bank codes)
 // ---------------------------------------------------------------------------
 const INDICATORS = [
-  { id: "gdp_growth", wb: "NY.GDP.MKTP.KD.ZG", label: "GDP growth", engine: "Growth", bucket: "Coincident", higherIsGood: true, unit: "%", decimals: 1 },
-  { id: "inflation", wb: "FP.CPI.TOTL.ZG", label: "Inflation (CPI)", engine: "Inflation", bucket: "Coincident", higherIsGood: false, unit: "%", decimals: 1 },
-  { id: "unemployment", wb: "SL.UEM.TOTL.ZS", label: "Unemployment", engine: "Growth", bucket: "Lagging", higherIsGood: false, unit: "%", decimals: 1 },
-  { id: "money", wb: "FM.LBL.MQMY.ZG", label: "Broad money (M2)", engine: "Liquidity", bucket: "Leading", higherIsGood: true, unit: "%", decimals: 1 },
-  { id: "current_account", wb: "BN.CAB.XOKA.GD.ZS", label: "Current account / GDP", engine: "External", bucket: "Coincident", higherIsGood: true, unit: "% of GDP", decimals: 1 }
+  {
+    id: "gdp_growth",
+    wb: "NY.GDP.MKTP.KD.ZG",
+    label: "GDP growth (annual %)",
+    engine: "Growth",
+    bucket: "Coincident",
+    higherIsGood: true,
+    unit: "%",
+    decimals: 1
+  },
+  {
+    id: "inflation",
+    wb: "FP.CPI.TOTL.ZG",
+    label: "Inflation, CPI (annual %)",
+    engine: "Inflation",
+    bucket: "Coincident",
+    higherIsGood: false,
+    unit: "%",
+    decimals: 1
+  },
+  {
+    id: "unemployment",
+    wb: "SL.UEM.TOTL.ZS",
+    label: "Unemployment rate (% labour force)",
+    engine: "Growth",
+    bucket: "Lagging",
+    higherIsGood: false,
+    unit: "%",
+    decimals: 1
+  },
+  {
+    id: "money",
+    wb: "FM.LBL.MQMY.ZG",
+    label: "Broad money (M2) growth (annual %)",
+    engine: "Liquidity",
+    bucket: "Leading",
+    higherIsGood: true,
+    unit: "%",
+    decimals: 1
+  },
+  {
+    id: "current_account",
+    wb: "BN.CAB.XOKA.GD.ZS",
+    label: "Current account balance (% of GDP)",
+    engine: "External",
+    bucket: "Coincident",
+    higherIsGood: true,
+    unit: "% of GDP",
+    decimals: 1
+  }
 ];
 
-// ---------------------------------------------------------------------------
-// CACHE ENGINE
-// ---------------------------------------------------------------------------
-function cacheSet(key, value) {
-  localStorage.setItem(key, JSON.stringify({ timestamp: Date.now(), value }));
-}
-
-function cacheGet(key) {
-  const raw = localStorage.getItem(key);
-  if (!raw) return null;
-  const payload = JSON.parse(raw);
-  if (Date.now() - payload.timestamp > CACHE_TTL) {
-    localStorage.removeItem(key);
-    return null;
-  }
-  return payload.value;
-}
+// Simple in-memory cache for stats
+const macroCache = {};
 
 // ---------------------------------------------------------------------------
-// WORLD BANK FETCH (CACHED)
+// World Bank fetch with localStorage cache
 // ---------------------------------------------------------------------------
 async function fetchWorldBankSeries(countryKey, indicatorCode) {
   const meta = COUNTRY_META[countryKey];
-  if (!meta) return [];
+  if (!meta) {
+    console.warn("Unknown country:", countryKey);
+    return [];
+  }
+  const wbCode = meta.wb;
+  const cacheKey = `wb_${wbCode}_${indicatorCode}`;
 
-  const cacheKey = `WB_${meta.wb}_${indicatorCode}`;
-  const cached = cacheGet(cacheKey);
-  if (cached) return cached;
+  // Try cache (7 days)
+  try {
+    const cachedRaw = localStorage.getItem(cacheKey);
+    if (cachedRaw) {
+      const cached = JSON.parse(cachedRaw);
+      const maxAgeMs = 7 * 24 * 60 * 60 * 1000;
+      if (cached.timestamp && Date.now() - cached.timestamp < maxAgeMs) {
+        return cached.series || [];
+      }
+    }
+  } catch (err) {
+    console.warn("localStorage read error:", err);
+  }
 
-  const url = `https://api.worldbank.org/v2/country/${meta.wb}/indicator/${indicatorCode}?format=json&per_page=200`;
+  const url = `https://api.worldbank.org/v2/country/${wbCode}/indicator/${indicatorCode}?format=json&per_page=200`;
 
   try {
     const res = await fetch(url);
+    if (!res.ok) {
+      console.error("World Bank error:", res.status, url);
+      return [];
+    }
     const json = await res.json();
-    const data = json?.[1];
-    if (!Array.isArray(data)) return [];
+    const data = Array.isArray(json) ? json[1] : null;
+    if (!Array.isArray(data)) {
+      console.warn("World Bank: no data array for", wbCode, indicatorCode);
+      return [];
+    }
 
     const series = data
-      .filter(d => d.value !== null)
-      .map(d => ({ year: +d.date, value: +d.value }))
-      .sort((a, b) => a.year - b.year);
+      .filter(d => d && d.value != null)
+      .map(d => ({
+        year: parseInt(d.date, 10),
+        value: Number(d.value)
+      }))
+      .sort((a, b) => a.year - b.year); // oldest → newest
 
-    cacheSet(cacheKey, series);
+    try {
+      localStorage.setItem(
+        cacheKey,
+        JSON.stringify({
+          timestamp: Date.now(),
+          series
+        })
+      );
+    } catch (err) {
+      console.warn("localStorage write error:", err);
+    }
+
     return series;
-  } catch {
+  } catch (err) {
+    console.error("World Bank fetch failed:", err);
     return [];
   }
 }
 
 // ---------------------------------------------------------------------------
-// STATISTICS + Z-SCORE ENGINE
+// Stats and helpers
 // ---------------------------------------------------------------------------
-function computeStats(series, lookback = 10) {
+function computeStats(series, lookbackYears = 10) {
   if (!series.length) return null;
 
-  const latest = series.at(-1);
-  const prev = series.at(-2) || latest;
-  const window = series.filter(p => p.year >= latest.year - lookback);
+  const latest = series[series.length - 1];
+  const prev = series.length >= 2 ? series[series.length - 2] : null;
 
-  const mean = window.reduce((s, v) => s + v.value, 0) / window.length;
-  const variance = window.reduce((s, v) => s + (v.value - mean) ** 2, 0) / window.length;
+  const cutoffYear = latest.year - lookbackYears + 1;
+  const window = series.filter(p => p.year >= cutoffYear);
+
+  const values = window.map(p => p.value);
+  const mean =
+    values.length > 0
+      ? values.reduce((sum, v) => sum + v, 0) / values.length
+      : latest.value;
+
+  const variance =
+    values.length > 1
+      ? values.reduce((sum, v) => sum + Math.pow(v - mean, 2), 0) /
+        (values.length - 1)
+      : 0;
+
   const stdev = Math.sqrt(variance);
   const z = stdev > 0 ? (latest.value - mean) / stdev : 0;
+  const delta = prev ? latest.value - prev.value : 0;
+
+  const zByYear = window.map(p => ({
+    year: p.year,
+    z: stdev > 0 ? (p.value - mean) / stdev : 0
+  }));
+
+  const analogues = zByYear
+    .map(p => ({ ...p, diff: Math.abs(p.z - z) }))
+    .sort((a, b) => a.diff - b.diff)
+    .slice(0, 3)
+    .map(p => p.year);
 
   return {
     latest,
+    prev,
     mean,
+    stdev,
     z,
-    delta: latest.value - prev.value,
+    delta,
+    analogues,
     windowYears: window.length
   };
 }
 
-// ---------------------------------------------------------------------------
-// PROPRIETARY ENGINE SCORING (CORDOBA IP)
-// ---------------------------------------------------------------------------
-function engineScoreFromIndicators(stats) {
-  const clamp = z => Math.max(-2.5, Math.min(2.5, z || 0));
-  const score = z => Math.round(50 + (clamp(z) / 2.5) * 40);
-
-  const gdp = stats.gdp_growth?.z || 0;
-  const u = stats.unemployment?.z || 0;
-  const infl = stats.inflation?.z || 0;
-  const m2 = stats.money?.z || 0;
-  const ca = stats.current_account?.z || 0;
-
-  return {
-    growth: { z: gdp - 0.4 * u, score: score(gdp - 0.4 * u) },
-    inflation: { z: -infl, score: score(-infl) },
-    liquidity: { z: m2, score: score(m2) },
-    external: { z: ca, score: score(ca) }
-  };
+function formatNumber(val, decimals = 1, unit = "", fallback = "n/a") {
+  if (val == null || isNaN(val)) return fallback;
+  const num = val.toFixed(decimals);
+  if (unit === "%" || unit === "% of GDP") return `${num}%`;
+  return num;
 }
 
-// ---------------------------------------------------------------------------
-// FORMATTERS
-// ---------------------------------------------------------------------------
-function formatNumber(v, d = 1, unit = "") {
-  if (v == null) return "n/a";
-  const num = v.toFixed(d);
-  return `${num}${unit === "%" || unit === "% of GDP" ? "%" : ""}`;
+function average(arr) {
+  if (!arr.length) return 0;
+  return arr.reduce((s, v) => s + v, 0) / arr.length;
 }
 
-// ---------------------------------------------------------------------------
-// EXPORT TOOLS (PNG / PDF / CLIPBOARD)
-// ---------------------------------------------------------------------------
-async function exportPNG() {
-  const el = document.body;
-  const canvas = await html2canvas(el, { scale: 2 });
-  const link = document.createElement("a");
-  link.download = "cordoba_macro_snapshot.png";
-  link.href = canvas.toDataURL();
-  link.click();
+function capitaliseFirst(str) {
+  return str ? str.charAt(0).toUpperCase() + str.slice(1) : "";
 }
 
-async function exportPDF() {
-  const el = document.body;
-  const canvas = await html2canvas(el, { scale: 2 });
-  const img = canvas.toDataURL("image/png");
-  const pdf = new jspdf.jsPDF("landscape");
-  pdf.addImage(img, "PNG", 10, 10, 280, 160);
-  pdf.save("cordoba_macro_snapshot.pdf");
-}
-
-async function copyToClipboard() {
-  const canvas = await html2canvas(document.body);
-  canvas.toBlob(blob => navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]));
-}
-
-// ---------------------------------------------------------------------------
-// COUNTRY LOADER
-// ---------------------------------------------------------------------------
-async function loadCountry(countryKey) {
-  document.body.classList.add("cc-loading");
-
-  const statsById = {};
-
-  for (const cfg of INDICATORS) {
-    const series = await fetchWorldBankSeries(countryKey, cfg.wb);
-    statsById[cfg.id] = computeStats(series);
+function classifySignal(stat, cfg) {
+  if (!stat) {
+    return {
+      level: "n/a",
+      strength: "none",
+      label: "No recent data",
+      direction: "flat"
+    };
   }
 
-  const engines = engineScoreFromIndicators(statsById);
+  const { z, delta } = stat;
+  const absZ = Math.abs(z);
+  const direction = delta > 0 ? "up" : delta < 0 ? "down" : "flat";
 
-  renderEngineCards(engines);
-  renderHeadlineTiles(statsById);
-  renderIndicatorGrid(statsById, countryKey);
+  let level;
+  if (absZ < 0.5) level = "near trend";
+  else if (absZ < 1.0) level = "moderate";
+  else level = "extreme";
 
-  const lastYear = Math.max(...Object.values(statsById).map(v => v?.latest?.year || 0));
-  document.getElementById("cc-data-as-of").textContent = `latest: ${lastYear}`;
+  let strength;
+  if (absZ < 0.5) strength = "low";
+  else if (absZ < 1.0) strength = "medium";
+  else strength = "high";
 
-  document.body.classList.remove("cc-loading");
+  let label;
+  if (cfg.higherIsGood) {
+    if (z > 0.5 && direction === "up") label = "Strengthening above trend";
+    else if (z > 0.5 && direction === "down") label = "Above trend, easing";
+    else if (z < -0.5 && direction === "down") label = "Weak and deteriorating";
+    else if (z < -0.5 && direction === "up") label = "Weak but stabilising";
+    else label = "Close to trend";
+  } else {
+    if (z > 0.5 && direction === "up") label = "Elevated and rising";
+    else if (z > 0.5 && direction === "down") label = "Elevated but cooling";
+    else if (z < -0.5 && direction === "down") label = "Subdued and falling";
+    else if (z < -0.5 && direction === "up") label = "Subdued but firming";
+    else label = "Close to trend";
+  }
+
+  return { level, strength, label, direction };
+}
+
+function engineScoreFromIndicators(statsById) {
+  function scoreFromZ(z) {
+    const clamped = Math.max(-2.5, Math.min(2.5, z || 0));
+    return Math.round(50 + (clamped / 2.5) * 40); // 10–90
+  }
+
+  const gdp = statsById.gdp_growth;
+  const infl = statsById.inflation;
+  const u = statsById.unemployment;
+  const m2 = statsById.money;
+  const ca = statsById.current_account;
+
+  const growthZ =
+    (gdp ? (gdp.z || 0) : 0) - (u ? (u.z || 0) * 0.4 : 0);
+  const inflationZ = infl ? -infl.z : 0; // lower inflation "better"
+  const liquidityZ = m2 ? m2.z : 0;
+  const externalZ = ca ? ca.z : 0;
+
+  return {
+    growth: { z: growthZ, score: scoreFromZ(growthZ) },
+    inflation: { z: inflationZ, score: scoreFromZ(inflationZ) },
+    liquidity: { z: liquidityZ, score: scoreFromZ(liquidityZ) },
+    external: { z: externalZ, score: scoreFromZ(externalZ) }
+  };
+}
+
+function riskLevelFromZ(z) {
+  if (z == null || isNaN(z)) return "n/a";
+  const absZ = Math.abs(z);
+  if (absZ < 0.5) return "low";
+  if (absZ < 1.0) return "medium";
+  return "high";
 }
 
 // ---------------------------------------------------------------------------
-// RENDER FUNCTIONS (MATCH YOUR HTML)
+// Rendering – Regime summary
+// ---------------------------------------------------------------------------
+function renderRegimeSummary(countryKey, statsById, engines) {
+  const meta = COUNTRY_META[countryKey] || { name: countryKey, region: "" };
+  const titleEl = document.getElementById("cc-regime-title");
+  const bodyEl = document.getElementById("cc-regime-body");
+  const confEl = document.getElementById("cc-regime-confidence");
+  const analogEl = document.getElementById("cc-analogue-years");
+  const riskEl = document.getElementById("cc-risk-flags");
+
+  const gdp = statsById.gdp_growth;
+  const infl = statsById.inflation;
+  const unemp = statsById.unemployment;
+  const ca = statsById.current_account;
+
+  const growthZ = gdp ? gdp.z : 0;
+  const inflZ = infl ? infl.z : 0;
+
+  let growthPhrase = "near-trend growth";
+  if (growthZ > 0.5) growthPhrase = "above-trend growth";
+  else if (growthZ < -0.5) growthPhrase = "below-trend growth";
+
+  let inflationPhrase = "stable inflation";
+  if (inflZ > 0.5) inflationPhrase = "elevated inflation";
+  else if (inflZ < -0.5) inflationPhrase = "disinflation";
+
+  const title = `${capitaliseFirst(growthPhrase)} with ${inflationPhrase} – ${meta.name}`;
+  if (titleEl) titleEl.textContent = title;
+
+  const parts = [];
+  if (gdp) {
+    parts.push(
+      `Real GDP growth is ${formatNumber(
+        gdp.latest.value,
+        1,
+        "%"
+      )} compared with a 10-year average of ${formatNumber(gdp.mean, 1, "%")}.`
+    );
+  }
+  if (infl) {
+    parts.push(
+      `Headline inflation is ${formatNumber(
+        infl.latest.value,
+        1,
+        "%"
+      )} versus a 10-year average of ${formatNumber(infl.mean, 1, "%")}.`
+    );
+  }
+  if (unemp) {
+    parts.push(
+      `Unemployment stands at ${formatNumber(
+        unemp.latest.value,
+        1,
+        "%"
+      )}, relative to a 10-year average of ${formatNumber(unemp.mean, 1, "%")}.`
+    );
+  }
+  if (ca) {
+    parts.push(
+      `The current-account balance is ${formatNumber(
+        ca.latest.value,
+        1,
+        "% of GDP"
+      )} versus a 10-year average of ${formatNumber(
+        ca.mean,
+        1,
+        "% of GDP"
+      )}.`
+    );
+  }
+
+  if (bodyEl) {
+    bodyEl.textContent =
+      parts.join(" ") ||
+      "Insufficient historical data to build a macro summary for this country.";
+  }
+
+  const indicatorsWithData = Object.values(statsById).filter(Boolean).length;
+  const avgWindow = average(
+    Object.values(statsById)
+      .filter(Boolean)
+      .map(s => s.windowYears || 0)
+  );
+  let confidence =
+    0.4 * (indicatorsWithData / INDICATORS.length) +
+    0.6 * Math.min(avgWindow / 10, 1);
+  confidence = Math.round(confidence * 100);
+  if (confEl) confEl.textContent = `${confidence}%`;
+
+  // Analogues (from GDP)
+  if (analogEl) {
+    analogEl.innerHTML = "";
+    const analogueYears = gdp ? gdp.analogues : [];
+    if (analogueYears && analogueYears.length) {
+      analogueYears.forEach(year => {
+        const pill = document.createElement("span");
+        pill.className =
+          "inline-flex items-center px-2.5 py-0.5 rounded-full border border-neutral-300 bg-cordobaSoft text-xs";
+        pill.textContent = year;
+        analogEl.appendChild(pill);
+      });
+    } else {
+      analogEl.innerHTML =
+        '<span class="text-xs text-neutral-400">Not enough history for analogues.</span>';
+    }
+  }
+
+  // Risk flags
+  if (riskEl) {
+    riskEl.innerHTML = "";
+
+    const growthRisk = riskLevelFromZ(engines.growth.z);
+    const inflationRisk = riskLevelFromZ(engines.inflation.z);
+    const externalRisk = riskLevelFromZ(engines.external.z);
+
+    [
+      { label: "Growth risk", level: growthRisk },
+      { label: "Inflation risk", level: inflationRisk },
+      { label: "External risk", level: externalRisk }
+    ].forEach(r => {
+      const span = document.createElement("span");
+      span.className =
+        "inline-flex items-center px-2.5 py-0.5 rounded-full border bg-cordobaSoft text-xs border-neutral-300 mr-1 mb-1";
+      span.textContent = `${r.label}: ${r.level}`;
+      riskEl.appendChild(span);
+    });
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Rendering – Engine cards
 // ---------------------------------------------------------------------------
 function renderEngineCards(engines) {
-  const map = {
-    growth: "Growth",
-    inflation: "Inflation",
-    liquidity: "Liquidity",
-    external: "External"
-  };
-
   const container = document.getElementById("cc-engine-cards");
+  if (!container) return;
   container.innerHTML = "";
 
-  Object.entries(map).forEach(([k, label]) => {
-    const e = engines[k];
-    const div = document.createElement("div");
-    div.className = "p-3 border rounded-xl bg-cordobaSoft text-center";
-    div.innerHTML = `
-      <div class="text-[10px] uppercase">${label}</div>
-      <div class="text-xl font-semibold">${e.score}/100</div>
-      <div class="text-xs text-neutral-600">z ${e.z.toFixed(2)}</div>
+  const meta = [
+    {
+      id: "growth",
+      title: "Growth",
+      color: "border-emerald-300",
+      text: "text-emerald-700"
+    },
+    {
+      id: "inflation",
+      title: "Inflation",
+      color: "border-amber-300",
+      text: "text-amber-700"
+    },
+    {
+      id: "liquidity",
+      title: "Liquidity",
+      color: "border-sky-300",
+      text: "text-sky-700"
+    },
+    {
+      id: "external",
+      title: "External",
+      color: "border-rose-300",
+      text: "text-rose-700"
+    }
+  ];
+
+  meta.forEach(m => {
+    const engine = engines[m.id];
+    const z = engine ? engine.z : 0;
+    const score = engine ? engine.score : 50;
+
+    const card = document.createElement("div");
+    card.className =
+      "rounded-2xl border bg-cordobaSoft px-3 py-2 flex flex-col justify-between " +
+      m.color;
+
+    const header = document.createElement("div");
+    header.className =
+      "flex items-baseline justify-between text-[10px] tracking-[0.18em] uppercase text-neutral-500";
+    header.innerHTML = `<span>${m.title}</span><span>z ${
+      z ? z.toFixed(1) : "0.0"
+    }</span>`;
+    card.appendChild(header);
+
+    const main = document.createElement("div");
+    main.className = "mt-1 flex items-end justify-between gap-2";
+
+    const scoreEl = document.createElement("div");
+    scoreEl.innerHTML = `
+      <div class="text-lg font-semibold">${score}<span class="text-xs text-neutral-400">/100</span></div>
+      <div class="text-[10px] text-neutral-500 mt-0.5">vs 10-year history</div>
     `;
-    container.appendChild(div);
+    main.appendChild(scoreEl);
+
+    const qualitative =
+      Math.abs(z) < 0.5 ? "Near trend" : z > 0 ? "Above trend" : "Below trend";
+    const labelEl = document.createElement("span");
+    labelEl.className =
+      "inline-flex items-center px-2 py-0.5 rounded-full border text-[10px] " +
+      m.text +
+      " border-neutral-300 bg-white";
+    labelEl.textContent = qualitative;
+    main.appendChild(labelEl);
+
+    card.appendChild(main);
+    container.appendChild(card);
   });
 }
 
-function renderHeadlineTiles(stats) {
-  const map = {
-    gdp_growth: "cc-gdp-latest",
-    inflation: "cc-inflation-latest",
-    unemployment: "cc-unemployment-latest",
-    money: "cc-money-latest",
-    current_account: "cc-ca-latest"
+// ---------------------------------------------------------------------------
+// Rendering – Headline tiles & inflection signals
+// ---------------------------------------------------------------------------
+function renderHeadlineTiles(statsById) {
+  const gdp = statsById.gdp_growth;
+  const infl = statsById.inflation;
+  const unemp = statsById.unemployment;
+  const money = statsById.money;
+  const ca = statsById.current_account;
+
+  const setText = (id, text) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = text;
   };
 
-  INDICATORS.forEach(cfg => {
-    const stat = stats[cfg.id];
-    if (!stat) return;
-    document.getElementById(map[cfg.id]).textContent =
-      `${formatNumber(stat.latest.value, cfg.decimals, cfg.unit)} (${stat.latest.year})`;
-  });
+  if (gdp) {
+    setText(
+      "cc-gdp-latest",
+      `${formatNumber(gdp.latest.value, 1, "%")} (${gdp.latest.year})`
+    );
+    setText(
+      "cc-gdp-extra",
+      `10-year avg ${formatNumber(gdp.mean, 1, "%")}; change vs prior year ${formatNumber(
+        gdp.delta,
+        1,
+        "%"
+      )}.`
+    );
+  }
+
+  if (infl) {
+    setText(
+      "cc-inflation-latest",
+      `${formatNumber(infl.latest.value, 1, "%")} (${infl.latest.year})`
+    );
+    setText(
+      "cc-inflation-extra",
+      `10-year avg ${formatNumber(
+        infl.mean,
+        1,
+        "%"
+      )}; latest vs target depends on central bank regime.`
+    );
+  }
+
+  if (unemp) {
+    setText(
+      "cc-unemployment-latest",
+      `${formatNumber(unemp.latest.value, 1, "%")} (${unemp.latest.year})`
+    );
+    setText(
+      "cc-unemployment-extra",
+      `10-year avg ${formatNumber(
+        unemp.mean,
+        1,
+        "%"
+      )}; a proxy for slack vs overheating.`
+    );
+  }
+
+  if (money) {
+    setText(
+      "cc-money-latest",
+      `${formatNumber(money.latest.value, 1, "%")} (${money.latest.year})`
+    );
+    setText(
+      "cc-money-extra",
+      `10-year avg ${formatNumber(
+        money.mean,
+        1,
+        "%"
+      )}; a rough liquidity pulse.`
+    );
+  }
+
+  if (ca) {
+    setText(
+      "cc-ca-latest",
+      `${formatNumber(ca.latest.value, 1, "% of GDP")} (${ca.latest.year})`
+    );
+    setText(
+      "cc-ca-extra",
+      `10-year avg ${formatNumber(
+        ca.mean,
+        1,
+        "% of GDP"
+      )}; sign and size flag external pressure.`
+    );
+  }
 }
 
-function renderIndicatorGrid(stats, countryKey) {
+function renderInflectionSignals(statsById) {
+  const container = document.getElementById("cc-inflection-list");
+  if (!container) return;
+  container.innerHTML = "";
+
+  const ordered = [
+    "gdp_growth",
+    "inflation",
+    "unemployment",
+    "money",
+    "current_account"
+  ];
+
+  ordered.forEach(id => {
+    const cfg = INDICATORS.find(i => i.id === id);
+    const stat = statsById[id];
+    if (!cfg || !stat) return;
+
+    const signal = classifySignal(stat, cfg);
+
+    const row = document.createElement("div");
+    row.className =
+      "flex items-start justify-between gap-3 rounded-2xl border border-neutral-200 bg-cordobaSoft px-3 py-2";
+
+    const left = document.createElement("div");
+    left.className = "flex-1";
+
+    const title = document.createElement("div");
+    title.className = "font-medium text-xs";
+    title.textContent = cfg.label;
+    left.appendChild(title);
+
+    const small = document.createElement("div");
+    small.className = "text-[11px] text-neutral-600";
+    const latest = stat.latest;
+    const directionText =
+      stat.delta > 0
+        ? "higher than"
+        : stat.delta < 0
+        ? "lower than"
+        : "similar to";
+
+    small.textContent = `Latest reading is ${formatNumber(
+      latest.value,
+      cfg.decimals,
+      cfg.unit
+    )} (${latest.year}), ${directionText} the prior year and ${
+      signal.label
+    } vs the 10-year average of ${formatNumber(
+      stat.mean,
+      cfg.decimals,
+      cfg.unit
+    )}.`;
+    left.appendChild(small);
+
+    row.appendChild(left);
+
+    const right = document.createElement("div");
+    right.className = "text-right text-[11px] text-neutral-500 whitespace-nowrap";
+    const dirArrow =
+      signal.direction === "up"
+        ? "↑"
+        : signal.direction === "down"
+        ? "↓"
+        : "→";
+    right.innerHTML = `<div>${dirArrow} ${signal.level}</div><div>${signal.strength} signal</div>`;
+    row.appendChild(right);
+
+    container.appendChild(row);
+  });
+
+  if (!container.children.length) {
+    container.innerHTML =
+      '<p class="text-xs text-neutral-500">Not enough data to compute signals for this country.</p>';
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Rendering – Indicator grid
+// ---------------------------------------------------------------------------
+function renderIndicatorGrid(statsById, countryKey) {
   const tbody = document.getElementById("cc-indicator-rows");
+  const countryLabel = document.getElementById("cc-signals-country");
+  if (!tbody) return;
+
+  const meta = COUNTRY_META[countryKey] || { name: countryKey };
+  if (countryLabel) countryLabel.textContent = meta.name;
+
   tbody.innerHTML = "";
 
   INDICATORS.forEach(cfg => {
-    const s = stats[cfg.id];
+    const stat = statsById[cfg.id];
+    if (!stat) return;
+
+    const signal = classifySignal(stat, cfg);
     const tr = document.createElement("tr");
+    tr.className = "hover:bg-cordobaSoft";
+
+    const lastVal = formatNumber(
+      stat.latest.value,
+      cfg.decimals,
+      cfg.unit,
+      "n/a"
+    );
+    const zFormatted =
+      stat.z != null && !isNaN(stat.z) ? stat.z.toFixed(1) : "0.0";
+
+    const commentText = `Latest ${stat.latest.year} reading of ${lastVal} vs 10-year average ${formatNumber(
+      stat.mean,
+      cfg.decimals,
+      cfg.unit
+    )}; change vs prior year ${formatNumber(
+      stat.delta,
+      cfg.decimals,
+      cfg.unit
+    )}.`;
+
     tr.innerHTML = `
-      <td>${cfg.label}</td>
-      <td>${cfg.engine}</td>
-      <td>${cfg.bucket}</td>
-      <td>${formatNumber(s.latest.value, cfg.decimals, cfg.unit)}</td>
-      <td>${s.z.toFixed(2)}</td>
-      <td>${formatNumber(s.delta, cfg.decimals, cfg.unit)}</td>
+      <td class="py-2 pr-3 text-neutral-900">${cfg.label}</td>
+      <td class="py-2 pr-3 text-neutral-600">${cfg.engine}</td>
+      <td class="py-2 pr-3 text-neutral-600">${cfg.bucket}</td>
+      <td class="py-2 pr-3"></td>
+      <td class="py-2 pr-3 text-right text-neutral-900">${lastVal}</td>
+      <td class="py-2 pr-3 text-right text-neutral-700">${zFormatted}</td>
+      <td class="py-2 pr-3 text-neutral-600">${commentText}</td>
     `;
+
+    const signalCell = tr.children[3];
+    const signalBadge = document.createElement("span");
+    signalBadge.className =
+      "inline-flex items-center px-2 py-0.5 rounded-full border bg-white text-[11px] border-neutral-300";
+    signalBadge.textContent = signal.label;
+    signalCell.appendChild(signalBadge);
+
     tbody.appendChild(tr);
+  });
+
+  if (!tbody.children.length) {
+    const row = document.createElement("tr");
+    row.innerHTML =
+      '<td colspan="7" class="py-3 text-center text-neutral-400">No indicators available for this country.</td>';
+    tbody.appendChild(row);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Meta (data as of)
+// ---------------------------------------------------------------------------
+function renderMeta(statsById) {
+  const dataAsOf = document.getElementById("cc-data-as-of");
+  if (!dataAsOf) return;
+
+  const allStats = Object.values(statsById).filter(Boolean);
+  if (!allStats.length) {
+    dataAsOf.textContent = "latest: n/a";
+    return;
+  }
+
+  const lastYear = Math.max(...allStats.map(s => s.latest.year));
+  dataAsOf.textContent = `latest: ${lastYear}`;
+}
+
+// ---------------------------------------------------------------------------
+// Country loader
+// ---------------------------------------------------------------------------
+async function loadCountry(countryKey) {
+  const meta = COUNTRY_META[countryKey] || { name: countryKey, region: "" };
+
+  const labelEl = document.getElementById("cc-country-current-label");
+  const regionEl = document.getElementById("cc-country-current-region");
+  if (labelEl) labelEl.textContent = meta.name;
+  if (regionEl) regionEl.textContent = meta.region || "";
+
+  // Use cached stats if available
+  if (macroCache[countryKey]) {
+    const statsById = macroCache[countryKey];
+    const engines = engineScoreFromIndicators(statsById);
+    renderRegimeSummary(countryKey, statsById, engines);
+    renderEngineCards(engines);
+    renderHeadlineTiles(statsById);
+    renderInflectionSignals(statsById);
+    renderIndicatorGrid(statsById, countryKey);
+    renderMeta(statsById);
+    return;
+  }
+
+  document.body.classList.add("cc-loading");
+
+  try {
+    const requests = INDICATORS.map(cfg =>
+      fetchWorldBankSeries(countryKey, cfg.wb).then(series => ({
+        cfg,
+        series
+      }))
+    );
+
+    const results = await Promise.all(requests);
+
+    const statsById = {};
+    results.forEach(({ cfg, series }) => {
+      const stats = series && series.length ? computeStats(series) : null;
+      statsById[cfg.id] = stats;
+    });
+
+    macroCache[countryKey] = statsById;
+
+    const engines = engineScoreFromIndicators(statsById);
+    renderRegimeSummary(countryKey, statsById, engines);
+    renderEngineCards(engines);
+    renderHeadlineTiles(statsById);
+    renderInflectionSignals(statsById);
+    renderIndicatorGrid(statsById, countryKey);
+    renderMeta(statsById);
+  } catch (err) {
+    console.error("Failed to load country data:", err);
+  } finally {
+    document.body.classList.remove("cc-loading");
+  }
+}
+
+// ---------------------------------------------------------------------------
+// UI wiring
+// ---------------------------------------------------------------------------
+function setupCountryDropdown() {
+  const toggle = document.getElementById("cc-country-toggle");
+  const menu = document.getElementById("cc-country-menu");
+  if (!toggle || !menu) return;
+
+  toggle.addEventListener("click", () => {
+    menu.classList.toggle("hidden");
+  });
+
+  menu.addEventListener("click", evt => {
+    const btn = evt.target.closest("[data-cc-country]");
+    if (!btn) return;
+    const code = btn.getAttribute("data-cc-country");
+    const region = btn.getAttribute("data-cc-region") || "";
+    menu.classList.add("hidden");
+
+    const meta = COUNTRY_META[code] || { name: code, region };
+    const labelSpan =
+      document.querySelector("[data-cc-country-label]") ||
+      document.getElementById("cc-country-current-label");
+    const regionSpan =
+      document.querySelector("[data-cc-country-region]") ||
+      document.getElementById("cc-country-current-region");
+
+    if (labelSpan) labelSpan.textContent = meta.name;
+    if (regionSpan) regionSpan.textContent = meta.region || region;
+
+    loadCountry(code);
+  });
+
+  document.addEventListener("click", evt => {
+    if (!menu.contains(evt.target) && evt.target !== toggle) {
+      menu.classList.add("hidden");
+    }
+  });
+}
+
+function setupLiveToggle() {
+  const group = document.getElementById("cc-live-toggle-group");
+  if (!group) return;
+
+  group.addEventListener("click", evt => {
+    const btn = evt.target.closest("[data-cc-live-toggle]");
+    if (!btn) return;
+
+    Array.from(group.querySelectorAll("button")).forEach(b => {
+      b.classList.remove("bg-cordobaGold", "text-white");
+      b.classList.add("text-neutral-500");
+    });
+
+    btn.classList.add("bg-cordobaGold", "text-white");
+    btn.classList.remove("text-neutral-500");
+  });
+}
+
+function setupFilters() {
+  const allBtn = document.getElementById("cc-filter-all");
+  const topBtn = document.getElementById("cc-filter-top");
+  const tbody = document.getElementById("cc-indicator-rows");
+  if (!allBtn || !topBtn || !tbody) return;
+
+  allBtn.addEventListener("click", () => {
+    Array.from(tbody.querySelectorAll("tr")).forEach(tr => {
+      tr.classList.remove("hidden");
+    });
+    allBtn.classList.add("bg-cordobaSoft");
+    topBtn.classList.remove("bg-cordobaSoft");
+  });
+
+  topBtn.addEventListener("click", () => {
+    Array.from(tbody.querySelectorAll("tr")).forEach(tr => {
+      const zCell = tr.children[5];
+      if (!zCell) return;
+      const z = parseFloat(zCell.textContent);
+      if (isNaN(z)) return;
+      const strong = Math.abs(z) >= 0.7;
+      tr.classList.toggle("hidden", !strong);
+    });
+    topBtn.classList.add("bg-cordobaSoft");
+    allBtn.classList.remove("bg-cordobaSoft");
   });
 }
 
 // ---------------------------------------------------------------------------
-// INIT
+// Init
 // ---------------------------------------------------------------------------
 document.addEventListener("DOMContentLoaded", () => {
-  loadCountry("US");
-
-  document.getElementById("export-png")?.addEventListener("click", exportPNG);
-  document.getElementById("export-pdf")?.addEventListener("click", exportPDF);
-  document.getElementById("export-copy")?.addEventListener("click", copyToClipboard);
+  setupCountryDropdown();
+  setupLiveToggle();
+  setupFilters();
+  loadCountry("US"); // default view: United States
 });
