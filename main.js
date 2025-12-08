@@ -235,7 +235,10 @@ function computeStats(series, lookbackYears = 10) {
     z,
     delta,
     analogues,
-    windowYears: window.length
+    windowYears: window.length,
+    // keep full series + last 10 points for sparkline
+    series,
+    sparkSeries: series.slice(-10)
   };
 }
 
@@ -332,6 +335,41 @@ function riskLevelFromZ(z) {
 }
 
 // ---------------------------------------------------------------------------
+// SVG sparkline helper
+// ---------------------------------------------------------------------------
+function createSparkline(values, width = 90, height = 24) {
+  if (!values || values.length < 2) return null;
+  const svgNS = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(svgNS, "svg");
+  svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+  svg.setAttribute("class", "w-20 h-6 text-neutral-400");
+
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const range = max - min || 1;
+  const stepX = values.length > 1 ? width / (values.length - 1) : 0;
+
+  const points = values
+    .map((v, idx) => {
+      const x = idx * stepX;
+      const y = height - ((v - min) / range) * (height - 4) - 2;
+      return `${x},${y}`;
+    })
+    .join(" ");
+
+  const poly = document.createElementNS(svgNS, "polyline");
+  poly.setAttribute("points", points);
+  poly.setAttribute("fill", "none");
+  poly.setAttribute("stroke", "currentColor");
+  poly.setAttribute("stroke-width", "1.3");
+  poly.setAttribute("stroke-linejoin", "round");
+  poly.setAttribute("stroke-linecap", "round");
+
+  svg.appendChild(poly);
+  return svg;
+}
+
+// ---------------------------------------------------------------------------
 // Note helper & research suggestions
 // ---------------------------------------------------------------------------
 function buildNoteDraft(countryKey, statsById, engines) {
@@ -349,8 +387,6 @@ function buildNoteDraft(countryKey, statsById, engines) {
 
   const growthZ = engines.growth?.z || 0;
   const inflZ = engines.inflation?.z || 0;
-  const liqZ = engines.liquidity?.z || 0;
-  const extZ = engines.external?.z || 0;
 
   let growthPhrase = "near-trend growth";
   if (growthZ > 0.5) growthPhrase = "above-trend growth";
@@ -532,6 +568,102 @@ function renderNoteHelper(countryKey, statsById, engines) {
       bulletsEl.appendChild(li);
     });
   }
+}
+
+// ---------------------------------------------------------------------------
+// "Next 3 questions to ask"
+// ---------------------------------------------------------------------------
+function renderNextQuestions(countryKey, statsById, engines) {
+  const list = document.getElementById("cc-next-questions");
+  if (!list) return;
+  list.innerHTML = "";
+
+  const gdp = statsById.gdp_growth;
+  const infl = statsById.inflation;
+  const unemp = statsById.unemployment;
+  const money = statsById.money;
+  const ca = statsById.current_account;
+
+  const questions = [];
+
+  if (ca && Math.abs(ca.z) > 0.6) {
+    questions.push(
+      `Why has the current-account balance moved to ${formatNumber(
+        ca.latest.value,
+        1,
+        "% of GDP"
+      )} versus its 10-year average of ${formatNumber(
+        ca.mean,
+        1,
+        "% of GDP"
+      )}? Is that shift cyclical or driven by structural forces?`
+    );
+  }
+
+  if (gdp && unemp && (Math.abs(gdp.z) > 0.5 || Math.abs(unemp.z) > 0.5)) {
+    questions.push(
+      `What is driving the combination of growth at ${formatNumber(
+        gdp.latest.value,
+        1,
+        "%"
+      )} and unemployment at ${formatNumber(
+        unemp.latest.value,
+        1,
+        "%"
+      )}? Does it point to overheating, remaining slack, or something more idiosyncratic?`
+    );
+  }
+
+  if (money && infl && (Math.abs(money.z) > 0.5 || Math.abs(infl.z) > 0.5)) {
+    questions.push(
+      `Is the current mix of money growth (${formatNumber(
+        money.latest.value,
+        1,
+        "%"
+      )}) and inflation (${formatNumber(
+        infl.latest.value,
+        1,
+        "%"
+      )}) enough to shift the policy stance, or does it leave the central bank comfortable to wait?`
+    );
+  }
+
+  // dominant engine question
+  const engineList = [
+    { id: "growth", label: "Growth" },
+    { id: "inflation", label: "Inflation" },
+    { id: "liquidity", label: "Liquidity" },
+    { id: "external", label: "External" }
+  ];
+  const dominant = engineList
+    .map((e) => ({ ...e, z: engines[e.id].z }))
+    .sort((a, b) => Math.abs(b.z) - Math.abs(a.z))[0];
+
+  if (dominant && Math.abs(dominant.z) > 0.5) {
+    questions.push(
+      `Why is ${dominant.label.toLowerCase()} the main outlier vs history (z-score ${dominant.z.toFixed(
+        1
+      )})? What are the key channels through which that shows up in assets?`
+    );
+  }
+
+  if (questions.length < 3) {
+    questions.push(
+      "How does this regime compare with the analogue years highlighted above? What was mispriced then that might rhyme with today?"
+    );
+  }
+  if (questions.length < 3) {
+    questions.push(
+      "Which indicators would you watch most closely over the next 3–6 months to spot a regime shift early?"
+    );
+  }
+
+  questions.slice(0, 3).forEach((q) => {
+    const li = document.createElement("li");
+    li.className = "text-xs text-neutral-700 mb-1";
+    li.textContent = q;
+    list.appendChild(li);
+  });
 }
 
 function buildResearchReason(engines) {
@@ -1023,7 +1155,7 @@ function renderInflectionSignals(statsById) {
 }
 
 // ---------------------------------------------------------------------------
-// Rendering – Indicator grid
+// Rendering – Indicator grid (with sparklines)
 // ---------------------------------------------------------------------------
 function renderIndicatorGrid(statsById, countryKey) {
   const tbody = document.getElementById("cc-indicator-rows");
@@ -1067,11 +1199,13 @@ function renderIndicatorGrid(statsById, countryKey) {
       <td class="py-2 pr-3 text-neutral-600">${cfg.engine}</td>
       <td class="py-2 pr-3 text-neutral-600">${cfg.bucket}</td>
       <td class="py-2 pr-3"></td>
+      <td class="py-2 pr-3"></td>
       <td class="py-2 pr-3 text-right text-neutral-900">${lastVal}</td>
       <td class="py-2 pr-3 text-right text-neutral-700">${zFormatted}</td>
       <td class="py-2 pr-3 text-neutral-600">${commentText}</td>
     `;
 
+    // Signal badge
     const signalCell = tr.children[3];
     const signalBadge = document.createElement("span");
     signalBadge.className =
@@ -1079,13 +1213,24 @@ function renderIndicatorGrid(statsById, countryKey) {
     signalBadge.textContent = signal.label;
     signalCell.appendChild(signalBadge);
 
+    // Sparkline cell
+    const trendCell = tr.children[4];
+    if (stat.sparkSeries && stat.sparkSeries.length >= 2) {
+      const values = stat.sparkSeries.map((p) => p.value);
+      const svg = createSparkline(values);
+      if (svg) trendCell.appendChild(svg);
+    } else {
+      trendCell.innerHTML =
+        '<span class="text-[10px] text-neutral-400">n/a</span>';
+    }
+
     tbody.appendChild(tr);
   });
 
   if (!tbody.children.length) {
     const row = document.createElement("tr");
     row.innerHTML =
-      '<td colspan="7" class="py-3 text-center text-neutral-400">No indicators available for this country.</td>';
+      '<td colspan="8" class="py-3 text-center text-neutral-400">No indicators available for this country.</td>';
     tbody.appendChild(row);
   }
 }
@@ -1129,6 +1274,7 @@ async function loadCountry(countryKey) {
     renderIndicatorGrid(statsById, countryKey);
     renderMeta(statsById);
     renderNoteHelper(countryKey, statsById, engines);
+    renderNextQuestions(countryKey, statsById, engines);
     renderResearchSuggestions(countryKey, statsById, engines);
     return;
   }
@@ -1161,6 +1307,7 @@ async function loadCountry(countryKey) {
     renderIndicatorGrid(statsById, countryKey);
     renderMeta(statsById);
     renderNoteHelper(countryKey, statsById, engines);
+    renderNextQuestions(countryKey, statsById, engines);
     renderResearchSuggestions(countryKey, statsById, engines);
   } catch (err) {
     console.error("Failed to load country data:", err);
@@ -1209,24 +1356,6 @@ function setupCountryDropdown() {
   });
 }
 
-function setupLiveToggle() {
-  const group = document.getElementById("cc-live-toggle-group");
-  if (!group) return;
-
-  group.addEventListener("click", (evt) => {
-    const btn = evt.target.closest("[data-cc-live-toggle]");
-    if (!btn) return;
-
-    Array.from(group.querySelectorAll("button")).forEach((b) => {
-      b.classList.remove("bg-cordobaGold", "text-white");
-      b.classList.add("text-neutral-500");
-    });
-
-    btn.classList.add("bg-cordobaGold", "text-white");
-    btn.classList.remove("text-neutral-500");
-  });
-}
-
 function setupFilters() {
   const allBtn = document.getElementById("cc-filter-all");
   const topBtn = document.getElementById("cc-filter-top");
@@ -1243,7 +1372,7 @@ function setupFilters() {
 
   topBtn.addEventListener("click", () => {
     Array.from(tbody.querySelectorAll("tr")).forEach((tr) => {
-      const zCell = tr.children[5];
+      const zCell = tr.children[6]; // z-score column index (after adding sparkline)
       if (!zCell) return;
       const z = parseFloat(zCell.textContent);
       if (isNaN(z)) return;
@@ -1255,12 +1384,35 @@ function setupFilters() {
   });
 }
 
+// Methodology modal (open/close)
+function setupMethodologyModal() {
+  const openBtn = document.getElementById("cc-methodology-open");
+  const modal = document.getElementById("cc-methodology-modal");
+  if (!openBtn || !modal) return;
+
+  const closeBtn = document.getElementById("cc-methodology-close");
+  const backdrop = modal.querySelector("[data-cc-methodology-close]");
+
+  const open = () => modal.classList.remove("hidden");
+  const close = () => modal.classList.add("hidden");
+
+  openBtn.addEventListener("click", open);
+  if (closeBtn) closeBtn.addEventListener("click", close);
+  if (backdrop) backdrop.addEventListener("click", close);
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && !modal.classList.contains("hidden")) {
+      close();
+    }
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Init
 // ---------------------------------------------------------------------------
 document.addEventListener("DOMContentLoaded", () => {
   setupCountryDropdown();
-  setupLiveToggle();
   setupFilters();
+  setupMethodologyModal();
   loadCountry("US"); // default view: United States
 });
