@@ -83,20 +83,21 @@
         </button>
       </nav>
 
-      <!-- Methodology link -->
-      <button
-        id="cc-methodology-open"
-        class="mt-3 inline-flex items-center gap-2 text-[11px] text-neutral-600 hover:text-neutral-900 hover:underline underline-offset-2"
-        type="button"
-      >
-        <span class="h-1.5 w-1.5 rounded-full bg-neutral-400"></span>
-        Methodology &amp; data notes
-      </button>
-
-      <div class="mt-auto text-[11px] text-neutral-500 border-t border-neutral-200 pt-3">
-        Built for internal use by Cordoba Capital.<br />
-        Sources: World Bank World Development Indicators (WDI) and other public data.<br />
-        Data is subject to revision and lag.
+      <!-- Footer / methodology at bottom -->
+      <div class="mt-auto border-t border-neutral-200 pt-3 text-[11px] text-neutral-500">
+        <button
+          id="cc-methodology-open"
+          type="button"
+          class="mb-2 inline-flex items-center gap-2 text-[11px] text-neutral-600 hover:text-neutral-900 hover:underline underline-offset-2"
+        >
+          <span class="h-1.5 w-1.5 rounded-full bg-neutral-400"></span>
+          Methodology &amp; data notes
+        </button>
+        <div>
+          Built for internal use by Cordoba Capital.<br />
+          Sources: World Bank World Development Indicators (WDI) and other public data.<br />
+          Data is subject to revision and lag.
+        </div>
       </div>
     </aside>
 
@@ -456,7 +457,7 @@
     class="fixed inset-0 z-40 hidden"
   >
     <div
-      data-cc-methodology-overlay
+      data-cc-overlay
       class="absolute inset-0 bg-black/30"
     ></div>
     <div class="relative z-10 flex min-h-full items-end sm:items-center justify-center p-4">
