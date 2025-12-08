@@ -73,6 +73,50 @@ const INDICATORS = [
   }
 ];
 
+// ---------------------------------------------------------------------------
+// Cordoba research metadata (hand-curated mapping)
+// ---------------------------------------------------------------------------
+const CORDOBA_RESEARCH = [
+  {
+    id: "global_volatility",
+    title:
+      "Navigating Volatility, Trump’s Second Term, China’s Retaliation, Global Shifts, and Emerging Opportunities",
+    url: "https://cordobacapital.co.uk/navigating-volatility-trumps-second-term-chinas-retaliation-global-shifts-and-emerging-opportunities/",
+    countries: ["US", "CN"],
+    regions: ["Global"],
+    engines: ["growth", "inflation", "external"],
+    tags: ["volatility", "rates", "geopolitics"]
+  },
+  {
+    id: "global_change",
+    title:
+      "Navigating Change, Europe’s Transformation, China’s Challenges, US Debt Struggles, and Emerging Opportunities",
+    url: "https://cordobacapital.co.uk/navigating-change-europes-transformation-chinas-challenges-us-debt-struggles-and-emerging-opportunities/",
+    countries: [],
+    regions: ["Europe", "Global"],
+    engines: ["growth", "external", "liquidity"],
+    tags: ["europe", "china", "debt"]
+  },
+  {
+    id: "malaysia_macro",
+    title: "No One’s Watching Malaysia. Maybe They Should Be",
+    url: "https://cordobacapital.co.uk/no-ones-watching-malaysia-maybe-they-should-be/",
+    countries: [],
+    regions: ["EM", "Asia"],
+    engines: ["growth", "external"],
+    tags: ["malaysia", "em", "bonds"]
+  },
+  {
+    id: "malaysia_bonds",
+    title: "May 2025 Malaysia Bond Market Outlook",
+    url: "https://cordobacapital.co.uk/may-2025-malaysia-bond-market-outlook/",
+    countries: [],
+    regions: ["EM", "Asia"],
+    engines: ["liquidity", "external"],
+    tags: ["rates", "bonds", "malaysia"]
+  }
+];
+
 // Simple in-memory cache for stats
 const macroCache = {};
 
@@ -118,8 +162,8 @@ async function fetchWorldBankSeries(countryKey, indicatorCode) {
     }
 
     const series = data
-      .filter(d => d && d.value != null)
-      .map(d => ({
+      .filter((d) => d && d.value != null)
+      .map((d) => ({
         year: parseInt(d.date, 10),
         value: Number(d.value)
       }))
@@ -154,9 +198,9 @@ function computeStats(series, lookbackYears = 10) {
   const prev = series.length >= 2 ? series[series.length - 2] : null;
 
   const cutoffYear = latest.year - lookbackYears + 1;
-  const window = series.filter(p => p.year >= cutoffYear);
+  const window = series.filter((p) => p.year >= cutoffYear);
 
-  const values = window.map(p => p.value);
+  const values = window.map((p) => p.value);
   const mean =
     values.length > 0
       ? values.reduce((sum, v) => sum + v, 0) / values.length
@@ -172,16 +216,16 @@ function computeStats(series, lookbackYears = 10) {
   const z = stdev > 0 ? (latest.value - mean) / stdev : 0;
   const delta = prev ? latest.value - prev.value : 0;
 
-  const zByYear = window.map(p => ({
+  const zByYear = window.map((p) => ({
     year: p.year,
     z: stdev > 0 ? (p.value - mean) / stdev : 0
   }));
 
   const analogues = zByYear
-    .map(p => ({ ...p, diff: Math.abs(p.z - z) }))
+    .map((p) => ({ ...p, diff: Math.abs(p.z - z) }))
     .sort((a, b) => a.diff - b.diff)
     .slice(0, 3)
-    .map(p => p.year);
+    .map((p) => p.year);
 
   return {
     latest,
@@ -288,6 +332,319 @@ function riskLevelFromZ(z) {
 }
 
 // ---------------------------------------------------------------------------
+// Note helper & research suggestions
+// ---------------------------------------------------------------------------
+function buildNoteDraft(countryKey, statsById, engines) {
+  const meta = COUNTRY_META[countryKey] || { name: countryKey, region: "" };
+  const gdp = statsById.gdp_growth;
+  const infl = statsById.inflation;
+  const unemp = statsById.unemployment;
+  const money = statsById.money;
+  const ca = statsById.current_account;
+
+  const allStats = Object.values(statsById).filter(Boolean);
+  const lastYear = allStats.length
+    ? Math.max(...allStats.map((s) => s.latest.year))
+    : "n/a";
+
+  const growthZ = engines.growth?.z || 0;
+  const inflZ = engines.inflation?.z || 0;
+  const liqZ = engines.liquidity?.z || 0;
+  const extZ = engines.external?.z || 0;
+
+  let growthPhrase = "near-trend growth";
+  if (growthZ > 0.5) growthPhrase = "above-trend growth";
+  else if (growthZ < -0.5) growthPhrase = "below-trend growth";
+
+  let inflationPhrase = "stable inflation";
+  if (inflZ > 0.5) inflationPhrase = "elevated inflation";
+  else if (inflZ < -0.5) inflationPhrase = "disinflation";
+
+  const lines = [];
+
+  lines.push(
+    `${meta.name} – Macro snapshot (${lastYear}, World Bank annual data).`
+  );
+  lines.push(
+    `The macro backdrop is characterised by ${growthPhrase} alongside ${inflationPhrase}.`
+  );
+
+  if (gdp && infl) {
+    lines.push(
+      `Real GDP growth is ${formatNumber(
+        gdp.latest.value,
+        1,
+        "%"
+      )} compared with a 10-year average of ${formatNumber(
+        gdp.mean,
+        1,
+        "%"
+      )}, while headline inflation stands at ${formatNumber(
+        infl.latest.value,
+        1,
+        "%"
+      )} versus a decade average of ${formatNumber(infl.mean, 1, "%")}.`
+    );
+  } else if (gdp) {
+    lines.push(
+      `Real GDP growth is ${formatNumber(
+        gdp.latest.value,
+        1,
+        "%"
+      )} versus a 10-year average of ${formatNumber(gdp.mean, 1, "%")}.`
+    );
+  } else if (infl) {
+    lines.push(
+      `Headline inflation is ${formatNumber(
+        infl.latest.value,
+        1,
+        "%"
+      )} versus a 10-year average of ${formatNumber(infl.mean, 1, "%")}.`
+    );
+  }
+
+  if (unemp) {
+    lines.push(
+      `Labour market conditions are signalled by an unemployment rate of ${formatNumber(
+        unemp.latest.value,
+        1,
+        "%"
+      )} versus a 10-year average of ${formatNumber(
+        unemp.mean,
+        1,
+        "%"
+      )}, providing a read on slack vs overheating.`
+    );
+  }
+
+  if (money) {
+    lines.push(
+      `Broad money growth is ${formatNumber(
+        money.latest.value,
+        1,
+        "%"
+      )}, compared with a 10-year average of ${formatNumber(
+        money.mean,
+        1,
+        "%"
+      )}, offering a simple proxy for domestic liquidity.`
+    );
+  }
+
+  if (ca) {
+    lines.push(
+      `The external position shows a current-account balance of ${formatNumber(
+        ca.latest.value,
+        1,
+        "% of GDP"
+      )} against a decade average of ${formatNumber(
+        ca.mean,
+        1,
+        "% of GDP"
+      )}, flagging how far the funding side is from its usual range.`
+    );
+  }
+
+  lines.push(
+    `Engine scores – Growth: ${engines.growth.score}/100, Inflation: ${engines.inflation.score}/100, Liquidity: ${engines.liquidity.score}/100, External: ${engines.external.score}/100 – provide a compact view of where the country sits vs its own history.`
+  );
+
+  return lines.join("\n\n");
+}
+
+function renderNoteHelper(countryKey, statsById, engines) {
+  const draftEl = document.getElementById("cc-note-draft");
+  const bulletsEl = document.getElementById("cc-note-bullets");
+  if (!draftEl && !bulletsEl) return;
+
+  // Draft text
+  if (draftEl) {
+    draftEl.value = buildNoteDraft(countryKey, statsById, engines);
+  }
+
+  if (bulletsEl) {
+    bulletsEl.innerHTML = "";
+
+    const gdp = statsById.gdp_growth;
+    const infl = statsById.inflation;
+    const money = statsById.money;
+    const ca = statsById.current_account;
+
+    const bullets = [];
+
+    if (gdp && Math.abs(gdp.z) > 0.7) {
+      bullets.push(
+        `Growth is ${gdp.z > 0 ? "well above" : "well below"} its 10-year trend (z-score ${gdp.z.toFixed(
+          1
+        )}); think about where we are in the cycle and how that lines up with earnings and credit.`
+      );
+    }
+
+    if (infl && Math.abs(infl.z) > 0.7) {
+      bullets.push(
+        `Inflation is ${infl.z > 0 ? "elevated" : "subdued"} vs history (z-score ${infl.z.toFixed(
+          1
+        )}); note whether this supports or challenges the market’s current rate path.`
+      );
+    }
+
+    if (money && Math.abs(money.z) > 0.7) {
+      bullets.push(
+        `Broad money growth is sending a ${money.z > 0 ? "strong" : "weak"} liquidity signal; consider how this lines up with risk premia and asset valuations.`
+      );
+    }
+
+    if (ca && Math.abs(ca.z) > 0.7) {
+      bullets.push(
+        `The current account is ${ca.z > 0 ? "stronger" : "weaker"} than usual; think about FX vulnerability, funding channels, and how this sits vs peers.`
+      );
+    }
+
+    const engineList = [
+      { id: "growth", label: "Growth" },
+      { id: "inflation", label: "Inflation" },
+      { id: "liquidity", label: "Liquidity" },
+      { id: "external", label: "External" }
+    ];
+
+    const dominant = engineList
+      .map((e) => ({ ...e, z: engines[e.id].z }))
+      .sort((a, b) => Math.abs(b.z) - Math.abs(a.z))[0];
+
+    if (dominant && Math.abs(dominant.z) > 0.5) {
+      bullets.push(
+        `${dominant.label} is the dominant engine right now (z-score ${dominant.z.toFixed(
+          1
+        )}); structure the note around why this matters for positioning rather than just listing indicators.`
+      );
+    }
+
+    if (!bullets.length) {
+      bullets.push(
+        "Most indicators are close to their 10-year trends. Focus the note on what could shift the regime: policy surprises, global shocks, or structural reforms."
+      );
+    }
+
+    bullets.forEach((text) => {
+      const li = document.createElement("li");
+      li.className = "text-xs text-neutral-700 mb-1";
+      li.textContent = text;
+      bulletsEl.appendChild(li);
+    });
+  }
+}
+
+function buildResearchReason(engines) {
+  const parts = [];
+  const add = (name, obj) => {
+    if (!obj || obj.z == null || isNaN(obj.z)) return;
+    const z = obj.z.toFixed(1);
+    const tone =
+      Math.abs(obj.z) < 0.5
+        ? "near trend"
+        : obj.z > 0
+        ? "stretched high"
+        : "stretched low";
+    parts.push(`${name}: z ${z} (${tone})`);
+  };
+  add("Growth", engines.growth);
+  add("Inflation", engines.inflation);
+  add("Liquidity", engines.liquidity);
+  add("External", engines.external);
+  return parts.join(" · ");
+}
+
+function renderResearchSuggestions(countryKey, statsById, engines) {
+  const container = document.getElementById("cc-research-list");
+  if (!container) return;
+
+  const meta = COUNTRY_META[countryKey] || { name: countryKey, region: "" };
+  const countryName = meta.name || countryKey;
+
+  container.innerHTML = "";
+
+  const engineArray = [
+    { id: "growth", z: engines.growth?.z || 0 },
+    { id: "inflation", z: engines.inflation?.z || 0 },
+    { id: "liquidity", z: engines.liquidity?.z || 0 },
+    { id: "external", z: engines.external?.z || 0 }
+  ];
+
+  const dominant = engineArray.sort(
+    (a, b) => Math.abs(b.z) - Math.abs(a.z)
+  )[0];
+
+  const domEngineId = dominant ? dominant.id : null;
+
+  const scored = CORDOBA_RESEARCH.map((article) => {
+    let score = 0;
+
+    if (domEngineId && article.engines.includes(domEngineId)) {
+      score += 3;
+    }
+
+    if (article.countries.includes(countryKey)) {
+      score += 3;
+    }
+
+    const nameLower = countryName.toLowerCase();
+    if (
+      article.regions.some((r) =>
+        nameLower.includes(r.toLowerCase())
+      )
+    ) {
+      score += 2;
+    }
+
+    if (meta.region && article.regions.includes("Global")) {
+      score += 1;
+    }
+
+    if (Math.abs(dominant?.z || 0) > 0.7) score += 1;
+
+    return { article, score };
+  }).sort((a, b) => b.score - a.score);
+
+  const top = scored.filter((x) => x.score > 0).slice(0, 3);
+
+  if (!top.length) {
+    container.innerHTML =
+      '<p class="text-xs text-neutral-500">No specific Cordoba notes mapped to this regime yet. Use the macro snapshot above as your starting point.</p>';
+    return;
+  }
+
+  top.forEach(({ article }) => {
+    const card = document.createElement("a");
+    card.href = article.url;
+    card.target = "_blank";
+    card.rel = "noopener noreferrer";
+    card.className =
+      "block rounded-2xl border border-neutral-200 bg-white px-3 py-2 mb-2 hover:border-cordobaGold hover:bg-cordobaSoft transition-colors text-xs";
+
+    const title = document.createElement("div");
+    title.className = "font-medium text-neutral-900 mb-1";
+    title.textContent = article.title;
+    card.appendChild(title);
+
+    const metaLine = document.createElement("div");
+    metaLine.className = "text-[11px] text-neutral-600";
+    metaLine.textContent = `Theme: ${article.engines
+      .map((e) => capitaliseFirst(e))
+      .join(", ")}`;
+    card.appendChild(metaLine);
+
+    const reason = document.createElement("div");
+    reason.className = "text-[11px] text-neutral-500 mt-1";
+    reason.textContent =
+      "Suggested because of the current engine configuration: " +
+      buildResearchReason(engines);
+    card.appendChild(reason);
+
+    container.appendChild(card);
+  });
+}
+
+// ---------------------------------------------------------------------------
 // Rendering – Regime summary
 // ---------------------------------------------------------------------------
 function renderRegimeSummary(countryKey, statsById, engines) {
@@ -369,7 +726,7 @@ function renderRegimeSummary(countryKey, statsById, engines) {
   const avgWindow = average(
     Object.values(statsById)
       .filter(Boolean)
-      .map(s => s.windowYears || 0)
+      .map((s) => s.windowYears || 0)
   );
   let confidence =
     0.4 * (indicatorsWithData / INDICATORS.length) +
@@ -382,7 +739,7 @@ function renderRegimeSummary(countryKey, statsById, engines) {
     analogEl.innerHTML = "";
     const analogueYears = gdp ? gdp.analogues : [];
     if (analogueYears && analogueYears.length) {
-      analogueYears.forEach(year => {
+      analogueYears.forEach((year) => {
         const pill = document.createElement("span");
         pill.className =
           "inline-flex items-center px-2.5 py-0.5 rounded-full border border-neutral-300 bg-cordobaSoft text-xs";
@@ -407,7 +764,7 @@ function renderRegimeSummary(countryKey, statsById, engines) {
       { label: "Growth risk", level: growthRisk },
       { label: "Inflation risk", level: inflationRisk },
       { label: "External risk", level: externalRisk }
-    ].forEach(r => {
+    ].forEach((r) => {
       const span = document.createElement("span");
       span.className =
         "inline-flex items-center px-2.5 py-0.5 rounded-full border bg-cordobaSoft text-xs border-neutral-300 mr-1 mb-1";
@@ -452,7 +809,7 @@ function renderEngineCards(engines) {
     }
   ];
 
-  meta.forEach(m => {
+  meta.forEach((m) => {
     const engine = engines[m.id];
     const z = engine ? engine.z : 0;
     const score = engine ? engine.score : 50;
@@ -517,11 +874,11 @@ function renderHeadlineTiles(statsById) {
     );
     setText(
       "cc-gdp-extra",
-      `10-year avg ${formatNumber(gdp.mean, 1, "%")}; change vs prior year ${formatNumber(
-        gdp.delta,
+      `10-year avg ${formatNumber(
+        gdp.mean,
         1,
         "%"
-      )}.`
+      )}; change vs prior year ${formatNumber(gdp.delta, 1, "%")}.`
     );
   }
 
@@ -599,8 +956,8 @@ function renderInflectionSignals(statsById) {
     "current_account"
   ];
 
-  ordered.forEach(id => {
-    const cfg = INDICATORS.find(i => i.id === id);
+  ordered.forEach((id) => {
+    const cfg = INDICATORS.find((i) => i.id === id);
     const stat = statsById[id];
     if (!cfg || !stat) return;
 
@@ -644,7 +1001,8 @@ function renderInflectionSignals(statsById) {
     row.appendChild(left);
 
     const right = document.createElement("div");
-    right.className = "text-right text-[11px] text-neutral-500 whitespace-nowrap";
+    right.className =
+      "text-right text-[11px] text-neutral-500 whitespace-nowrap";
     const dirArrow =
       signal.direction === "up"
         ? "↑"
@@ -676,7 +1034,7 @@ function renderIndicatorGrid(statsById, countryKey) {
 
   tbody.innerHTML = "";
 
-  INDICATORS.forEach(cfg => {
+  INDICATORS.forEach((cfg) => {
     const stat = statsById[cfg.id];
     if (!stat) return;
 
@@ -744,7 +1102,7 @@ function renderMeta(statsById) {
     return;
   }
 
-  const lastYear = Math.max(...allStats.map(s => s.latest.year));
+  const lastYear = Math.max(...allStats.map((s) => s.latest.year));
   dataAsOf.textContent = `latest: ${lastYear}`;
 }
 
@@ -769,14 +1127,16 @@ async function loadCountry(countryKey) {
     renderInflectionSignals(statsById);
     renderIndicatorGrid(statsById, countryKey);
     renderMeta(statsById);
+    renderNoteHelper(countryKey, statsById, engines);
+    renderResearchSuggestions(countryKey, statsById, engines);
     return;
   }
 
   document.body.classList.add("cc-loading");
 
   try {
-    const requests = INDICATORS.map(cfg =>
-      fetchWorldBankSeries(countryKey, cfg.wb).then(series => ({
+    const requests = INDICATORS.map((cfg) =>
+      fetchWorldBankSeries(countryKey, cfg.wb).then((series) => ({
         cfg,
         series
       }))
@@ -799,6 +1159,8 @@ async function loadCountry(countryKey) {
     renderInflectionSignals(statsById);
     renderIndicatorGrid(statsById, countryKey);
     renderMeta(statsById);
+    renderNoteHelper(countryKey, statsById, engines);
+    renderResearchSuggestions(countryKey, statsById, engines);
   } catch (err) {
     console.error("Failed to load country data:", err);
   } finally {
@@ -818,7 +1180,7 @@ function setupCountryDropdown() {
     menu.classList.toggle("hidden");
   });
 
-  menu.addEventListener("click", evt => {
+  menu.addEventListener("click", (evt) => {
     const btn = evt.target.closest("[data-cc-country]");
     if (!btn) return;
     const code = btn.getAttribute("data-cc-country");
@@ -839,7 +1201,7 @@ function setupCountryDropdown() {
     loadCountry(code);
   });
 
-  document.addEventListener("click", evt => {
+  document.addEventListener("click", (evt) => {
     if (!menu.contains(evt.target) && evt.target !== toggle) {
       menu.classList.add("hidden");
     }
@@ -850,11 +1212,11 @@ function setupLiveToggle() {
   const group = document.getElementById("cc-live-toggle-group");
   if (!group) return;
 
-  group.addEventListener("click", evt => {
+  group.addEventListener("click", (evt) => {
     const btn = evt.target.closest("[data-cc-live-toggle]");
     if (!btn) return;
 
-    Array.from(group.querySelectorAll("button")).forEach(b => {
+    Array.from(group.querySelectorAll("button")).forEach((b) => {
       b.classList.remove("bg-cordobaGold", "text-white");
       b.classList.add("text-neutral-500");
     });
@@ -871,7 +1233,7 @@ function setupFilters() {
   if (!allBtn || !topBtn || !tbody) return;
 
   allBtn.addEventListener("click", () => {
-    Array.from(tbody.querySelectorAll("tr")).forEach(tr => {
+    Array.from(tbody.querySelectorAll("tr")).forEach((tr) => {
       tr.classList.remove("hidden");
     });
     allBtn.classList.add("bg-cordobaSoft");
@@ -879,7 +1241,7 @@ function setupFilters() {
   });
 
   topBtn.addEventListener("click", () => {
-    Array.from(tbody.querySelectorAll("tr")).forEach(tr => {
+    Array.from(tbody.querySelectorAll("tr")).forEach((tr) => {
       const zCell = tr.children[5];
       if (!zCell) return;
       const z = parseFloat(zCell.textContent);
