@@ -828,7 +828,7 @@ function renderEngineCards(engines) {
     card.appendChild(header);
 
     const main = document.createElement("div");
-    main.className = "mt-1 flex items-end justify-between gap-2";
+    main.className = "mt-2 flex items-center justify-between gap-3";
 
     const scoreEl = document.createElement("div");
     scoreEl.innerHTML = `
@@ -841,12 +841,12 @@ function renderEngineCards(engines) {
       Math.abs(z) < 0.5 ? "Near trend" : z > 0 ? "Above trend" : "Below trend";
     const labelEl = document.createElement("span");
     labelEl.className =
-      "inline-flex items-center px-2 py-0.5 rounded-full border text-[10px] " +
-      m.text +
-      " border-neutral-300 bg-white";
+      "inline-flex items-center justify-center whitespace-nowrap " +
+      "px-3 py-1 rounded-full border text-[11px] font-medium " +
+      "border-neutral-300 bg-white " +
+      m.text;
     labelEl.textContent = qualitative;
     main.appendChild(labelEl);
-
     card.appendChild(main);
     container.appendChild(card);
   });
