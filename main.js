@@ -15,6 +15,7 @@ const COUNTRY_META = {
   CN: { name: "China", region: "G-20 · EM", wb: "CHN" },
   IN: { name: "India", region: "G-20 · EM", wb: "IND" },
   BR: { name: "Brazil", region: "G-20 · EM", wb: "BRA" }
+  UZ: { name: "Uzbekistan", region: "G-20 · EM", wb: "UZB" }
 };
 
 // ---------------------------------------------------------------------------
