@@ -121,7 +121,7 @@ const CORDOBA_RESEARCH = [
 const macroCache = {};
 
 // ---------------------------------------------------------------------------
-// WB fetch + cache (returns {series, updatedAt})
+// WB fetch + cache (now returns {series, updatedAt})
 // ---------------------------------------------------------------------------
 async function fetchWorldBankSeries(countryKey, indicatorCode) {
   const meta = COUNTRY_META[countryKey];
@@ -237,7 +237,7 @@ function inferMonthFromPoint(p) {
       if (mm >= 1 && mm <= 12) return mm;
     }
 
-    m = s.match(/^\d{4}-(\d{2})/); // YYYY-MM / YYYY-MM-DD
+    m = s.match(/^\d{4}-(\d{2})/);      // YYYY-MM / YYYY-MM-DD
     if (m) {
       const mm = parseInt(m[1], 10);
       if (mm >= 1 && mm <= 12) return mm;
@@ -417,7 +417,7 @@ function riskLevelFromZ(z) {
 }
 
 // ---------------------------------------------------------------------------
-// Note helper & research suggestions
+// Note helper & research suggestions (unchanged logic)
 // ---------------------------------------------------------------------------
 function buildNoteDraft(countryKey, statsById, engines) {
   const meta = COUNTRY_META[countryKey] || { name: countryKey, region: "" };
@@ -955,7 +955,10 @@ function renderHeadlineTiles(statsById) {
   };
 
   if (gdp) {
-    setText("cc-gdp-latest", `${formatNumber(gdp.latest.value, 1, "%")}`);
+    setText(
+      "cc-gdp-latest",
+      `${formatNumber(gdp.latest.value, 1, "%")}`
+    );
     setText(
       "cc-gdp-extra",
       `History avg ${formatNumber(
@@ -967,7 +970,10 @@ function renderHeadlineTiles(statsById) {
   }
 
   if (infl) {
-    setText("cc-inflation-latest", `${formatNumber(infl.latest.value, 1, "%")}`);
+    setText(
+      "cc-inflation-latest",
+      `${formatNumber(infl.latest.value, 1, "%")}`
+    );
     setText(
       "cc-inflation-extra",
       `History avg ${formatNumber(
@@ -994,7 +1000,10 @@ function renderHeadlineTiles(statsById) {
   }
 
   if (money) {
-    setText("cc-money-latest", `${formatNumber(money.latest.value, 1, "%")}`);
+    setText(
+      "cc-money-latest",
+      `${formatNumber(money.latest.value, 1, "%")}`
+    );
     setText(
       "cc-money-extra",
       `History avg ${formatNumber(
@@ -1100,43 +1109,6 @@ function renderInflectionSignals(statsById) {
 }
 
 // ---------------------------------------------------------------------------
-// Sparklines for Indicator Grid
-// ---------------------------------------------------------------------------
-function buildSparklineSVG(stat) {
-  const history = (stat && stat.history) ? stat.history.slice(-10) : [];
-  if (history.length < 2) return "";
-
-  const values = history.map((p) => p.value);
-  const min = Math.min(...values);
-  const max = Math.max(...values);
-  const range = max - min || 1;
-
-  const width = 60;
-  const height = 18;
-
-  const points = history
-    .map((p, idx) => {
-      const x = (idx / (history.length - 1)) * width;
-      const y = height - ((p.value - min) / range) * height;
-      return `${x.toFixed(1)},${y.toFixed(1)}`;
-    })
-    .join(" ");
-
-  return `
-    <svg viewBox="0 0 ${width} ${height}" class="w-16 h-4">
-      <polyline
-        points="${points}"
-        fill="none"
-        stroke="#999999"
-        stroke-width="1.2"
-        stroke-linecap="round"
-        stroke-linejoin="round"
-      />
-    </svg>
-  `;
-}
-
-// ---------------------------------------------------------------------------
 // Rendering – Indicator grid
 // ---------------------------------------------------------------------------
 function renderIndicatorGrid(statsById, countryKey) {
@@ -1154,6 +1126,8 @@ function renderIndicatorGrid(statsById, countryKey) {
     if (!stat) return;
 
     const signal = classifySignal(stat, cfg);
+    const tr = document.createElement("tr");
+    tr.className = "hover:bg-cordobaSoft";
 
     const lastVal = formatNumber(
       stat.latest.value,
@@ -1161,7 +1135,6 @@ function renderIndicatorGrid(statsById, countryKey) {
       cfg.unit,
       "n/a"
     );
-
     const zFormatted =
       stat.z != null && !isNaN(stat.z) ? stat.z.toFixed(1) : "0.0";
 
@@ -1177,60 +1150,25 @@ function renderIndicatorGrid(statsById, countryKey) {
       cfg.unit
     )}.`;
 
-    const tr = document.createElement("tr");
-    tr.className = "hover:bg-cordobaSoft";
-
     tr.innerHTML = `
       <td class="py-2 pr-3 text-neutral-900">${cfg.label}</td>
-
-      <!-- SIGNAL -->
-      <td class="py-2 pr-3">
-        <span class="inline-flex items-center px-2 py-0.5 rounded-full border bg-white text-[11px] border-neutral-300">
-          ${signal.label}
-        </span>
-      </td>
-
-      <!-- TREND (10YR) + SPARKLINE -->
+      <td class="py-2 pr-3 text-neutral-600">${cfg.engine}</td>
+      <td class="py-2 pr-3 text-neutral-600">${cfg.bucket}</td>
+      <td class="py-2 pr-3"></td>
       <td class="py-2 pr-3 text-left text-neutral-600">${formatPeriodLabel(
         stat.latest
       )}</td>
-
-      <td class="py-2 pr-3 text-left">
-        <svg width="70" height="22"></svg>
-      </td>
-
-      <!-- LAST -->
       <td class="py-2 pr-3 text-right text-neutral-900">${lastVal}</td>
-
-      <!-- Z SCORE -->
       <td class="py-2 pr-3 text-right text-neutral-700">${zFormatted}</td>
-
-      <!-- NOTE -->
       <td class="py-2 pr-3 text-neutral-600">${commentText}</td>
     `;
 
-    tbody.appendChild(tr);
-  });
-
-  if (!tbody.children.length) {
-    const row = document.createElement("tr");
-    row.innerHTML =
-      '<td colspan="7" class="py-3 text-center text-neutral-400">No indicators available for this country.</td>';
-    tbody.appendChild(row);
-  }
-}
-
-    // Signal pill
     const signalCell = tr.children[3];
     const signalBadge = document.createElement("span");
     signalBadge.className =
       "inline-flex items-center px-2 py-0.5 rounded-full border bg-white text-[11px] border-neutral-300";
     signalBadge.textContent = signal.label;
     signalCell.appendChild(signalBadge);
-
-    // Sparkline in Trend column
-    const trendCell = tr.children[4];
-    trendCell.innerHTML = buildSparklineSVG(stat);
 
     tbody.appendChild(tr);
   });
@@ -1333,17 +1271,17 @@ async function loadCountry(countryKey) {
 
   // Cached?
   if (macroCache[countryKey]) {
-    const statsByIdCached = macroCache[countryKey];
-    const enginesCached = engineScoreFromIndicators(statsByIdCached);
-    renderRegimeSummary(countryKey, statsByIdCached, enginesCached);
-    renderEngineCards(enginesCached);
-    renderHeadlineTiles(statsByIdCached);
-    renderInflectionSignals(statsByIdCached);
-    renderIndicatorGrid(statsByIdCached, countryKey);
-    renderMeta(statsByIdCached);
-    renderNoteHelper(countryKey, statsByIdCached, enginesCached);
-    renderNextQuestions(statsByIdCached, enginesCached);
-    renderResearchSuggestions(countryKey, statsByIdCached, enginesCached);
+    const statsById = macroCache[countryKey];
+    const engines = engineScoreFromIndicators(statsById);
+    renderRegimeSummary(countryKey, statsById, engines);
+    renderEngineCards(engines);
+    renderHeadlineTiles(statsById);
+    renderInflectionSignals(statsById);
+    renderIndicatorGrid(statsById, countryKey);
+    renderMeta(statsById);
+    renderNoteHelper(countryKey, statsById, engines);
+    renderNextQuestions(statsById, engines);
+    renderResearchSuggestions(countryKey, statsById, engines);
     return;
   }
 
@@ -1365,11 +1303,9 @@ async function loadCountry(countryKey) {
     const statsById = {};
     results.forEach(({ cfg, series, updatedAt }) => {
       const stats =
-        series && series.length ? computeStats(series, 10, updatedAt) : null;
-      if (stats) {
-        // keep full history for sparklines
-        stats.history = series;
-      }
+        series && series.length
+          ? computeStats(series, 10, updatedAt)
+          : null;
       statsById[cfg.id] = stats;
     });
 
@@ -1433,19 +1369,19 @@ function setupCountryDropdown() {
 }
 
 function setupMethodologyModal() {
-  const openBtns = document.querySelectorAll("#cc-methodology-open");
+  const openBtn = document.getElementById("cc-methodology-open");
   const closeBtn = document.getElementById("cc-methodology-close");
   const modal = document.getElementById("cc-methodology-modal");
   const overlay = modal
     ? modal.querySelector("[data-cc-methodology-overlay]")
     : null;
 
-  if (!modal || !openBtns.length || !closeBtn || !overlay) return;
+  if (!modal || !openBtn || !closeBtn || !overlay) return;
 
   const open = () => modal.classList.remove("hidden");
   const close = () => modal.classList.add("hidden");
 
-  openBtns.forEach((btn) => btn.addEventListener("click", open));
+  openBtn.addEventListener("click", open);
   closeBtn.addEventListener("click", close);
   overlay.addEventListener("click", close);
 }
