@@ -296,47 +296,87 @@
           How to read: the cell colour intensity is the only point. It tells you what is unusual enough to matter, even if the level looks boring. That is usually where the market gets surprised.
         </div>
       </section>
+<!-- Regime implication mapper + Stress sentinel -->
+<section class="grid grid-cols-1 xl:grid-cols-2 gap-4">
 
-      <!-- 4 + 5: Regime implication mapper + Stress Sentinel -->
-      <section class="rounded-2xl border border-neutral-200 bg-white shadow-subtle px-4 py-4">
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-
-          <div class="rounded-2xl border border-neutral-200 bg-[#FFFCF9] px-4 py-4">
-            <div class="text-[11px] uppercase tracking-[0.2em] text-neutral-500">
-              Regime Implication Mapper (Translate Macro → Assets)
-            </div>
-            <div class="text-sm text-neutral-700 mt-1">
-              Conditional market implications derived from the current engine configuration
-            </div>
-
-            <ul id="cc-regime-implications" class="mt-3 list-disc list-inside space-y-1 text-xs text-neutral-700">
-              <li>Loading implications...</li>
-            </ul>
-
-            <div class="mt-3 text-[11px] text-neutral-500 leading-relaxed">
-              This does not forecast returns. It maps the macro imbalance into the price channels that usually reprice first.
-            </div>
-          </div>
-
-          <div class="rounded-2xl border border-neutral-200 bg-[#FFFCF9] px-4 py-4">
-            <div class="text-[11px] uppercase tracking-[0.2em] text-neutral-500">
-              “If I’m wrong, where will it show up first?” Stress Sentinel
-            </div>
-            <div class="text-sm text-neutral-700 mt-1">
-              Early warning checklist that tells you what to watch, and why
-            </div>
-
-            <ol id="cc-stress-sentinel" class="mt-3 list-decimal list-inside space-y-1 text-xs text-neutral-700">
-              <li>Loading stress points...</li>
-            </ol>
-
-            <div class="mt-3 text-[11px] text-neutral-500 leading-relaxed">
-              This is designed to reduce post hoc storytelling, by forcing a pre committed failure map.
-            </div>
-          </div>
-
+  <!-- Regime implication mapper -->
+  <div class="rounded-2xl border border-neutral-200 bg-white shadow-subtle px-5 py-4">
+    <div class="flex items-start justify-between gap-3">
+      <div>
+        <div class="text-[11px] uppercase tracking-[0.28em] text-neutral-500">
+          Regime implication mapper, translate macro to assets
         </div>
-      </section>
+        <div class="mt-2 text-base font-semibold text-neutral-900">
+          Conditional market implications derived from the current engine configuration
+        </div>
+        <div class="mt-1 text-xs text-neutral-600 leading-relaxed">
+          This does not forecast returns. It maps the most likely repricing channels given how unusual the macro backdrop is versus its own history.
+        </div>
+      </div>
+
+      <div class="shrink-0 text-right">
+        <div class="text-[10px] uppercase tracking-[0.2em] text-neutral-500">Signal quality</div>
+        <div id="cc-implication-quality" class="mt-1 inline-flex items-center px-2.5 py-1 rounded-full border border-neutral-200 bg-cordobaSoft text-xs text-neutral-800">
+          Loading
+        </div>
+      </div>
+    </div>
+
+    <!-- Graphic: repricing channels -->
+    <div class="mt-4 rounded-xl border border-neutral-200 bg-[#FFFCF9] px-4 py-3">
+      <div class="flex items-center justify-between gap-3">
+        <div class="text-[11px] uppercase tracking-[0.2em] text-neutral-500">
+          Repricing channels, probability proxy
+        </div>
+        <div id="cc-implication-graphic-stamp" class="text-[10px] text-neutral-400"></div>
+      </div>
+
+      <div id="cc-implication-graphic" class="mt-3 grid grid-cols-2 gap-3"></div>
+
+      <div class="mt-3 text-[11px] text-neutral-600 leading-relaxed">
+        Bars are a simple proxy from engine tensions, they help prioritise what to monitor first.
+      </div>
+    </div>
+
+    <!-- Output -->
+    <div id="cc-implications" class="mt-4 space-y-2"></div>
+  </div>
+
+  <!-- Stress sentinel -->
+  <div class="rounded-2xl border border-neutral-200 bg-white shadow-subtle px-5 py-4">
+    <div>
+      <div class="text-[11px] uppercase tracking-[0.28em] text-neutral-500">
+        “If I’m wrong, where will it show up first?” stress sentinel
+      </div>
+      <div class="mt-2 text-base font-semibold text-neutral-900">
+        Early warning checklist that tells you what to watch, and why
+      </div>
+      <div class="mt-1 text-xs text-neutral-600 leading-relaxed">
+        Designed to reduce post hoc storytelling by forcing a pre committed failure map.
+      </div>
+    </div>
+
+    <!-- Graphic: failure map -->
+    <div class="mt-4 rounded-xl border border-neutral-200 bg-[#FFFCF9] px-4 py-3">
+      <div class="flex items-center justify-between gap-3">
+        <div class="text-[11px] uppercase tracking-[0.2em] text-neutral-500">
+          Failure map, which channel breaks first
+        </div>
+        <div id="cc-stress-graphic-stamp" class="text-[10px] text-neutral-400"></div>
+      </div>
+
+      <div id="cc-stress-graphic" class="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3"></div>
+
+      <div class="mt-3 text-[11px] text-neutral-600 leading-relaxed">
+        Each node is a monitoring lane. If two lanes flash together, treat the narrative as unstable.
+      </div>
+    </div>
+
+    <!-- Output -->
+    <div id="cc-stress" class="mt-4 space-y-2"></div>
+  </div>
+
+</section>
 
       <section class="grid grid-cols-1 xl:grid-cols-3 gap-4">
         <div class="xl:col-span-2 rounded-2xl border border-neutral-200 bg-white shadow-subtle px-4 py-4">
