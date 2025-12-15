@@ -330,6 +330,11 @@ function capitaliseFirst(str) {
   return str ? str.charAt(0).toUpperCase() + str.slice(1) : "";
 }
 
+function scoreFromZ(z) {
+  const clamped = Math.max(-2.5, Math.min(2.5, z || 0));
+  return Math.round(50 + (clamped / 2.5) * 40); // 10–90
+}
+
 function classifySignal(stat, cfg) {
   if (!stat) {
     return { level: "n/a", strength: "none", label: "No recent data", direction: "flat" };
@@ -368,11 +373,6 @@ function classifySignal(stat, cfg) {
 }
 
 function engineScoreFromIndicators(statsById) {
-  function scoreFromZ(z) {
-    const clamped = Math.max(-2.5, Math.min(2.5, z || 0));
-    return Math.round(50 + (clamped / 2.5) * 40); // 10–90
-  }
-
   const gdp = statsById.gdp_growth;
   const infl = statsById.inflation;
   const u = statsById.unemployment;
@@ -400,10 +400,125 @@ function riskLevelFromZ(z) {
   return "high";
 }
 
+function buildSecondLayerEngines(statsById, engines) {
+  const growthZ = engines.growth?.z || 0;
+  const inflationZ = engines.inflation?.z || 0;
+  const liquidityZ = engines.liquidity?.z || 0;
+  const externalZ = engines.external?.z || 0;
+
+  // 1) Hidden Leverage & Duration Stress (non linear proxy)
+  const hiddenStressBase =
+    (-growthZ * 0.4) + (inflationZ * 0.3) + (-externalZ * 0.3);
+  const hiddenStressZ =
+    Math.sign(hiddenStressBase) * Math.pow(Math.abs(hiddenStressBase), 1.3);
+
+  let hiddenStressLabel = "Latent";
+  if (Math.abs(hiddenStressZ) >= 1.3) hiddenStressLabel = "Non-linear risk";
+  else if (Math.abs(hiddenStressZ) >= 0.9) hiddenStressLabel = "Building";
+  else if (Math.abs(hiddenStressZ) >= 0.5) hiddenStressLabel = "Watch";
+  else hiddenStressLabel = "Latent";
+
+  // 2) Narrative vs Pricing divergence
+  const narrativeZ = average([growthZ, inflationZ]);
+  const pricingZ = average([liquidityZ, externalZ]);
+  const divergenceZ = narrativeZ - pricingZ;
+
+  let divergenceLabel = "Narrative aligned";
+  if (divergenceZ > 0.9) divergenceLabel = "Narrative ahead of pricing";
+  else if (divergenceZ > 0.5) divergenceLabel = "Narrative leading";
+  else if (divergenceZ < -0.9) divergenceLabel = "Market sceptical";
+  else if (divergenceZ < -0.5) divergenceLabel = "Market pricing stress";
+
+  // 3) Policy credibility surface
+  const inflStat = statsById.inflation;
+  const growthStat = statsById.gdp_growth;
+  const caStat = statsById.current_account;
+
+  const inflCooling = inflStat ? (-Math.sign(inflStat.delta || 0) * 0.2) : 0;
+  const growthHold = growthStat ? (Math.sign(growthStat.delta || 0) * 0.1) : 0;
+  const externalImproving = caStat ? (Math.sign(caStat.delta || 0) * 0.1) : 0;
+
+  const policyCredZ =
+    (-inflationZ * 0.5) + (growthZ * 0.3) + (externalZ * 0.2) + inflCooling + growthHold + externalImproving;
+
+  let policyCredLabel = "Conditional credibility";
+  if (policyCredZ >= 0.9) policyCredLabel = "High credibility";
+  else if (policyCredZ >= 0.3) policyCredLabel = "Conditional credibility";
+  else if (policyCredZ >= -0.4) policyCredLabel = "Credibility at risk";
+  else policyCredLabel = "Policy disbelief";
+
+  // 4) Cross border spillover exposure
+  const spilloverZ = (Math.abs(externalZ) * 0.6) + (Math.abs(liquidityZ) * 0.4);
+  let spilloverLabel = "Low";
+  if (spilloverZ >= 1.1) spilloverLabel = "High";
+  else if (spilloverZ >= 0.6) spilloverLabel = "Medium";
+
+  let spilloverChannel = "Mixed channels";
+  if (Math.abs(externalZ) >= Math.abs(liquidityZ) + 0.3) spilloverChannel = "FX and capital flows";
+  else if (Math.abs(liquidityZ) >= Math.abs(externalZ) + 0.3) spilloverChannel = "Global liquidity pulse";
+
+  // 5) Structural vs cyclical growth decomposition
+  const moneyStat = statsById.money;
+  const moneyZ = moneyStat ? (moneyStat.z || 0) : 0;
+
+  const cyclicalZ = average([moneyZ, inflationZ]);
+  const structuralZ = growthZ - cyclicalZ;
+
+  let growthMixLabel = "Balanced";
+  if (structuralZ >= 0.6 && cyclicalZ < 0.4) growthMixLabel = "Structural led";
+  else if (cyclicalZ >= 0.6 && structuralZ < 0.4) growthMixLabel = "Cyclical led";
+  else if (structuralZ < -0.6 && cyclicalZ >= 0.3) growthMixLabel = "Credit supported slowdown";
+  else if (structuralZ < -0.6 && cyclicalZ < -0.3) growthMixLabel = "Broad based slowdown";
+
+  // 6) What breaks first fragility ranking (proxy)
+  const frag = [
+    { id: "FX", score: Math.abs(externalZ) * 1.3 + Math.max(0, -growthZ) * 0.4 },
+    { id: "External funding", score: Math.abs(externalZ) * 1.2 + Math.abs(liquidityZ) * 0.3 },
+    { id: "Domestic credit", score: Math.abs(liquidityZ) * 1.1 + Math.max(0, inflationZ) * 0.2 },
+    { id: "Labour market", score: Math.max(0, -growthZ) * 0.8 + Math.abs(inflationZ) * 0.3 },
+    { id: "Policy path", score: Math.max(0, -policyCredZ) * 1.2 + Math.abs(inflationZ) * 0.2 }
+  ].sort((a, b) => b.score - a.score);
+
+  const breaksFirst = frag.length ? frag[0].id : "n/a";
+
+  return {
+    hiddenStress: {
+      z: hiddenStressZ,
+      score: scoreFromZ(hiddenStressZ),
+      label: hiddenStressLabel
+    },
+    divergence: {
+      z: divergenceZ,
+      score: scoreFromZ(divergenceZ),
+      label: divergenceLabel
+    },
+    policyCredibility: {
+      z: policyCredZ,
+      score: scoreFromZ(policyCredZ),
+      label: policyCredLabel
+    },
+    spillover: {
+      z: spilloverZ,
+      score: Math.min(100, Math.max(0, Math.round((spilloverZ / 2.5) * 100))),
+      label: spilloverLabel,
+      channel: spilloverChannel
+    },
+    growthMix: {
+      structuralZ,
+      cyclicalZ,
+      label: growthMixLabel
+    },
+    fragility: {
+      ranking: frag.slice(0, 4),
+      breaksFirst
+    }
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Note helper & research suggestions
 // ---------------------------------------------------------------------------
-function buildNoteDraft(countryKey, statsById, engines) {
+function buildNoteDraft(countryKey, statsById, enginesPlus) {
   const meta = COUNTRY_META[countryKey] || { name: countryKey, region: "" };
   const gdp = statsById.gdp_growth;
   const infl = statsById.inflation;
@@ -421,12 +536,12 @@ function buildNoteDraft(countryKey, statsById, engines) {
     : null;
   const lastLabel = lastPoint ? formatPeriodLabel(lastPoint.point) : "n/a";
 
-  const growthZ = engines.growth?.z || 0;
-  const inflZ = engines.inflation?.z || 0;
+  const growthZ = enginesPlus.growth?.z || 0;
+  const inflZ = enginesPlus.inflation?.z || 0;
 
-  let growthPhrase = "near-trend growth";
-  if (growthZ > 0.5) growthPhrase = "above-trend growth";
-  else if (growthZ < -0.5) growthPhrase = "below-trend growth";
+  let growthPhrase = "near trend growth";
+  if (growthZ > 0.5) growthPhrase = "above trend growth";
+  else if (growthZ < -0.5) growthPhrase = "below trend growth";
 
   let inflationPhrase = "stable inflation";
   if (inflZ > 0.5) inflationPhrase = "elevated inflation";
@@ -439,7 +554,7 @@ function buildNoteDraft(countryKey, statsById, engines) {
 
   if (gdp && infl) {
     lines.push(
-      `Real GDP growth is ${formatNumber(gdp.latest.value, 1, "%")} compared with a 10-year average of ${formatNumber(
+      `Real GDP growth is ${formatNumber(gdp.latest.value, 1, "%")} compared with a 10 year average of ${formatNumber(
         gdp.mean,
         1,
         "%"
@@ -451,58 +566,74 @@ function buildNoteDraft(countryKey, statsById, engines) {
     );
   } else if (gdp) {
     lines.push(
-      `Real GDP growth is ${formatNumber(gdp.latest.value, 1, "%")} versus a 10-year average of ${formatNumber(gdp.mean, 1, "%")}.`
+      `Real GDP growth is ${formatNumber(gdp.latest.value, 1, "%")} versus a 10 year average of ${formatNumber(gdp.mean, 1, "%")}.`
     );
   } else if (infl) {
     lines.push(
-      `Headline inflation is ${formatNumber(infl.latest.value, 1, "%")} versus a 10-year average of ${formatNumber(infl.mean, 1, "%")}.`
+      `Headline inflation is ${formatNumber(infl.latest.value, 1, "%")} versus a 10 year average of ${formatNumber(infl.mean, 1, "%")}.`
     );
   }
 
   if (unemp) {
     lines.push(
-      `Labour market conditions are signalled by an unemployment rate of ${formatNumber(unemp.latest.value, 1, "%")} versus a 10-year average of ${formatNumber(
+      `Labour market conditions are signalled by an unemployment rate of ${formatNumber(unemp.latest.value, 1, "%")} versus a 10 year average of ${formatNumber(
         unemp.mean,
         1,
         "%"
-      )}, providing a read on slack vs overheating.`
+      )}.`
     );
   }
 
   if (money) {
     lines.push(
-      `Broad money growth is ${formatNumber(money.latest.value, 1, "%")}, compared with a 10-year average of ${formatNumber(
+      `Broad money growth is ${formatNumber(money.latest.value, 1, "%")}, compared with a 10 year average of ${formatNumber(
         money.mean,
         1,
         "%"
-      )}, offering a simple proxy for domestic liquidity.`
+      )}.`
     );
   }
 
   if (ca) {
     lines.push(
-      `The external position shows a current-account balance of ${formatNumber(ca.latest.value, 1, "% of GDP")} against a decade average of ${formatNumber(
+      `The external position shows a current account balance of ${formatNumber(ca.latest.value, 1, "% of GDP")} against a decade average of ${formatNumber(
         ca.mean,
         1,
         "% of GDP"
-      )}, flagging how far the funding side is from its usual range.`
+      )}.`
+    );
+  }
+
+  const sl = enginesPlus.secondLayer;
+  if (sl) {
+    lines.push(
+      `Second layer diagnostics: hidden stress is ${sl.hiddenStress.label} (score ${sl.hiddenStress.score}/100), policy credibility is ${sl.policyCredibility.label}, and narrative divergence reads as ${sl.divergence.label}.`
+    );
+    lines.push(
+      `Spillover exposure is ${sl.spillover.label} (${sl.spillover.channel}), and the growth mix looks ${sl.growthMix.label}.`
+    );
+    lines.push(
+      `Under simple stress ranking, what breaks first is most likely ${sl.fragility.breaksFirst}, followed by ${sl.fragility.ranking
+        .slice(1, 3)
+        .map((x) => x.id)
+        .join(", ")}.`
     );
   }
 
   lines.push(
-    `Engine scores – Growth: ${engines.growth.score}/100, Inflation: ${engines.inflation.score}/100, Liquidity: ${engines.liquidity.score}/100, External: ${engines.external.score}/100 – provide a compact view of where the country sits vs its own history.`
+    `Engine scores – Growth: ${enginesPlus.growth.score}/100, Inflation: ${enginesPlus.inflation.score}/100, Liquidity: ${enginesPlus.liquidity.score}/100, External: ${enginesPlus.external.score}/100 – provide a compact view of where the country sits vs its own history.`
   );
 
   return lines.join("\n\n");
 }
 
-function renderNoteHelper(countryKey, statsById, engines) {
+function renderNoteHelper(countryKey, statsById, enginesPlus) {
   const draftEl = document.getElementById("cc-note-draft");
   const bulletsEl = document.getElementById("cc-note-bullets");
   if (!draftEl && !bulletsEl) return;
 
   if (draftEl) {
-    draftEl.value = buildNoteDraft(countryKey, statsById, engines);
+    draftEl.value = buildNoteDraft(countryKey, statsById, enginesPlus);
   }
 
   if (bulletsEl) {
@@ -517,58 +648,48 @@ function renderNoteHelper(countryKey, statsById, engines) {
 
     if (gdp && Math.abs(gdp.z) > 0.7) {
       bullets.push(
-        `Growth is ${gdp.z > 0 ? "well above" : "well below"} its 10-year trend (z-score ${gdp.z.toFixed(
-          1
-        )}); think about where we are in the cycle and how that lines up with earnings and credit.`
+        `Growth is ${gdp.z > 0 ? "well above" : "well below"} its 10 year trend (z score ${gdp.z.toFixed(1)}), think about where we are in the cycle.`
       );
     }
 
     if (infl && Math.abs(infl.z) > 0.7) {
       bullets.push(
-        `Inflation is ${infl.z > 0 ? "elevated" : "subdued"} vs history (z-score ${infl.z.toFixed(
-          1
-        )}); note whether this supports or challenges the market’s current rate path.`
+        `Inflation is ${infl.z > 0 ? "elevated" : "subdued"} vs history (z score ${infl.z.toFixed(1)}), ask what this implies for the policy path.`
       );
     }
 
     if (money && Math.abs(money.z) > 0.7) {
       bullets.push(
-        `Broad money growth is sending a ${money.z > 0 ? "strong" : "weak"} liquidity signal; consider how this lines up with risk premia and asset valuations.`
+        `Broad money growth is sending a ${money.z > 0 ? "strong" : "weak"} liquidity signal, connect it to risk premia.`
       );
     }
 
     if (ca && Math.abs(ca.z) > 0.7) {
       bullets.push(
-        `The current account is ${ca.z > 0 ? "stronger" : "weaker"} than usual; think about FX vulnerability, funding channels, and how this sits vs peers.`
+        `The current account is ${ca.z > 0 ? "stronger" : "weaker"} than usual, frame the FX and funding consequences.`
       );
     }
 
-    const engineList = [
-      { id: "growth", label: "Growth" },
-      { id: "inflation", label: "Inflation" },
-      { id: "liquidity", label: "Liquidity" },
-      { id: "external", label: "External" }
-    ];
-
-    const dominant = engineList
-      .map((e) => ({ ...e, z: engines[e.id].z }))
-      .sort((a, b) => Math.abs(b.z) - Math.abs(a.z))[0];
-
-    if (dominant && Math.abs(dominant.z) > 0.5) {
+    const sl = enginesPlus.secondLayer;
+    if (sl) {
       bullets.push(
-        `${dominant.label} is the dominant engine right now (z-score ${dominant.z.toFixed(
-          1
-        )}); structure the note around why this matters for positioning rather than just listing indicators.`
+        `Hidden stress reads ${sl.hiddenStress.label} (score ${sl.hiddenStress.score}/100), treat this as a convexity flag rather than a level signal.`
+      );
+      bullets.push(
+        `Narrative divergence reads ${sl.divergence.label}, use it to challenge the consensus story with one concrete mechanism.`
+      );
+      bullets.push(
+        `Policy credibility is ${sl.policyCredibility.label}, be specific about what would force a policy U turn.`
       );
     }
 
     if (!bullets.length) {
       bullets.push(
-        "Most indicators are close to their 10-year trends. Focus the note on what could shift the regime: policy surprises, global shocks, or structural reforms."
+        "Most indicators are close to their 10 year trends. Focus on what could shift the regime: policy surprises, global shocks, or structural reforms."
       );
     }
 
-    bullets.forEach((text) => {
+    bullets.slice(0, 6).forEach((text) => {
       const li = document.createElement("li");
       li.className = "text-xs text-neutral-700 mb-1";
       li.textContent = text;
@@ -666,7 +787,7 @@ function renderResearchSuggestions(countryKey, statsById, engines) {
 // ---------------------------------------------------------------------------
 // Rendering – Regime summary
 // ---------------------------------------------------------------------------
-function renderRegimeSummary(countryKey, statsById, engines) {
+function renderRegimeSummary(countryKey, statsById, enginesPlus) {
   const meta = COUNTRY_META[countryKey] || { name: countryKey, region: "" };
   const titleEl = document.getElementById("cc-regime-title");
   const bodyEl = document.getElementById("cc-regime-body");
@@ -682,15 +803,21 @@ function renderRegimeSummary(countryKey, statsById, engines) {
   const growthZ = gdp ? gdp.z : 0;
   const inflZ = infl ? infl.z : 0;
 
-  let growthPhrase = "near-trend growth";
-  if (growthZ > 0.5) growthPhrase = "above-trend growth";
-  else if (growthZ < -0.5) growthPhrase = "below-trend growth";
+  let growthPhrase = "near trend growth";
+  if (growthZ > 0.5) growthPhrase = "above trend growth";
+  else if (growthZ < -0.5) growthPhrase = "below trend growth";
 
   let inflationPhrase = "stable inflation";
   if (inflZ > 0.5) inflationPhrase = "elevated inflation";
   else if (inflZ < -0.5) inflationPhrase = "disinflation";
 
-  const title = `${capitaliseFirst(growthPhrase)} with ${inflationPhrase} – ${meta.name}`;
+  const sl = enginesPlus.secondLayer;
+
+  const addendum = sl
+    ? ` | ${sl.policyCredibility.label}, ${sl.divergence.label}`
+    : "";
+
+  const title = `${capitaliseFirst(growthPhrase)} with ${inflationPhrase} – ${meta.name}${addendum}`;
   if (titleEl) titleEl.textContent = title;
 
   const parts = [];
@@ -711,11 +838,20 @@ function renderRegimeSummary(countryKey, statsById, engines) {
   }
   if (ca) {
     parts.push(
-      `The current-account balance is ${formatNumber(ca.latest.value, 1, "% of GDP")} versus a history average of ${formatNumber(
+      `The current account balance is ${formatNumber(ca.latest.value, 1, "% of GDP")} versus a history average of ${formatNumber(
         ca.mean,
         1,
         "% of GDP"
       )}.`
+    );
+  }
+
+  if (sl) {
+    parts.push(
+      `Second layer: hidden stress is ${sl.hiddenStress.label} (score ${sl.hiddenStress.score}/100), spillover exposure is ${sl.spillover.label} (${sl.spillover.channel}), and growth mix reads ${sl.growthMix.label}.`
+    );
+    parts.push(
+      `Scenario proxy suggests what breaks first is most likely ${sl.fragility.breaksFirst}.`
     );
   }
 
@@ -751,41 +887,62 @@ function renderRegimeSummary(countryKey, statsById, engines) {
   if (riskEl) {
     riskEl.innerHTML = "";
 
-    const growthRisk = riskLevelFromZ(engines.growth.z);
-    const inflationRisk = riskLevelFromZ(engines.inflation.z);
-    const externalRisk = riskLevelFromZ(engines.external.z);
+    const growthRisk = riskLevelFromZ(enginesPlus.growth.z);
+    const inflationRisk = riskLevelFromZ(enginesPlus.inflation.z);
+    const externalRisk = riskLevelFromZ(enginesPlus.external.z);
 
-    [
-      { label: "Growth risk", level: growthRisk },
-      { label: "Inflation risk", level: inflationRisk },
-      { label: "External risk", level: externalRisk }
-    ].forEach((r) => {
+    const pills = [
+      { label: "Growth risk", value: growthRisk },
+      { label: "Inflation risk", value: inflationRisk },
+      { label: "External risk", value: externalRisk }
+    ];
+
+    if (sl) {
+      pills.push({ label: "Hidden stress", value: sl.hiddenStress.label });
+      pills.push({ label: "Divergence", value: sl.divergence.label });
+      pills.push({ label: "Policy credibility", value: sl.policyCredibility.label });
+      pills.push({ label: "Spillover", value: `${sl.spillover.label}` });
+      pills.push({ label: "Breaks first", value: sl.fragility.breaksFirst });
+    }
+
+    pills.forEach((r) => {
       const span = document.createElement("span");
       span.className =
         "inline-flex items-center px-2.5 py-0.5 rounded-full border bg-cordobaSoft text-xs border-neutral-300 mr-1 mb-1";
-      span.textContent = `${r.label}: ${r.level}`;
+      span.textContent = `${r.label}: ${r.value}`;
       riskEl.appendChild(span);
     });
   }
 }
 
 // ---------------------------------------------------------------------------
-// Rendering – Engine cards
+// Rendering – Engine cards (now includes second layer cards as well)
 // ---------------------------------------------------------------------------
-function renderEngineCards(engines) {
+function renderEngineCards(enginesPlus) {
   const container = document.getElementById("cc-engine-cards");
   if (!container) return;
   container.innerHTML = "";
 
-  const meta = [
+  const base = [
     { id: "growth", title: "Growth", color: "border-emerald-300", text: "text-emerald-700" },
     { id: "inflation", title: "Inflation", color: "border-amber-300", text: "text-amber-700" },
     { id: "liquidity", title: "Liquidity", color: "border-sky-300", text: "text-sky-700" },
     { id: "external", title: "External", color: "border-rose-300", text: "text-rose-700" }
   ];
 
-  meta.forEach((m) => {
-    const engine = engines[m.id];
+  const sl = enginesPlus.secondLayer;
+
+  const extra = sl
+    ? [
+        { key: "hiddenStress", title: "Hidden stress", z: sl.hiddenStress.z, score: sl.hiddenStress.score, label: sl.hiddenStress.label, color: "border-neutral-300", text: "text-neutral-700" },
+        { key: "divergence", title: "Divergence", z: sl.divergence.z, score: sl.divergence.score, label: sl.divergence.label, color: "border-neutral-300", text: "text-neutral-700" },
+        { key: "policyCredibility", title: "Policy trust", z: sl.policyCredibility.z, score: sl.policyCredibility.score, label: sl.policyCredibility.label, color: "border-neutral-300", text: "text-neutral-700" },
+        { key: "spillover", title: "Spillover", z: sl.spillover.z, score: sl.spillover.score, label: `${sl.spillover.label}`, color: "border-neutral-300", text: "text-neutral-700" }
+      ]
+    : [];
+
+  base.forEach((m) => {
+    const engine = enginesPlus[m.id];
     const z = engine ? engine.z : 0;
     const score = engine ? engine.score : 50;
 
@@ -820,17 +977,52 @@ function renderEngineCards(engines) {
     card.appendChild(main);
     container.appendChild(card);
   });
+
+  extra.forEach((x) => {
+    const z = x.z || 0;
+    const card = document.createElement("div");
+    card.className =
+      "rounded-2xl border bg-white px-3 py-2 flex flex-col justify-between " + x.color;
+
+    const header = document.createElement("div");
+    header.className =
+      "flex items-baseline justify-between text-[10px] tracking-[0.18em] uppercase text-neutral-500";
+    header.innerHTML = `<span>${x.title}</span><span>z ${z ? z.toFixed(1) : "0.0"}</span>`;
+    card.appendChild(header);
+
+    const main = document.createElement("div");
+    main.className = "mt-3 flex flex-col gap-2";
+
+    const scoreEl = document.createElement("div");
+    scoreEl.innerHTML = `
+      <div class="text-lg font-semibold">${x.score}<span class="text-xs text-neutral-400">/100</span></div>
+      <div class="text-[10px] text-neutral-500 mt-0.5">${x.label}</div>
+    `;
+    main.appendChild(scoreEl);
+
+    const labelEl = document.createElement("span");
+    labelEl.className =
+      "inline-flex items-center justify-center whitespace-nowrap px-3 py-1 rounded-full border text-[11px] font-medium border-neutral-300 bg-cordobaSoft " +
+      x.text;
+    labelEl.textContent = x.label;
+
+    main.appendChild(labelEl);
+    card.appendChild(main);
+    container.appendChild(card);
+  });
 }
 
 // ---------------------------------------------------------------------------
 // Rendering – Headline tiles & inflection signals
 // ---------------------------------------------------------------------------
-function renderHeadlineTiles(statsById) {
+function renderHeadlineTiles(statsById, enginesPlus) {
   const gdp = statsById.gdp_growth;
   const infl = statsById.inflation;
   const unemp = statsById.unemployment;
   const money = statsById.money;
   const ca = statsById.current_account;
+
+  const sl = enginesPlus.secondLayer;
 
   const setText = (id, text) => {
     const el = document.getElementById(id);
@@ -838,10 +1030,11 @@ function renderHeadlineTiles(statsById) {
   };
 
   if (gdp) {
+    const mix = sl ? ` Growth mix: ${sl.growthMix.label}.` : "";
     setText("cc-gdp-latest", `${formatNumber(gdp.latest.value, 1, "%")}`);
     setText(
       "cc-gdp-extra",
-      `History avg ${formatNumber(gdp.mean, 1, "%")}; change vs prior observation ${formatNumber(gdp.delta, 1, "%")}.`
+      `History avg ${formatNumber(gdp.mean, 1, "%")}; change vs prior observation ${formatNumber(gdp.delta, 1, "%")}.${mix}`
     );
   }
 
@@ -863,7 +1056,8 @@ function renderHeadlineTiles(statsById) {
 
   if (money) {
     setText("cc-money-latest", `${formatNumber(money.latest.value, 1, "%")}`);
-    setText("cc-money-extra", `History avg ${formatNumber(money.mean, 1, "%")}; a rough liquidity pulse.`);
+    setText("cc-money-extra", `History avg ${formatNumber(money.mean, 1, "%")}; a rough liquidity pulse.`
+    );
   }
 
   if (ca) {
@@ -875,7 +1069,7 @@ function renderHeadlineTiles(statsById) {
   }
 }
 
-function renderInflectionSignals(statsById) {
+function renderInflectionSignals(statsById, enginesPlus) {
   const container = document.getElementById("cc-inflection-list");
   if (!container) return;
   container.innerHTML = "";
@@ -927,6 +1121,27 @@ function renderInflectionSignals(statsById) {
 
     container.appendChild(row);
   });
+
+  const sl = enginesPlus.secondLayer;
+  if (sl) {
+    const box = document.createElement("div");
+    box.className = "rounded-2xl border border-neutral-200 bg-white px-3 py-2";
+
+    const t = document.createElement("div");
+    t.className = "text-[10px] uppercase tracking-[0.18em] text-neutral-500";
+    t.textContent = "Fragility ranking";
+    box.appendChild(t);
+
+    const p = document.createElement("div");
+    p.className = "text-xs text-neutral-700 mt-1";
+    const rank = sl.fragility.ranking
+      .map((x, i) => `${i + 1}. ${x.id}`)
+      .join("  ");
+    p.textContent = rank || "n/a";
+    box.appendChild(p);
+
+    container.appendChild(box);
+  }
 
   if (!container.children.length) {
     container.innerHTML = '<p class="text-xs text-neutral-500">Not enough data to compute signals for this country.</p>';
@@ -1083,7 +1298,7 @@ function renderMeta(statsById) {
 // ---------------------------------------------------------------------------
 // Next questions
 // ---------------------------------------------------------------------------
-function renderNextQuestions(statsById, engines) {
+function renderNextQuestions(statsById, enginesPlus) {
   const list = document.getElementById("cc-question-list");
   if (!list) return;
   list.innerHTML = "";
@@ -1092,22 +1307,36 @@ function renderNextQuestions(statsById, engines) {
   const infl = statsById.inflation;
   const ca = statsById.current_account;
 
+  const sl = enginesPlus.secondLayer;
+
   const qs = [];
 
   if (ca && Math.abs(ca.z) > 0.7) {
-    qs.push("Why has the current-account balance moved away from its 10-year norm, and is this cyclical or structural?");
+    qs.push(
+      "Why has the current account moved away from its 10 year norm, and which channel is doing the work: terms of trade, demand, or financing?"
+    );
   }
 
   if (gdp && infl && Math.sign(gdp.z) !== Math.sign(infl.z)) {
-    qs.push("What is driving the divergence between growth and inflation signals, and how might that affect policy and risk premia?");
+    qs.push(
+      "What is driving the divergence between growth and inflation signals, and does it change the policy reaction function?"
+    );
   }
 
-  if (engines.liquidity && engines.external) {
-    qs.push("Is domestic liquidity easing enough to offset any external funding pressure picked up in the external engine?");
-  }
-
-  if (!qs.length) {
-    qs.push("Most engines are close to trend. What catalysts could realistically shift this regime over the next 12–18 months?");
+  if (sl) {
+    qs.push(
+      `Hidden stress reads ${sl.hiddenStress.label}. What specific balance sheet linkage would make this convex rather than linear over the next year?`
+    );
+    qs.push(
+      `Narrative divergence reads ${sl.divergence.label}. Which market, FX, rates, credit, is disagreeing most with the macro story?`
+    );
+    qs.push(
+      `Policy credibility reads ${sl.policyCredibility.label}. What single datapoint would force policymakers to deviate from the implied path?`
+    );
+  } else {
+    qs.push(
+      "Most engines are close to trend. What catalysts could realistically shift this regime over the next 12 to 18 months?"
+    );
   }
 
   qs.slice(0, 3).forEach((q) => {
@@ -1129,17 +1358,21 @@ async function loadCountry(countryKey) {
   if (labelEl) labelEl.textContent = meta.name;
   if (regionEl) regionEl.textContent = meta.region || "";
 
+  // Cached
   if (macroCache[countryKey]) {
     const statsById = macroCache[countryKey];
     const engines = engineScoreFromIndicators(statsById);
-    renderRegimeSummary(countryKey, statsById, engines);
-    renderEngineCards(engines);
-    renderHeadlineTiles(statsById);
-    renderInflectionSignals(statsById);
+    const secondLayer = buildSecondLayerEngines(statsById, engines);
+    const enginesPlus = { ...engines, secondLayer };
+
+    renderRegimeSummary(countryKey, statsById, enginesPlus);
+    renderEngineCards(enginesPlus);
+    renderHeadlineTiles(statsById, enginesPlus);
+    renderInflectionSignals(statsById, enginesPlus);
     renderIndicatorGrid(statsById, countryKey);
     renderMeta(statsById);
-    renderNoteHelper(countryKey, statsById, engines);
-    renderNextQuestions(statsById, engines);
+    renderNoteHelper(countryKey, statsById, enginesPlus);
+    renderNextQuestions(statsById, enginesPlus);
     renderResearchSuggestions(countryKey, statsById, engines);
     return;
   }
@@ -1172,14 +1405,17 @@ async function loadCountry(countryKey) {
     macroCache[countryKey] = statsById;
 
     const engines = engineScoreFromIndicators(statsById);
-    renderRegimeSummary(countryKey, statsById, engines);
-    renderEngineCards(engines);
-    renderHeadlineTiles(statsById);
-    renderInflectionSignals(statsById);
+    const secondLayer = buildSecondLayerEngines(statsById, engines);
+    const enginesPlus = { ...engines, secondLayer };
+
+    renderRegimeSummary(countryKey, statsById, enginesPlus);
+    renderEngineCards(enginesPlus);
+    renderHeadlineTiles(statsById, enginesPlus);
+    renderInflectionSignals(statsById, enginesPlus);
     renderIndicatorGrid(statsById, countryKey);
     renderMeta(statsById);
-    renderNoteHelper(countryKey, statsById, engines);
-    renderNextQuestions(statsById, engines);
+    renderNoteHelper(countryKey, statsById, enginesPlus);
+    renderNextQuestions(statsById, enginesPlus);
     renderResearchSuggestions(countryKey, statsById, engines);
   } catch (err) {
     console.error("Failed to load country data:", err);
@@ -1220,7 +1456,6 @@ function setupCountryDropdown() {
     loadCountry(code);
   });
 
-  // FIX: close menu when clicking outside, but do not misfire when clicking inside toggle children
   document.addEventListener("click", (evt) => {
     if (!menu.contains(evt.target) && !toggle.contains(evt.target)) {
       menu.classList.add("hidden");
