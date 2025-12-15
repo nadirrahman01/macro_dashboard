@@ -5,16 +5,57 @@
 // Country metadata (2-letter UI code → 3-letter WB code)
 // ---------------------------------------------------------------------------
 const COUNTRY_META = {
+  // --------------------
+  // Developed / G20
+  // --------------------
   US: { name: "United States", region: "G-20 · DM", wb: "USA" },
   UK: { name: "United Kingdom", region: "G-20 · DM", wb: "GBR" },
   GB: { name: "United Kingdom", region: "G-20 · DM", wb: "GBR" },
   DE: { name: "Germany", region: "G-20 · DM", wb: "DEU" },
   FR: { name: "France", region: "G-20 · DM", wb: "FRA" },
   JP: { name: "Japan", region: "G-20 · DM", wb: "JPN" },
+
+  // --------------------
+  // G20 Emerging
+  // --------------------
   CN: { name: "China", region: "G-20 · EM", wb: "CHN" },
   IN: { name: "India", region: "G-20 · EM", wb: "IND" },
   BR: { name: "Brazil", region: "G-20 · EM", wb: "BRA" },
-  UZ: { name: "Uzbekistan", region: "Central Asia · EM", wb: "UZB" }
+
+  // --------------------
+  // Central Asia
+  // --------------------
+  KZ: { name: "Kazakhstan", region: "Central Asia · EM", wb: "KAZ" },
+  UZ: { name: "Uzbekistan", region: "Central Asia · EM", wb: "UZB" },
+  KG: { name: "Kyrgyzstan", region: "Central Asia · EM", wb: "KGZ" },
+  TJ: { name: "Tajikistan", region: "Central Asia · EM", wb: "TJK" },
+  TM: { name: "Turkmenistan", region: "Central Asia · EM", wb: "TKM" },
+
+  // --------------------
+  // South Asia
+  // --------------------
+  PK: { name: "Pakistan", region: "South Asia · EM", wb: "PAK" },
+  BD: { name: "Bangladesh", region: "South Asia · EM", wb: "BGD" },
+  LK: { name: "Sri Lanka", region: "South Asia · EM", wb: "LKA" },
+  NP: { name: "Nepal", region: "South Asia · EM", wb: "NPL" },
+  BT: { name: "Bhutan", region: "South Asia · EM", wb: "BTN" },
+  MV: { name: "Maldives", region: "South Asia · EM", wb: "MDV" },
+  AF: { name: "Afghanistan", region: "South Asia · EM", wb: "AFG" },
+
+  // --------------------
+  // South-East Asia
+  // --------------------
+  ID: { name: "Indonesia", region: "South-East Asia · EM", wb: "IDN" },
+  VN: { name: "Vietnam", region: "South-East Asia · EM", wb: "VNM" },
+  TH: { name: "Thailand", region: "South-East Asia · EM", wb: "THA" },
+  MY: { name: "Malaysia", region: "South-East Asia · EM", wb: "MYS" },
+  PH: { name: "Philippines", region: "South-East Asia · EM", wb: "PHL" },
+  SG: { name: "Singapore", region: "South-East Asia · DM", wb: "SGP" },
+  KH: { name: "Cambodia", region: "South-East Asia · EM", wb: "KHM" },
+  LA: { name: "Laos", region: "South-East Asia · EM", wb: "LAO" },
+  MM: { name: "Myanmar", region: "South-East Asia · EM", wb: "MMR" },
+  BN: { name: "Brunei", region: "South-East Asia · EM", wb: "BRN" },
+  TL: { name: "Timor-Leste", region: "South-East Asia · EM", wb: "TLS" }
 };
 
 // ---------------------------------------------------------------------------
