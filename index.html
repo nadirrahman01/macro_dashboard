@@ -5,10 +5,8 @@
   <title>Cordoba Capital – GME</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-  <!-- Custom CSS -->
   <link rel="stylesheet" href="assets/style.css" />
 
-  <!-- Tailwind CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -32,10 +30,8 @@
 </head>
 <body class="bg-[#FFFCF9] text-neutral-900 font-body min-h-screen flex flex-col">
 
-  <!-- Page wrapper -->
   <div class="flex-1 flex flex-col lg:flex-row">
 
-    <!-- Sidebar -->
     <aside class="w-full lg:w-72 border-b lg:border-b-0 lg:border-r border-neutral-200 bg-white/80 backdrop-blur px-5 py-4 flex flex-col gap-4">
       <div>
         <div class="font-heading text-2xl tracking-wide leading-tight">
@@ -53,7 +49,6 @@
         </div>
       </div>
 
-      <!-- Navigation (static for now) -->
       <nav class="text-sm text-neutral-700 space-y-1">
         <div class="text-[10px] uppercase tracking-[0.25em] text-neutral-500 mb-1">
           Views
@@ -84,10 +79,8 @@
       </nav>
     </aside>
 
-    <!-- Main content -->
     <main class="flex-1 px-4 sm:px-6 lg:px-8 py-5 space-y-5">
 
-      <!-- Top bar -->
       <header class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
         <div class="space-y-1">
           <div class="text-xs uppercase tracking-[0.28em] text-neutral-500">
@@ -109,7 +102,6 @@
         </div>
 
         <div class="flex flex-wrap items-center gap-3">
-          <!-- Country dropdown -->
           <div class="relative">
             <button
               id="cc-country-toggle"
@@ -159,7 +151,6 @@
             </div>
           </div>
 
-          <!-- Support / Login buttons -->
           <div class="flex items-center gap-1 text-xs bg-white border border-neutral-200 rounded-full p-0.5 shadow-subtle">
             <a
               href="mailto:help@cordobacapital.co.uk"
@@ -174,12 +165,11 @@
               Login
             </a>
           </div>
+
         </div>
       </header>
 
-      <!-- Regime summary row -->
       <section class="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <!-- Narrative -->
         <div class="lg:col-span-2 rounded-2xl border border-neutral-200 bg-white shadow-subtle px-4 py-4 flex flex-col gap-3">
           <div class="flex items-center justify-between">
             <div>
@@ -214,20 +204,16 @@
             <span id="cc-risk-flags" class="flex flex-wrap gap-1"></span>
           </div>
 
-          <!-- Market lens (fills the whitespace under Risk flags) -->
           <div class="mt-2">
             <div class="flex items-center justify-between">
               <span class="uppercase tracking-[0.18em] text-[10px] text-neutral-500">Market lens:</span>
               <span id="cc-market-lens-stamp" class="text-[10px] text-neutral-400"></span>
             </div>
-
             <div id="cc-market-lens" class="mt-2 flex flex-wrap gap-2"></div>
-
             <p id="cc-market-lens-note" class="mt-2 text-xs text-neutral-600 leading-relaxed"></p>
           </div>
         </div>
 
-        <!-- Engine scorecards -->
         <div class="rounded-2xl border border-neutral-200 bg-white shadow-subtle px-4 py-3 flex flex-col gap-3">
           <div class="text-[11px] uppercase tracking-[0.2em] text-neutral-500">
             Composite Engines
@@ -236,7 +222,54 @@
         </div>
       </section>
 
-      <!-- Headline indicators + inflection list -->
+      <!-- NEW: Composite engines, calculation, weights, heatmap -->
+      <section class="rounded-2xl border border-neutral-200 bg-white shadow-subtle px-4 py-4">
+        <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-3">
+          <div>
+            <div class="text-[11px] uppercase tracking-[0.2em] text-neutral-500">
+              Composite Engine Decomposition
+            </div>
+            <div class="text-sm text-neutral-700 mt-1">
+              Each engine is a weighted combination of indicator z-scores. Z-scores are computed on a rolling history window, then mapped to a 10 to 90 score using a clamped linear transform.
+            </div>
+          </div>
+          <div class="text-[11px] text-neutral-500 md:text-right">
+            Score mapping: score = round(50 + clamp(z, −2.5, 2.5) ÷ 2.5 × 40)
+            <div class="text-[10px] text-neutral-400 mt-1">
+              Heatmap shows direction and magnitude at a glance
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-4 overflow-x-auto">
+          <table class="min-w-full text-xs">
+            <thead>
+              <tr class="text-[11px] uppercase tracking-[0.16em] text-neutral-500 border-b border-neutral-200">
+                <th class="py-2 text-left">Engine</th>
+                <th class="py-2 text-left">Component</th>
+                <th class="py-2 text-right">Weight</th>
+                <th class="py-2 text-right">Z</th>
+                <th class="py-2 text-right">Contribution</th>
+                <th class="py-2 text-right">Engine Z</th>
+                <th class="py-2 text-right">Engine score</th>
+                <th class="py-2 text-left">Interpretation</th>
+              </tr>
+            </thead>
+            <tbody id="cc-engine-breakdown" class="divide-y divide-neutral-100">
+              <tr>
+                <td colspan="8" class="py-3 text-center text-neutral-400">
+                  Loading decomposition...
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="mt-3 text-[11px] text-neutral-500 leading-relaxed">
+          Reading guide: positive heatmap means above its own history, negative means below. A strong engine score is not “good” by default, it is “unusual” relative to that country’s prior regime, which is usually what moves pricing.
+        </div>
+      </section>
+
       <section class="grid grid-cols-1 xl:grid-cols-3 gap-4">
         <div class="xl:col-span-2 rounded-2xl border border-neutral-200 bg-white shadow-subtle px-4 py-4">
           <div class="flex items-center justify-between mb-3">
@@ -249,32 +282,27 @@
               </div>
             </div>
           </div>
-
           <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 text-sm">
             <div class="p-3 rounded-xl border border-neutral-200 bg-cordobaSoft">
               <div class="text-[11px] uppercase tracking-[0.18em] text-neutral-500">GDP growth</div>
               <div id="cc-gdp-latest" class="mt-1 text-lg font-semibold text-neutral-900">–</div>
               <div class="text-xs text-neutral-600 mt-1" id="cc-gdp-extra">Real GDP growth (annualised where applicable).</div>
             </div>
-
             <div class="p-3 rounded-xl border border-neutral-200 bg-cordobaSoft">
               <div class="text-[11px] uppercase tracking-[0.18em] text-neutral-500">Inflation (CPI)</div>
               <div id="cc-inflation-latest" class="mt-1 text-lg font-semibold text-neutral-900">–</div>
               <div class="text-xs text-neutral-600 mt-1" id="cc-inflation-extra">Headline CPI (annual % change).</div>
             </div>
-
             <div class="p-3 rounded-xl border border-neutral-200 bg-cordobaSoft">
               <div class="text-[11px] uppercase tracking-[0.18em] text-neutral-500">Unemployment</div>
               <div id="cc-unemployment-latest" class="mt-1 text-lg font-semibold text-neutral-900">–</div>
               <div class="text-xs text-neutral-600 mt-1" id="cc-unemployment-extra">% of labour force.</div>
             </div>
-
             <div class="p-3 rounded-xl border border-neutral-200 bg-cordobaSoft">
               <div class="text-[11px] uppercase tracking-[0.18em] text-neutral-500">Broad money growth</div>
               <div id="cc-money-latest" class="mt-1 text-lg font-semibold text-neutral-900">–</div>
               <div class="text-xs text-neutral-600 mt-1" id="cc-money-extra">M2 (or nearest equivalent) growth.</div>
             </div>
-
             <div class="p-3 rounded-xl border border-neutral-200 bg-cordobaSoft">
               <div class="text-[11px] uppercase tracking-[0.18em] text-neutral-500">Current account / GDP</div>
               <div id="cc-ca-latest" class="mt-1 text-lg font-semibold text-neutral-900">–</div>
@@ -294,14 +322,11 @@
         </div>
       </section>
 
-      <!-- Indicator table -->
       <section class="rounded-2xl border border-neutral-200 bg-white shadow-subtle px-4 py-4">
         <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-2 mb-3">
           <div>
             <div class="text-[11px] uppercase tracking-[0.2em] text-neutral-500">Indicator Grid</div>
-            <div class="text-sm text-neutral-700">
-              Key indicators – <span id="cc-signals-country">United States</span>
-            </div>
+            <div class="text-sm text-neutral-700">Key indicators – <span id="cc-signals-country">United States</span></div>
           </div>
           <div class="flex items-center gap-2 text-[11px]">
             <button id="cc-filter-all" class="px-2.5 py-1 rounded-full border border-neutral-200 bg-cordobaSoft" type="button">
@@ -331,7 +356,6 @@
         </div>
       </section>
 
-      <!-- Analyst note helper + Cordoba research row -->
       <section class="rounded-2xl border border-neutral-200 bg-white shadow-subtle px-4 py-4">
         <div class="grid grid-cols-1 xl:grid-cols-3 gap-4">
 
@@ -388,7 +412,6 @@
     </main>
   </div>
 
-  <!-- Institutional footer -->
   <footer class="border-t border-neutral-200 bg-white/95 backdrop-blur text-xs text-neutral-500">
     <div class="w-full px-4 sm:px-6 lg:px-8 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-left">
       <div class="flex flex-wrap items-center gap-2 text-left">
@@ -399,27 +422,17 @@
       </div>
 
       <div class="flex flex-wrap items-center gap-4 text-left sm:text-right">
-        <a
-          href="https://cordobacapital.co.uk"
-          target="_blank"
-          rel="noopener noreferrer"
-          class="hover:text-neutral-900"
-        >
+        <a href="https://cordobacapital.co.uk" target="_blank" rel="noopener noreferrer" class="hover:text-neutral-900">
           Cordoba Capital Website
         </a>
 
-        <button
-          id="cc-methodology-open"
-          type="button"
-          class="underline decoration-neutral-300 underline-offset-2 hover:text-neutral-900"
-        >
+        <button id="cc-methodology-open" type="button" class="underline decoration-neutral-300 underline-offset-2 hover:text-neutral-900">
           Methodology &amp; data notes
         </button>
       </div>
     </div>
   </footer>
 
-  <!-- Methodology & data notes modal -->
   <div id="cc-methodology-modal" class="fixed inset-0 z-40 hidden">
     <div data-cc-methodology-overlay class="absolute inset-0 bg-black/30"></div>
     <div class="relative z-10 flex min-h-full items-end sm:items-center justify-center p-4">
@@ -433,7 +446,6 @@
             Close
           </button>
         </div>
-
         <div class="text-xs text-neutral-700 space-y-2 max-h-80 overflow-y-auto pr-1">
           <p>1. <span class="font-semibold">Data frequency.</span> The engine can ingest annual, quarterly, or monthly data. At present, most series are sourced from the World Bank WDI on an annual basis, with scope to plug in fresher national or FRED/OECD feeds over time.</p>
           <p>2. <span class="font-semibold">History window.</span> For each indicator we work with a rolling history window (up to the last 40 observations). This keeps signals anchored in recent regimes rather than very old cycles.</p>
@@ -448,10 +460,7 @@
     </div>
   </div>
 
-  <!-- JS -->
   <script src="main.js"></script>
-
-  <!-- Export libraries -->
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
