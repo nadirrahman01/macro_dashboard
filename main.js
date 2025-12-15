@@ -1,4 +1,3 @@
-// main.js
 // Cordoba Capital – Global Macro Engine (Beta)
 // Data source: World Bank World Development Indicators (WDI)
 
@@ -14,7 +13,7 @@ const COUNTRY_META = {
   JP: { name: "Japan", region: "G-20 · DM", wb: "JPN" },
   CN: { name: "China", region: "G-20 · EM", wb: "CHN" },
   IN: { name: "India", region: "G-20 · EM", wb: "IND" },
-  BR: { name: "Brazil", region: "G-20 · EM", wb: "BRA" }
+  BR: { name: "Brazil", region: "G-20 · EM", wb: "BRA" },
   UZ: { name: "Uzbekistan", region: "Central Asia · EM", wb: "UZB" }
 };
 
@@ -205,14 +204,8 @@ async function fetchWorldBankSeries(countryKey, indicatorCode) {
 // ---------------------------------------------------------------------------
 // Date helpers
 // ---------------------------------------------------------------------------
-const MONTH_SHORT = [
-  "Jan","Feb","Mar","Apr","May","Jun",
-  "Jul","Aug","Sep","Oct","Nov","Dec"
-];
-const MONTH_FULL = [
-  "January","February","March","April","May","June",
-  "July","August","September","October","November","December"
-];
+const MONTH_SHORT = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const MONTH_FULL = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 
 function inferYearFromPoint(p) {
   if (!p) return undefined;
@@ -238,7 +231,7 @@ function inferMonthFromPoint(p) {
       if (mm >= 1 && mm <= 12) return mm;
     }
 
-    m = s.match(/^\d{4}-(\d{2})/);      // YYYY-MM / YYYY-MM-DD
+    m = s.match(/^\d{4}-(\d{2})/); // YYYY-MM / YYYY-MM-DD
     if (m) {
       const mm = parseInt(m[1], 10);
       if (mm >= 1 && mm <= 12) return mm;
@@ -289,8 +282,7 @@ function computeStats(series, lookbackYears = 10, updatedAt = null) {
 
   const variance =
     values.length > 1
-      ? values.reduce((sum, v) => sum + Math.pow(v - mean, 2), 0) /
-        (values.length - 1)
+      ? values.reduce((sum, v) => sum + Math.pow(v - mean, 2), 0) / (values.length - 1)
       : 0;
 
   const stdev = Math.sqrt(variance);
@@ -299,10 +291,7 @@ function computeStats(series, lookbackYears = 10, updatedAt = null) {
 
   const zByYear = window.map((p) => {
     const y = inferYearFromPoint(p);
-    return {
-      year: y,
-      z: stdev > 0 ? (p.value - mean) / stdev : 0
-    };
+    return { year: y, z: stdev > 0 ? (p.value - mean) / stdev : 0 };
   });
 
   const analogues = zByYear
@@ -343,12 +332,7 @@ function capitaliseFirst(str) {
 
 function classifySignal(stat, cfg) {
   if (!stat) {
-    return {
-      level: "n/a",
-      strength: "none",
-      label: "No recent data",
-      direction: "flat"
-    };
+    return { level: "n/a", strength: "none", label: "No recent data", direction: "flat" };
   }
 
   const { z, delta } = stat;
@@ -395,8 +379,7 @@ function engineScoreFromIndicators(statsById) {
   const m2 = statsById.money;
   const ca = statsById.current_account;
 
-  const growthZ =
-    (gdp ? (gdp.z || 0) : 0) - (u ? (u.z || 0) * 0.4 : 0);
+  const growthZ = (gdp ? (gdp.z || 0) : 0) - (u ? (u.z || 0) * 0.4 : 0);
   const inflationZ = infl ? -infl.z : 0;
   const liquidityZ = m2 ? m2.z : 0;
   const externalZ = ca ? ca.z : 0;
@@ -431,9 +414,7 @@ function buildNoteDraft(countryKey, statsById, engines) {
   const allStats = Object.values(statsById).filter(Boolean);
   const lastPoint = allStats.length
     ? allStats.reduce((acc, s) => {
-        const stamp =
-          (inferYearFromPoint(s.latest) || 0) * 100 +
-          inferMonthFromPoint(s.latest);
+        const stamp = (inferYearFromPoint(s.latest) || 0) * 100 + inferMonthFromPoint(s.latest);
         if (!acc || stamp > acc.stamp) return { stamp, point: s.latest };
         return acc;
       }, null)
@@ -453,54 +434,34 @@ function buildNoteDraft(countryKey, statsById, engines) {
 
   const lines = [];
 
-  lines.push(
-    `${meta.name} – Macro snapshot (${lastLabel}, World Bank annual data).`
-  );
-  lines.push(
-    `The macro backdrop is characterised by ${growthPhrase} alongside ${inflationPhrase}.`
-  );
+  lines.push(`${meta.name} – Macro snapshot (${lastLabel}, World Bank annual data).`);
+  lines.push(`The macro backdrop is characterised by ${growthPhrase} alongside ${inflationPhrase}.`);
 
   if (gdp && infl) {
     lines.push(
-      `Real GDP growth is ${formatNumber(
-        gdp.latest.value,
-        1,
-        "%"
-      )} compared with a 10-year average of ${formatNumber(
+      `Real GDP growth is ${formatNumber(gdp.latest.value, 1, "%")} compared with a 10-year average of ${formatNumber(
         gdp.mean,
         1,
         "%"
-      )}, while headline inflation stands at ${formatNumber(
-        infl.latest.value,
+      )}, while headline inflation stands at ${formatNumber(infl.latest.value, 1, "%")} versus a decade average of ${formatNumber(
+        infl.mean,
         1,
         "%"
-      )} versus a decade average of ${formatNumber(infl.mean, 1, "%")}.`
+      )}.`
     );
   } else if (gdp) {
     lines.push(
-      `Real GDP growth is ${formatNumber(
-        gdp.latest.value,
-        1,
-        "%"
-      )} versus a 10-year average of ${formatNumber(gdp.mean, 1, "%")}.`
+      `Real GDP growth is ${formatNumber(gdp.latest.value, 1, "%")} versus a 10-year average of ${formatNumber(gdp.mean, 1, "%")}.`
     );
   } else if (infl) {
     lines.push(
-      `Headline inflation is ${formatNumber(
-        infl.latest.value,
-        1,
-        "%"
-      )} versus a 10-year average of ${formatNumber(infl.mean, 1, "%")}.`
+      `Headline inflation is ${formatNumber(infl.latest.value, 1, "%")} versus a 10-year average of ${formatNumber(infl.mean, 1, "%")}.`
     );
   }
 
   if (unemp) {
     lines.push(
-      `Labour market conditions are signalled by an unemployment rate of ${formatNumber(
-        unemp.latest.value,
-        1,
-        "%"
-      )} versus a 10-year average of ${formatNumber(
+      `Labour market conditions are signalled by an unemployment rate of ${formatNumber(unemp.latest.value, 1, "%")} versus a 10-year average of ${formatNumber(
         unemp.mean,
         1,
         "%"
@@ -510,11 +471,7 @@ function buildNoteDraft(countryKey, statsById, engines) {
 
   if (money) {
     lines.push(
-      `Broad money growth is ${formatNumber(
-        money.latest.value,
-        1,
-        "%"
-      )}, compared with a 10-year average of ${formatNumber(
+      `Broad money growth is ${formatNumber(money.latest.value, 1, "%")}, compared with a 10-year average of ${formatNumber(
         money.mean,
         1,
         "%"
@@ -524,11 +481,7 @@ function buildNoteDraft(countryKey, statsById, engines) {
 
   if (ca) {
     lines.push(
-      `The external position shows a current-account balance of ${formatNumber(
-        ca.latest.value,
-        1,
-        "% of GDP"
-      )} against a decade average of ${formatNumber(
+      `The external position shows a current-account balance of ${formatNumber(ca.latest.value, 1, "% of GDP")} against a decade average of ${formatNumber(
         ca.mean,
         1,
         "% of GDP"
@@ -630,11 +583,7 @@ function buildResearchReason(engines) {
     if (!obj || obj.z == null || isNaN(obj.z)) return;
     const z = obj.z.toFixed(1);
     const tone =
-      Math.abs(obj.z) < 0.5
-        ? "near trend"
-        : obj.z > 0
-        ? "stretched high"
-        : "stretched low";
+      Math.abs(obj.z) < 0.5 ? "near trend" : obj.z > 0 ? "stretched high" : "stretched low";
     parts.push(`${name}: z ${z} (${tone})`);
   };
   add("Growth", engines.growth);
@@ -660,36 +609,19 @@ function renderResearchSuggestions(countryKey, statsById, engines) {
     { id: "external", z: engines.external?.z || 0 }
   ];
 
-  const dominant = engineArray.sort(
-    (a, b) => Math.abs(b.z) - Math.abs(a.z)
-  )[0];
-
+  const dominant = engineArray.sort((a, b) => Math.abs(b.z) - Math.abs(a.z))[0];
   const domEngineId = dominant ? dominant.id : null;
 
   const scored = CORDOBA_RESEARCH.map((article) => {
     let score = 0;
 
-    if (domEngineId && article.engines.includes(domEngineId)) {
-      score += 3;
-    }
-
-    if (article.countries.includes(countryKey)) {
-      score += 3;
-    }
+    if (domEngineId && article.engines.includes(domEngineId)) score += 3;
+    if (article.countries.includes(countryKey)) score += 3;
 
     const nameLower = countryName.toLowerCase();
-    if (
-      article.regions.some((r) =>
-        nameLower.includes(r.toLowerCase())
-      )
-    ) {
-      score += 2;
-    }
+    if (article.regions.some((r) => nameLower.includes(r.toLowerCase()))) score += 2;
 
-    if (meta.region && article.regions.includes("Global")) {
-      score += 1;
-    }
-
+    if (meta.region && article.regions.includes("Global")) score += 1;
     if (Math.abs(dominant?.z || 0) > 0.7) score += 1;
 
     return { article, score };
@@ -718,16 +650,13 @@ function renderResearchSuggestions(countryKey, statsById, engines) {
 
     const metaLine = document.createElement("div");
     metaLine.className = "text-[11px] text-neutral-600";
-    metaLine.textContent = `Theme: ${article.engines
-      .map((e) => capitaliseFirst(e))
-      .join(", ")}`;
+    metaLine.textContent = `Theme: ${article.engines.map((e) => capitaliseFirst(e)).join(", ")}`;
     card.appendChild(metaLine);
 
     const reason = document.createElement("div");
     reason.className = "text-[11px] text-neutral-500 mt-1";
     reason.textContent =
-      "Suggested because of the current engine configuration: " +
-      buildResearchReason(engines);
+      "Suggested because of the current engine configuration: " + buildResearchReason(engines);
     card.appendChild(reason);
 
     container.appendChild(card);
@@ -767,38 +696,22 @@ function renderRegimeSummary(countryKey, statsById, engines) {
   const parts = [];
   if (gdp) {
     parts.push(
-      `Real GDP growth is ${formatNumber(
-        gdp.latest.value,
-        1,
-        "%"
-      )} compared with a history average of ${formatNumber(gdp.mean, 1, "%")}.`
+      `Real GDP growth is ${formatNumber(gdp.latest.value, 1, "%")} compared with a history average of ${formatNumber(gdp.mean, 1, "%")}.`
     );
   }
   if (infl) {
     parts.push(
-      `Headline inflation is ${formatNumber(
-        infl.latest.value,
-        1,
-        "%"
-      )} versus a history average of ${formatNumber(infl.mean, 1, "%")}.`
+      `Headline inflation is ${formatNumber(infl.latest.value, 1, "%")} versus a history average of ${formatNumber(infl.mean, 1, "%")}.`
     );
   }
   if (unemp) {
     parts.push(
-      `Unemployment stands at ${formatNumber(
-        unemp.latest.value,
-        1,
-        "%"
-      )}, relative to an historical average of ${formatNumber(unemp.mean, 1, "%")}.`
+      `Unemployment stands at ${formatNumber(unemp.latest.value, 1, "%")}, relative to an historical average of ${formatNumber(unemp.mean, 1, "%")}.`
     );
   }
   if (ca) {
     parts.push(
-      `The current-account balance is ${formatNumber(
-        ca.latest.value,
-        1,
-        "% of GDP"
-      )} versus a history average of ${formatNumber(
+      `The current-account balance is ${formatNumber(ca.latest.value, 1, "% of GDP")} versus a history average of ${formatNumber(
         ca.mean,
         1,
         "% of GDP"
@@ -808,19 +721,14 @@ function renderRegimeSummary(countryKey, statsById, engines) {
 
   if (bodyEl) {
     bodyEl.textContent =
-      parts.join(" ") ||
-      "Insufficient historical data to build a macro summary for this country.";
+      parts.join(" ") || "Insufficient historical data to build a macro summary for this country.";
   }
 
   const indicatorsWithData = Object.values(statsById).filter(Boolean).length;
-  const avgWindow = average(
-    Object.values(statsById)
-      .filter(Boolean)
-      .map((s) => s.windowYears || 0)
-  );
+  const avgWindow = average(Object.values(statsById).filter(Boolean).map((s) => s.windowYears || 0));
+
   let confidence =
-    0.4 * (indicatorsWithData / INDICATORS.length) +
-    0.6 * Math.min(avgWindow / 10, 1);
+    0.4 * (indicatorsWithData / INDICATORS.length) + 0.6 * Math.min(avgWindow / 10, 1);
   confidence = Math.round(confidence * 100);
   if (confEl) confEl.textContent = `${confidence}%`;
 
@@ -836,8 +744,7 @@ function renderRegimeSummary(countryKey, statsById, engines) {
         analogEl.appendChild(pill);
       });
     } else {
-      analogEl.innerHTML =
-        '<span class="text-xs text-neutral-400">Not enough history for analogues.</span>';
+      analogEl.innerHTML = '<span class="text-xs text-neutral-400">Not enough history for analogues.</span>';
     }
   }
 
@@ -871,30 +778,10 @@ function renderEngineCards(engines) {
   container.innerHTML = "";
 
   const meta = [
-    {
-      id: "growth",
-      title: "Growth",
-      color: "border-emerald-300",
-      text: "text-emerald-700"
-    },
-    {
-      id: "inflation",
-      title: "Inflation",
-      color: "border-amber-300",
-      text: "text-amber-700"
-    },
-    {
-      id: "liquidity",
-      title: "Liquidity",
-      color: "border-sky-300",
-      text: "text-sky-700"
-    },
-    {
-      id: "external",
-      title: "External",
-      color: "border-rose-300",
-      text: "text-rose-700"
-    }
+    { id: "growth", title: "Growth", color: "border-emerald-300", text: "text-emerald-700" },
+    { id: "inflation", title: "Inflation", color: "border-amber-300", text: "text-amber-700" },
+    { id: "liquidity", title: "Liquidity", color: "border-sky-300", text: "text-sky-700" },
+    { id: "external", title: "External", color: "border-rose-300", text: "text-rose-700" }
   ];
 
   meta.forEach((m) => {
@@ -904,15 +791,12 @@ function renderEngineCards(engines) {
 
     const card = document.createElement("div");
     card.className =
-      "rounded-2xl border bg-cordobaSoft px-3 py-2 flex flex-col justify-between " +
-      m.color;
+      "rounded-2xl border bg-cordobaSoft px-3 py-2 flex flex-col justify-between " + m.color;
 
     const header = document.createElement("div");
     header.className =
       "flex items-baseline justify-between text-[10px] tracking-[0.18em] uppercase text-neutral-500";
-    header.innerHTML = `<span>${m.title}</span><span>z ${
-      z ? z.toFixed(1) : "0.0"
-    }</span>`;
+    header.innerHTML = `<span>${m.title}</span><span>z ${z ? z.toFixed(1) : "0.0"}</span>`;
     card.appendChild(header);
 
     const main = document.createElement("div");
@@ -925,15 +809,13 @@ function renderEngineCards(engines) {
     `;
     main.appendChild(scoreEl);
 
-    const qualitative =
-      Math.abs(z) < 0.5 ? "Near trend" : z > 0 ? "Above trend" : "Below trend";
+    const qualitative = Math.abs(z) < 0.5 ? "Near trend" : z > 0 ? "Above trend" : "Below trend";
     const labelEl = document.createElement("span");
     labelEl.className =
-      "inline-flex items-center justify-center whitespace-nowrap " +
-      "px-3 py-1 rounded-full border text-[11px] font-medium " +
-      "border-neutral-300 bg-white " +
+      "inline-flex items-center justify-center whitespace-nowrap px-3 py-1 rounded-full border text-[11px] font-medium border-neutral-300 bg-white " +
       m.text;
     labelEl.textContent = qualitative;
+
     main.appendChild(labelEl);
     card.appendChild(main);
     container.appendChild(card);
@@ -956,77 +838,39 @@ function renderHeadlineTiles(statsById) {
   };
 
   if (gdp) {
-    setText(
-      "cc-gdp-latest",
-      `${formatNumber(gdp.latest.value, 1, "%")}`
-    );
+    setText("cc-gdp-latest", `${formatNumber(gdp.latest.value, 1, "%")}`);
     setText(
       "cc-gdp-extra",
-      `History avg ${formatNumber(
-        gdp.mean,
-        1,
-        "%"
-      )}; change vs prior observation ${formatNumber(gdp.delta, 1, "%")}.`
+      `History avg ${formatNumber(gdp.mean, 1, "%")}; change vs prior observation ${formatNumber(gdp.delta, 1, "%")}.`
     );
   }
 
   if (infl) {
-    setText(
-      "cc-inflation-latest",
-      `${formatNumber(infl.latest.value, 1, "%")}`
-    );
+    setText("cc-inflation-latest", `${formatNumber(infl.latest.value, 1, "%")}`);
     setText(
       "cc-inflation-extra",
-      `History avg ${formatNumber(
-        infl.mean,
-        1,
-        "%"
-      )}; latest vs target depends on central bank regime.`
+      `History avg ${formatNumber(infl.mean, 1, "%")}; latest vs target depends on central bank regime.`
     );
   }
 
   if (unemp) {
-    setText(
-      "cc-unemployment-latest",
-      `${formatNumber(unemp.latest.value, 1, "%")}`
-    );
+    setText("cc-unemployment-latest", `${formatNumber(unemp.latest.value, 1, "%")}`);
     setText(
       "cc-unemployment-extra",
-      `History avg ${formatNumber(
-        unemp.mean,
-        1,
-        "%"
-      )}; a proxy for slack vs overheating.`
+      `History avg ${formatNumber(unemp.mean, 1, "%")}; a proxy for slack vs overheating.`
     );
   }
 
   if (money) {
-    setText(
-      "cc-money-latest",
-      `${formatNumber(money.latest.value, 1, "%")}`
-    );
-    setText(
-      "cc-money-extra",
-      `History avg ${formatNumber(
-        money.mean,
-        1,
-        "%"
-      )}; a rough liquidity pulse.`
-    );
+    setText("cc-money-latest", `${formatNumber(money.latest.value, 1, "%")}`);
+    setText("cc-money-extra", `History avg ${formatNumber(money.mean, 1, "%")}; a rough liquidity pulse.`);
   }
 
   if (ca) {
-    setText(
-      "cc-ca-latest",
-      `${formatNumber(ca.latest.value, 1, "% of GDP")}`
-    );
+    setText("cc-ca-latest", `${formatNumber(ca.latest.value, 1, "% of GDP")}`);
     setText(
       "cc-ca-extra",
-      `History avg ${formatNumber(
-        ca.mean,
-        1,
-        "% of GDP"
-      )}; sign and size flag external pressure.`
+      `History avg ${formatNumber(ca.mean, 1, "% of GDP")}; sign and size flag external pressure.`
     );
   }
 }
@@ -1036,13 +880,7 @@ function renderInflectionSignals(statsById) {
   if (!container) return;
   container.innerHTML = "";
 
-  const ordered = [
-    "gdp_growth",
-    "inflation",
-    "unemployment",
-    "money",
-    "current_account"
-  ];
+  const ordered = ["gdp_growth", "inflation", "unemployment", "money", "current_account"];
 
   ordered.forEach((id) => {
     const cfg = INDICATORS.find((i) => i.id === id);
@@ -1065,21 +903,13 @@ function renderInflectionSignals(statsById) {
 
     const small = document.createElement("div");
     small.className = "text-[11px] text-neutral-600";
-    const latest = stat.latest;
-    const directionText =
-      stat.delta > 0
-        ? "higher than"
-        : stat.delta < 0
-        ? "lower than"
-        : "similar to";
 
-    small.textContent = `Latest reading is ${formatNumber(
-      latest.value,
-      cfg.decimals,
-      cfg.unit
-    )} (${formatPeriodLabel(latest)}), ${directionText} the prior observation and ${
-      signal.label
-    } vs the history average of ${formatNumber(
+    const latest = stat.latest;
+    const directionText = stat.delta > 0 ? "higher than" : stat.delta < 0 ? "lower than" : "similar to";
+
+    small.textContent = `Latest reading is ${formatNumber(latest.value, cfg.decimals, cfg.unit)} (${formatPeriodLabel(
+      latest
+    )}), ${directionText} the prior observation and ${signal.label} vs the history average of ${formatNumber(
       stat.mean,
       cfg.decimals,
       cfg.unit
@@ -1089,14 +919,9 @@ function renderInflectionSignals(statsById) {
     row.appendChild(left);
 
     const right = document.createElement("div");
-    right.className =
-      "text-right text-[11px] text-neutral-500 whitespace-nowrap";
-    const dirArrow =
-      signal.direction === "up"
-        ? "↑"
-        : signal.direction === "down"
-        ? "↓"
-        : "→";
+    right.className = "text-right text-[11px] text-neutral-500 whitespace-nowrap";
+
+    const dirArrow = signal.direction === "up" ? "↑" : signal.direction === "down" ? "↓" : "→";
     right.innerHTML = `<div>${dirArrow} ${signal.level}</div><div>${signal.strength} signal</div>`;
     row.appendChild(right);
 
@@ -1104,8 +929,7 @@ function renderInflectionSignals(statsById) {
   });
 
   if (!container.children.length) {
-    container.innerHTML =
-      '<p class="text-xs text-neutral-500">Not enough data to compute signals for this country.</p>';
+    container.innerHTML = '<p class="text-xs text-neutral-500">Not enough data to compute signals for this country.</p>';
   }
 }
 
@@ -1126,17 +950,11 @@ function createSparkline(points) {
   const paddingX = 2;
   const paddingY = 4;
 
-  const step =
-    values.length > 1
-      ? (width - 2 * paddingX) / (values.length - 1)
-      : 0;
+  const step = values.length > 1 ? (width - 2 * paddingX) / (values.length - 1) : 0;
 
   const scaleY = (v) => {
     if (max === min) return height / 2;
-    return (
-      paddingY +
-      ((max - v) * (height - 2 * paddingY)) / (max - min)
-    );
+    return paddingY + ((max - v) * (height - 2 * paddingY)) / (max - min);
   };
 
   const svgNS = "http://www.w3.org/2000/svg";
@@ -1182,41 +1000,26 @@ function renderIndicatorGrid(statsById, countryKey) {
     const tr = document.createElement("tr");
     tr.className = "hover:bg-cordobaSoft";
 
-    const lastVal = formatNumber(
-      stat.latest.value,
-      cfg.decimals,
-      cfg.unit,
-      "n/a"
-    );
-    const zFormatted =
-      stat.z != null && !isNaN(stat.z) ? stat.z.toFixed(1) : "0.0";
+    const lastVal = formatNumber(stat.latest.value, cfg.decimals, cfg.unit, "n/a");
+    const zFormatted = stat.z != null && !isNaN(stat.z) ? stat.z.toFixed(1) : "0.0";
 
-    const commentText = `Latest reading is ${lastVal} (${formatPeriodLabel(
-      stat.latest
-    )}) vs history average ${formatNumber(
+    const commentText = `Latest reading is ${lastVal} (${formatPeriodLabel(stat.latest)}) vs history average ${formatNumber(
       stat.mean,
       cfg.decimals,
       cfg.unit
-    )}; change vs prior observation ${formatNumber(
-      stat.delta,
-      cfg.decimals,
-      cfg.unit
-    )}.`;
+    )}; change vs prior observation ${formatNumber(stat.delta, cfg.decimals, cfg.unit)}.`;
 
     tr.innerHTML = `
       <td class="py-2 pr-3 text-neutral-900">${cfg.label}</td>
       <td class="py-2 pr-3 text-neutral-600">${cfg.engine}</td>
       <td class="py-2 pr-3 text-neutral-600">${cfg.bucket}</td>
       <td class="py-2 pr-3"></td>
-      <td class="py-2 pr-3 text-left text-neutral-600">${formatPeriodLabel(
-        stat.latest
-      )}</td>
+      <td class="py-2 pr-3 text-left text-neutral-600">${formatPeriodLabel(stat.latest)}</td>
       <td class="py-2 pr-3 text-right text-neutral-900">${lastVal}</td>
       <td class="py-2 pr-3 text-right text-neutral-700">${zFormatted}</td>
       <td class="py-2 pr-3 text-neutral-600">${commentText}</td>
     `;
 
-    // Signal badge goes in the "Signal" column (2nd col)
     const signalCell = tr.children[1];
     if (signalCell) {
       const badge = document.createElement("span");
@@ -1227,7 +1030,6 @@ function renderIndicatorGrid(statsById, countryKey) {
       signalCell.appendChild(badge);
     }
 
-    // Sparkline goes under the "Trend (10yr)" column (3rd col, index 2)
     if (stat.spark && stat.spark.length) {
       const trendCell = tr.children[2];
       if (trendCell) {
@@ -1263,10 +1065,7 @@ function renderMeta(statsById) {
     return;
   }
 
-  const dates = allStats
-    .map((s) => s.updatedAt)
-    .filter(Boolean);
-
+  const dates = allStats.map((s) => s.updatedAt).filter(Boolean);
   if (!dates.length) {
     dataAsOf.textContent = "latest: n/a";
     return;
@@ -1296,27 +1095,19 @@ function renderNextQuestions(statsById, engines) {
   const qs = [];
 
   if (ca && Math.abs(ca.z) > 0.7) {
-    qs.push(
-      "Why has the current-account balance moved away from its 10-year norm, and is this cyclical or structural?"
-    );
+    qs.push("Why has the current-account balance moved away from its 10-year norm, and is this cyclical or structural?");
   }
 
   if (gdp && infl && Math.sign(gdp.z) !== Math.sign(infl.z)) {
-    qs.push(
-      "What is driving the divergence between growth and inflation signals, and how might that affect policy and risk premia?"
-    );
+    qs.push("What is driving the divergence between growth and inflation signals, and how might that affect policy and risk premia?");
   }
 
   if (engines.liquidity && engines.external) {
-    qs.push(
-      "Is domestic liquidity easing enough to offset any external funding pressure picked up in the external engine?"
-    );
+    qs.push("Is domestic liquidity easing enough to offset any external funding pressure picked up in the external engine?");
   }
 
   if (!qs.length) {
-    qs.push(
-      "Most engines are close to trend. What catalysts could realistically shift this regime over the next 12–18 months?"
-    );
+    qs.push("Most engines are close to trend. What catalysts could realistically shift this regime over the next 12–18 months?");
   }
 
   qs.slice(0, 3).forEach((q) => {
@@ -1338,7 +1129,6 @@ async function loadCountry(countryKey) {
   if (labelEl) labelEl.textContent = meta.name;
   if (regionEl) regionEl.textContent = meta.region || "";
 
-  // Cached?
   if (macroCache[countryKey]) {
     const statsById = macroCache[countryKey];
     const engines = engineScoreFromIndicators(statsById);
@@ -1358,25 +1148,15 @@ async function loadCountry(countryKey) {
 
   try {
     const requests = INDICATORS.map((cfg) =>
-      fetchWorldBankSeries(countryKey, cfg.wb).then(
-        ({ series, updatedAt }) => ({
-          cfg,
-          series,
-          updatedAt
-        })
-      )
+      fetchWorldBankSeries(countryKey, cfg.wb).then(({ series, updatedAt }) => ({ cfg, series, updatedAt }))
     );
 
     const results = await Promise.all(requests);
 
     const statsById = {};
     results.forEach(({ cfg, series, updatedAt }) => {
-      const stats =
-        series && series.length
-          ? computeStats(series, 10, updatedAt)
-          : null;
+      const stats = series && series.length ? computeStats(series, 10, updatedAt) : null;
 
-      // Store last ~10 observations for sparklines
       if (stats && series && series.length) {
         const lastN = series.slice(-10);
         stats.spark = lastN.map((p) => ({
@@ -1423,17 +1203,16 @@ function setupCountryDropdown() {
   menu.addEventListener("click", (evt) => {
     const btn = evt.target.closest("[data-cc-country]");
     if (!btn) return;
+
     const code = btn.getAttribute("data-cc-country");
     const region = btn.getAttribute("data-cc-region") || "";
     menu.classList.add("hidden");
 
     const meta = COUNTRY_META[code] || { name: code, region };
     const labelSpan =
-      document.querySelector("[data-cc-country-label]") ||
-      document.getElementById("cc-country-current-label");
+      document.querySelector("[data-cc-country-label]") || document.getElementById("cc-country-current-label");
     const regionSpan =
-      document.querySelector("[data-cc-country-region]") ||
-      document.getElementById("cc-country-current-region");
+      document.querySelector("[data-cc-country-region]") || document.getElementById("cc-country-current-region");
 
     if (labelSpan) labelSpan.textContent = meta.name;
     if (regionSpan) regionSpan.textContent = meta.region || region;
@@ -1441,8 +1220,9 @@ function setupCountryDropdown() {
     loadCountry(code);
   });
 
+  // FIX: close menu when clicking outside, but do not misfire when clicking inside toggle children
   document.addEventListener("click", (evt) => {
-    if (!menu.contains(evt.target) && evt.target !== toggle) {
+    if (!menu.contains(evt.target) && !toggle.contains(evt.target)) {
       menu.classList.add("hidden");
     }
   });
@@ -1452,9 +1232,7 @@ function setupMethodologyModal() {
   const openBtn = document.getElementById("cc-methodology-open");
   const closeBtn = document.getElementById("cc-methodology-close");
   const modal = document.getElementById("cc-methodology-modal");
-  const overlay = modal
-    ? modal.querySelector("[data-cc-methodology-overlay]")
-    : null;
+  const overlay = modal ? modal.querySelector("[data-cc-methodology-overlay]") : null;
 
   if (!modal || !openBtn || !closeBtn || !overlay) return;
 
