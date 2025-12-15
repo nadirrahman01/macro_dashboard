@@ -1307,6 +1307,298 @@ function renderNextQuestions(statsById, engines) {
   });
 }
 
+/* ===========================
+   4. Regime Implication Mapper
+   5. Stress Sentinel
+   7. Workflow Shortcuts
+   8. Meaningful Heatmap
+   =========================== */
+
+function renderRegimeImplications(countryKey, statsById, engines) {
+  const el = document.getElementById("cc-regime-implications");
+  if (!el) return;
+
+  const meta = COUNTRY_META[countryKey] || { name: countryKey, region: "" };
+  const g = engines?.growth?.z ?? 0;
+  const i = engines?.inflation?.z ?? 0;
+  const l = engines?.liquidity?.z ?? 0;
+  const e = engines?.external?.z ?? 0;
+
+  const items = [];
+
+  if (i > 0.7) {
+    items.push("Rates: inflation pressure implies higher for longer pricing risk, duration convexity becomes asymmetric.");
+  } else if (i < -0.7) {
+    items.push("Rates: disinflation impulse creates easing optionality, curve likely more sensitive to downside growth surprises.");
+  } else {
+    items.push("Rates: inflation signal is not dominant, rates risk likely driven by positioning and term premium rather than prints alone.");
+  }
+
+  if (g > 0.6 && l > 0.6) {
+    items.push("Risk: pro growth and pro liquidity regime, rallies tend to broaden, but valuation sensitivity increases sharply.");
+  } else if (g < -0.6 && l < -0.6) {
+    items.push("Risk: contraction and tightening impulse, credit usually reprices before equities, default risk becomes nonlinear.");
+  } else {
+    items.push("Risk: mixed regime, dispersion rises, stock selection and carry matter more than beta.");
+  }
+
+  if (e < -0.7) {
+    items.push("FX: weaker external balance, watch funding stress, reserve drawdowns, and sudden repricing in the currency channel.");
+  } else if (e > 0.7) {
+    items.push("FX: supportive external balance, carry and risk appetite tend to be more durable.");
+  } else {
+    items.push("FX: external engine near trend, FX stress is less likely to be the first crack unless a global shock hits.");
+  }
+
+  const ca = statsById.current_account;
+  if (ca && Math.abs(ca.z) > 1.0) {
+    items.push("Cross asset: external imbalance is unusually stretched, if markets move fast it often shows up in FX basis and credit spreads first.");
+  }
+
+  el.innerHTML = "";
+  items.slice(0, 5).forEach((text) => {
+    const li = document.createElement("li");
+    li.textContent = `${meta.name}: ${text}`;
+    el.appendChild(li);
+  });
+}
+
+function renderStressSentinel(statsById, engines) {
+  const el = document.getElementById("cc-stress-sentinel");
+  if (!el) return;
+
+  const risks = [];
+
+  const ca = statsById.current_account;
+  const money = statsById.money;
+  const u = statsById.unemployment;
+  const infl = statsById.inflation;
+
+  if (ca && ca.z < -0.7) {
+    risks.push("External funding stress: current account is weaker than usual, watch currency pressure and rollover risk.");
+  }
+  if (money && money.z < -0.7) {
+    risks.push("Liquidity rollover: money growth is weak versus history, risk premia can widen before the narrative changes.");
+  }
+  if ((engines.inflation?.z ?? 0) > 0.8 && (engines.growth?.z ?? 0) < 0.2) {
+    risks.push("Policy error risk: inflation is the binding constraint while growth is not strong, rates volatility tends to jump.");
+  }
+  if (u && u.delta > 0) {
+    risks.push("Labour market inflection: unemployment is rising, late cycle turns often show up here before GDP does.");
+  }
+  if (infl && Math.abs(infl.delta) > 0.6 && Math.abs(infl.z) > 0.6) {
+    risks.push("Inflation persistence: level is stretched and change is large, second round effects become the key risk.");
+  }
+
+  el.innerHTML = "";
+  (risks.length ? risks : ["No obvious near term macro failure point identified from current signals."])
+    .slice(0, 3)
+    .forEach((text) => {
+      const li = document.createElement("li");
+      li.textContent = text;
+      el.appendChild(li);
+    });
+}
+
+function renderMeaningfulHeatmap(countryKey, statsById, engines) {
+  const root = document.getElementById("cc-meaningful-heatmap");
+  if (!root) return;
+
+  const meta = COUNTRY_META[countryKey] || { name: countryKey, region: "" };
+
+  const cards = [
+    {
+      title: "Growth engine",
+      z: engines?.growth?.z,
+      score: engines?.growth?.score,
+      why: "Cycle and earnings sensitivity"
+    },
+    {
+      title: "Inflation engine",
+      z: engines?.inflation?.z,
+      score: engines?.inflation?.score,
+      why: "Rates and term premium"
+    },
+    {
+      title: "Liquidity engine",
+      z: engines?.liquidity?.z,
+      score: engines?.liquidity?.score,
+      why: "Risk premia and credit impulse"
+    },
+    {
+      title: "External engine",
+      z: engines?.external?.z,
+      score: engines?.external?.score,
+      why: "FX vulnerability and funding"
+    }
+  ];
+
+  root.innerHTML = "";
+
+  cards.forEach((c) => {
+    const z = c.z;
+    const s = c.score;
+
+    const bg = heatStyle(z).backgroundColor || "transparent";
+
+    const div = document.createElement("div");
+    div.className = "rounded-2xl border border-neutral-200 bg-white px-3 py-3";
+    div.innerHTML = `
+      <div class="text-[11px] uppercase tracking-[0.18em] text-neutral-500">${meta.name}</div>
+      <div class="mt-1 text-sm font-semibold text-neutral-900">${c.title}</div>
+      <div class="mt-2 rounded-xl border border-neutral-200 px-3 py-2" style="background:${bg};">
+        <div class="flex items-center justify-between text-xs text-neutral-700">
+          <span>z</span>
+          <span class="font-semibold text-neutral-900">${z == null || isNaN(z) ? "n/a" : z.toFixed(2)}</span>
+        </div>
+        <div class="flex items-center justify-between text-xs text-neutral-700 mt-1">
+          <span>score</span>
+          <span class="font-semibold text-neutral-900">${s == null ? "n/a" : s}/100</span>
+        </div>
+      </div>
+      <div class="mt-2 text-[11px] text-neutral-600">${c.why}</div>
+    `;
+    root.appendChild(div);
+  });
+}
+
+function setWorkflowStatus(text) {
+  const el = document.getElementById("cc-workflow-status");
+  if (!el) return;
+  el.textContent = text || "";
+  if (text) {
+    setTimeout(() => {
+      el.textContent = "";
+    }, 2200);
+  }
+}
+
+async function copyTextToClipboard(text) {
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+  } catch (e) {}
+  try {
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.style.position = "fixed";
+    ta.style.opacity = "0";
+    document.body.appendChild(ta);
+    ta.focus();
+    ta.select();
+    const ok = document.execCommand("copy");
+    document.body.removeChild(ta);
+    return ok;
+  } catch (e) {
+    return false;
+  }
+}
+
+async function exportDashboardPNG() {
+  const root = document.getElementById("cc-export-root");
+  if (!root || typeof html2canvas === "undefined") {
+    setWorkflowStatus("Export failed, missing html2canvas.");
+    return;
+  }
+  setWorkflowStatus("Rendering PNG...");
+  const canvas = await html2canvas(root, { scale: 2, backgroundColor: "#FFFCF9" });
+  const dataUrl = canvas.toDataURL("image/png");
+  const a = document.createElement("a");
+  a.href = dataUrl;
+  a.download = "cordoba_gme.png";
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setWorkflowStatus("PNG exported.");
+}
+
+async function exportDashboardPDF() {
+  const root = document.getElementById("cc-export-root");
+  if (!root || typeof html2canvas === "undefined" || !window.jspdf) {
+    setWorkflowStatus("Export failed, missing jsPDF.");
+    return;
+  }
+  setWorkflowStatus("Rendering PDF...");
+  const canvas = await html2canvas(root, { scale: 2, backgroundColor: "#FFFCF9" });
+  const imgData = canvas.toDataURL("image/png");
+  const { jsPDF } = window.jspdf;
+
+  const pdf = new jsPDF("p", "pt", "a4");
+  const pageWidth = pdf.internal.pageSize.getWidth();
+  const pageHeight = pdf.internal.pageSize.getHeight();
+
+  const imgWidth = pageWidth;
+  const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+  let y = 0;
+  pdf.addImage(imgData, "PNG", 0, y, imgWidth, imgHeight);
+
+  if (imgHeight > pageHeight) {
+    let remaining = imgHeight - pageHeight;
+    while (remaining > 0) {
+      pdf.addPage();
+      y = -(imgHeight - remaining);
+      pdf.addImage(imgData, "PNG", 0, y, imgWidth, imgHeight);
+      remaining -= pageHeight;
+    }
+  }
+
+  pdf.save("cordoba_gme.pdf");
+  setWorkflowStatus("PDF exported.");
+}
+
+function setupWorkflowShortcuts() {
+  const copyNoteBtn = document.getElementById("cc-copy-note");
+  const copyQuestionsBtn = document.getElementById("cc-copy-questions");
+  const copyImplicationsBtn = document.getElementById("cc-copy-implications");
+  const exportPngBtn = document.getElementById("cc-export-png");
+  const exportPdfBtn = document.getElementById("cc-export-pdf");
+
+  if (copyNoteBtn) {
+    copyNoteBtn.addEventListener("click", async () => {
+      const el = document.getElementById("cc-note-draft");
+      const ok = await copyTextToClipboard(el ? el.value : "");
+      setWorkflowStatus(ok ? "Note copied." : "Copy failed.");
+    });
+  }
+
+  if (copyQuestionsBtn) {
+    copyQuestionsBtn.addEventListener("click", async () => {
+      const list = document.getElementById("cc-question-list");
+      const text = list
+        ? Array.from(list.querySelectorAll("li")).map((li) => `• ${li.textContent}`).join("\n")
+        : "";
+      const ok = await copyTextToClipboard(text);
+      setWorkflowStatus(ok ? "Questions copied." : "Copy failed.");
+    });
+  }
+
+  if (copyImplicationsBtn) {
+    copyImplicationsBtn.addEventListener("click", async () => {
+      const list = document.getElementById("cc-regime-implications");
+      const text = list
+        ? Array.from(list.querySelectorAll("li")).map((li) => `• ${li.textContent}`).join("\n")
+        : "";
+      const ok = await copyTextToClipboard(text);
+      setWorkflowStatus(ok ? "Implications copied." : "Copy failed.");
+    });
+  }
+
+  if (exportPngBtn) {
+    exportPngBtn.addEventListener("click", () => {
+      exportDashboardPNG();
+    });
+  }
+
+  if (exportPdfBtn) {
+    exportPdfBtn.addEventListener("click", () => {
+      exportDashboardPDF();
+    });
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Country loader
 // ---------------------------------------------------------------------------
@@ -1325,6 +1617,10 @@ async function loadCountry(countryKey) {
     renderRegimeSummary(countryKey, statsById, engines);
     renderEngineCards(engines);
     renderEngineBreakdown(statsById, engines);
+
+    renderMeaningfulHeatmap(countryKey, statsById, engines);
+    renderRegimeImplications(countryKey, statsById, engines);
+    renderStressSentinel(statsById, engines);
 
     renderHeadlineTiles(statsById);
     renderInflectionSignals(statsById);
@@ -1372,6 +1668,10 @@ async function loadCountry(countryKey) {
     renderRegimeSummary(countryKey, statsById, engines);
     renderEngineCards(engines);
     renderEngineBreakdown(statsById, engines);
+
+    renderMeaningfulHeatmap(countryKey, statsById, engines);
+    renderRegimeImplications(countryKey, statsById, engines);
+    renderStressSentinel(statsById, engines);
 
     renderHeadlineTiles(statsById);
     renderInflectionSignals(statsById);
@@ -1478,5 +1778,6 @@ document.addEventListener("DOMContentLoaded", () => {
   setupCountryDropdown();
   setupMethodologyModal();
   setupFilters();
+  setupWorkflowShortcuts();
   loadCountry("US");
 });
