@@ -1600,6 +1600,400 @@ function setupWorkflowShortcuts() {
 }
 
 // ---------------------------------------------------------------------------
+// NEW: Regime implication mapper + Stress sentinel (institutional formatting)
+// ---------------------------------------------------------------------------
+
+function clamp01(x) {
+  if (x == null || isNaN(x)) return 0;
+  return Math.max(0, Math.min(1, x));
+}
+
+function scoreTo01(score) {
+  if (score == null || isNaN(score)) return 0.5;
+  return clamp01(score / 100);
+}
+
+function zToHeat01(z) {
+  const v = Math.max(-2.5, Math.min(2.5, z || 0));
+  return clamp01(Math.abs(v) / 2.5);
+}
+
+function qualityLabelFromConfidence(confPct) {
+  if (confPct >= 80) return "High";
+  if (confPct >= 60) return "Medium";
+  return "Low";
+}
+
+function renderPill(el, text, tone) {
+  if (!el) return;
+  const toneClass =
+    tone === "high"
+      ? "bg-white border-neutral-200 text-neutral-900"
+      : tone === "medium"
+      ? "bg-cordobaSoft border-neutral-200 text-neutral-900"
+      : "bg-white border-neutral-200 text-neutral-600";
+
+  el.className =
+    "inline-flex items-center px-2.5 py-1 rounded-full border text-xs " + toneClass;
+
+  el.textContent = text;
+}
+
+function barNode({ label, value01, hint }) {
+  const wrap = document.createElement("div");
+  wrap.className = "rounded-xl border border-neutral-200 bg-white px-3 py-2";
+
+  const top = document.createElement("div");
+  top.className = "flex items-center justify-between gap-3";
+  top.innerHTML = `
+    <div class="text-xs font-medium text-neutral-900">${label}</div>
+    <div class="text-[11px] text-neutral-500">${Math.round(value01 * 100)}%</div>
+  `;
+  wrap.appendChild(top);
+
+  const track = document.createElement("div");
+  track.className = "mt-2 h-2 rounded-full bg-neutral-100 border border-neutral-200 overflow-hidden";
+
+  const fill = document.createElement("div");
+  fill.className = "h-full rounded-full bg-cordobaGold";
+  fill.style.width = `${Math.round(value01 * 100)}%`;
+
+  track.appendChild(fill);
+  wrap.appendChild(track);
+
+  const sub = document.createElement("div");
+  sub.className = "mt-2 text-[11px] text-neutral-600 leading-relaxed";
+  sub.textContent = hint || "";
+  wrap.appendChild(sub);
+
+  return wrap;
+}
+
+function buildImplicationChannels(engines) {
+  const gZ = engines?.growth?.z ?? 0;
+  const iZ = engines?.inflation?.z ?? 0;
+  const lZ = engines?.liquidity?.z ?? 0;
+  const eZ = engines?.external?.z ?? 0;
+
+  // Simple proxy weights
+  // Rates tends to dominate when inflation tension is high, or growth and inflation diverge
+  const rates = clamp01(0.45 * zToHeat01(iZ) + 0.35 * clamp01(Math.abs(iZ - gZ) / 2.5) + 0.20 * zToHeat01(lZ));
+  // FX tends to dominate when external is stretched, especially on the weak side
+  const fx = clamp01(0.65 * zToHeat01(eZ) + 0.20 * clamp01(Math.max(0, -eZ) / 2.5) + 0.15 * zToHeat01(iZ));
+  // Credit reacts to liquidity plus growth downside
+  const credit = clamp01(0.55 * zToHeat01(lZ) + 0.30 * clamp01(Math.max(0, -gZ) / 2.5) + 0.15 * zToHeat01(eZ));
+  // Equities often respond to growth and liquidity mix, plus dispersion regimes
+  const equities = clamp01(0.45 * zToHeat01(gZ) + 0.35 * zToHeat01(lZ) + 0.20 * clamp01(Math.abs(gZ - iZ) / 2.5));
+
+  return [
+    {
+      k: "Rates",
+      v: rates,
+      hint:
+        iZ > 0.7
+          ? "Inflation tension is elevated, term premium and positioning risk tends to matter more."
+          : Math.abs(iZ - gZ) > 0.9
+          ? "Growth and inflation are pulling apart, curve repricing can lead narrative."
+          : "Rates risk looks more second order, watch catalysts rather than prints."
+    },
+    {
+      k: "FX",
+      v: fx,
+      hint:
+        eZ < -0.7
+          ? "External balance is weak versus history, funding pressure can show up abruptly in FX."
+          : eZ > 0.7
+          ? "External position is supportive, FX stress is less likely to be the first crack."
+          : "FX risk is mixed, watch shifts in financing conditions and risk appetite."
+    },
+    {
+      k: "Credit",
+      v: credit,
+      hint:
+        lZ < -0.7
+          ? "Liquidity pulse is weak, spreads can widen before macro data rolls over."
+          : gZ < -0.7
+          ? "Growth is soft versus history, default risk remains lagging but spreads can move first."
+          : "Credit signal is moderate, watch carry and refinancing sensitivity."
+    },
+    {
+      k: "Equities",
+      v: equities,
+      hint:
+        gZ > 0.7 && lZ > 0.7
+          ? "Growth and liquidity are both supportive, beta can dominate."
+          : Math.abs(gZ - iZ) > 0.9
+          ? "Mixed regime, dispersion rises, stock selection matters more than index beta."
+          : "Equity signal is balanced, focus on catalysts and valuation sensitivity."
+    }
+  ];
+}
+
+function buildRegimeImplications(countryKey, statsById, engines) {
+  const meta = COUNTRY_META[countryKey] || { name: countryKey };
+
+  const gZ = engines?.growth?.z ?? 0;
+  const iZ = engines?.inflation?.z ?? 0;
+  const lZ = engines?.liquidity?.z ?? 0;
+  const eZ = engines?.external?.z ?? 0;
+
+  const name = meta.name || countryKey;
+
+  const items = [];
+
+  // Rates
+  items.push({
+    topic: "Rates",
+    headline:
+      iZ > 0.7
+        ? "Inflation tension dominates, rates risk is skewed to higher for longer repricing."
+        : Math.abs(iZ - gZ) > 0.9
+        ? "Growth and inflation divergence, curve repricing risk rises even without new prints."
+        : "Inflation is not dominant, term premium and positioning may drive moves more than data.",
+    watch: "Breakevens, 2s10s, term premium proxies",
+    confidence: Math.round(50 + 50 * clamp01(zToHeat01(iZ) + clamp01(Math.abs(iZ - gZ) / 2.5)) / 2)
+  });
+
+  // Risk
+  items.push({
+    topic: "Risk",
+    headline:
+      gZ > 0.5 && lZ > 0.5
+        ? "Supportive impulse, beta can do the work, carry improves."
+        : gZ < -0.5 && lZ < -0.5
+        ? "Tightening impulse, risk premia can widen before macro confirms."
+        : "Mixed regime, dispersion rises, stock selection and relative value matter more than beta.",
+    watch: "Credit spreads, equity breadth, volatility of volatility",
+    confidence: Math.round(50 + 50 * clamp01(zToHeat01(gZ) + zToHeat01(lZ)) / 2)
+  });
+
+  // FX
+  items.push({
+    topic: "FX",
+    headline:
+      eZ < -0.7
+        ? "External balance is weaker than usual, funding stress can reprice quickly in FX."
+        : eZ > 0.7
+        ? "External position is supportive, FX pressure is less likely to be the first break."
+        : "External signal is mixed, watch financing conditions and global risk tone.",
+    watch: "Reserves, FX basis, capital flow proxies",
+    confidence: Math.round(50 + 50 * zToHeat01(eZ))
+  });
+
+  // Cross asset
+  items.push({
+    topic: "Cross asset",
+    headline:
+      eZ < -0.7 && lZ < -0.7
+        ? "External and liquidity are both stretched, the first cracks often show up in FX basis and credit spreads."
+        : Math.abs(iZ - gZ) > 0.9
+        ? "Macro tensions are inconsistent, narrative fragility rises, cross asset correlations can shift abruptly."
+        : "Macro is broadly balanced, repricing risk is more catalyst driven than regime driven.",
+    watch: "FX basis, credit indices, duration convexity stress",
+    confidence: Math.round(50 + 50 * clamp01((zToHeat01(eZ) + zToHeat01(lZ) + clamp01(Math.abs(iZ - gZ) / 2.5)) / 3))
+  });
+
+  // Normalise confidence into a quality label for the badge
+  const avgConf = Math.round(items.reduce((s, x) => s + (x.confidence || 50), 0) / items.length);
+
+  return { name, items, avgConf };
+}
+
+function renderRegimeImplicationMapper(countryKey, statsById, engines) {
+  const graphic = document.getElementById("cc-implication-graphic");
+  const stamp = document.getElementById("cc-implication-graphic-stamp");
+  const quality = document.getElementById("cc-implication-quality");
+  const out = document.getElementById("cc-implications");
+
+  if (!graphic || !out) return;
+
+  const built = buildRegimeImplications(countryKey, statsById, engines);
+  const channels = buildImplicationChannels(engines);
+
+  // Badge
+  if (quality) {
+    const q = qualityLabelFromConfidence(built.avgConf);
+    const tone = q === "High" ? "high" : q === "Medium" ? "medium" : "low";
+    renderPill(quality, `Quality: ${q}`, tone);
+  }
+
+  if (stamp) stamp.textContent = "derived from current engine scores";
+
+  // Graphic
+  graphic.innerHTML = "";
+  channels.forEach((c) => {
+    graphic.appendChild(
+      barNode({
+        label: c.k,
+        value01: c.v,
+        hint: c.hint
+      })
+    );
+  });
+
+  // Output list
+  out.innerHTML = "";
+  built.items.forEach((it, idx) => {
+    const row = document.createElement("div");
+    row.className = "rounded-xl border border-neutral-200 bg-white px-4 py-3";
+
+    row.innerHTML = `
+      <div class="flex items-start gap-3">
+        <div class="mt-0.5 h-6 w-6 shrink-0 rounded-full bg-cordobaSoft border border-neutral-200 flex items-center justify-center text-[11px] text-neutral-700 font-medium">
+          ${idx + 1}
+        </div>
+
+        <div class="flex-1">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <div class="text-[11px] uppercase tracking-[0.2em] text-neutral-500">
+              ${it.topic}
+            </div>
+            <div class="text-[11px] text-neutral-500">
+              confidence ${it.confidence}%
+            </div>
+          </div>
+
+          <div class="mt-1 text-sm font-medium text-neutral-900 leading-relaxed">
+            ${it.headline}
+          </div>
+
+          <div class="mt-2 inline-flex items-center px-2.5 py-1 rounded-full border border-neutral-200 bg-[#FFFCF9] text-[11px] text-neutral-700">
+            Watch: ${it.watch}
+          </div>
+        </div>
+      </div>
+    `;
+
+    out.appendChild(row);
+  });
+}
+
+function buildStressSentinel(countryKey, statsById, engines) {
+  const g = statsById.gdp_growth;
+  const u = statsById.unemployment;
+  const m = statsById.money;
+  const ca = statsById.current_account;
+  const i = statsById.inflation;
+
+  const gZ = engines?.growth?.z ?? 0;
+  const lZ = engines?.liquidity?.z ?? 0;
+  const eZ = engines?.external?.z ?? 0;
+
+  const nodes = [];
+
+  // External lane
+  nodes.push({
+    lane: "External funding",
+    trigger:
+      ca && ca.z < -0.7
+        ? "Current account is weaker than usual"
+        : "Monitor for deterioration in external balance",
+    why: "Funding stress often appears in FX and basis before it reaches the domestic macro prints.",
+    watch: "FX pressure, reserves, FX basis, external debt rollover",
+    heat: ca ? zToHeat01(ca.z) : zToHeat01(eZ)
+  });
+
+  // Liquidity lane
+  nodes.push({
+    lane: "Liquidity rollover",
+    trigger:
+      m && m.z < -0.7
+        ? "Money growth is weak versus history"
+        : "Monitor for liquidity impulse fading",
+    why: "Liquidity tightens first, risk premia widen, then growth slows.",
+    watch: "Broad money, credit impulse proxies, spread momentum",
+    heat: m ? zToHeat01(m.z) : zToHeat01(lZ)
+  });
+
+  // Labour lane
+  nodes.push({
+    lane: "Labour market turn",
+    trigger:
+      u && u.delta > 0
+        ? "Unemployment is rising at the margin"
+        : "Monitor for slack emerging",
+    why: "Late cycle turns often show up in labour data before headline growth.",
+    watch: "Unemployment change, participation, wage pressure proxies",
+    heat: u ? zToHeat01(u.z) : zToHeat01(Math.max(0, -gZ))
+  });
+
+  // Inflation lane
+  nodes.push({
+    lane: "Inflation persistence",
+    trigger:
+      i && i.z > 0.7
+        ? "Inflation is elevated versus history"
+        : "Monitor for inflation re acceleration",
+    why: "If inflation does not cool, policy and term premium reprice can override growth signals.",
+    watch: "Breakevens, services inflation proxies, policy reaction",
+    heat: i ? zToHeat01(i.z) : 0.4
+  });
+
+  // Sort hottest first, take top 4
+  return nodes
+    .sort((a, b) => (b.heat || 0) - (a.heat || 0))
+    .slice(0, 4);
+}
+
+function renderStressSentinel(countryKey, statsById, engines) {
+  const graphic = document.getElementById("cc-stress-graphic");
+  const stamp = document.getElementById("cc-stress-graphic-stamp");
+  const out = document.getElementById("cc-stress");
+  if (!graphic || !out) return;
+
+  const nodes = buildStressSentinel(countryKey, statsById, engines);
+
+  if (stamp) stamp.textContent = "ordered by current tension";
+
+  // Graphic
+  graphic.innerHTML = "";
+  nodes.forEach((n) => {
+    graphic.appendChild(
+      barNode({
+        label: n.lane,
+        value01: clamp01(n.heat),
+        hint: n.trigger
+      })
+    );
+  });
+
+  // Output list
+  out.innerHTML = "";
+  nodes.forEach((n, idx) => {
+    const row = document.createElement("div");
+    row.className = "rounded-xl border border-neutral-200 bg-white px-4 py-3";
+
+    row.innerHTML = `
+      <div class="flex items-start gap-3">
+        <div class="mt-0.5 h-6 w-6 shrink-0 rounded-full bg-white border border-neutral-200 flex items-center justify-center text-[11px] text-neutral-700 font-medium">
+          ${idx + 1}
+        </div>
+
+        <div class="flex-1">
+          <div class="text-[11px] uppercase tracking-[0.2em] text-neutral-500">
+            ${n.lane}
+          </div>
+
+          <div class="mt-1 text-sm font-medium text-neutral-900 leading-relaxed">
+            ${n.trigger}
+          </div>
+
+          <div class="mt-1 text-[11px] text-neutral-600 leading-relaxed">
+            ${n.why}
+          </div>
+
+          <div class="mt-2 inline-flex items-center px-2.5 py-1 rounded-full border border-neutral-200 bg-[#FFFCF9] text-[11px] text-neutral-700">
+            Watch: ${n.watch}
+          </div>
+        </div>
+      </div>
+    `;
+
+    out.appendChild(row);
+  });
+}
+
+// ---------------------------------------------------------------------------
 // Country loader
 // ---------------------------------------------------------------------------
 async function loadCountry(countryKey) {
