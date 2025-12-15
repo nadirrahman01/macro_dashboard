@@ -1314,7 +1314,6 @@ function renderNextQuestions(statsById, engines) {
    8. Meaningful Heatmap
    =========================== */
 
-function renderRegimeImplications(countryKey, statsById, engines) {
   const el = document.getElementById("cc-regime-implications");
   if (!el) return;
 
@@ -1363,7 +1362,6 @@ function renderRegimeImplications(countryKey, statsById, engines) {
   });
 }
 
-function renderStressSentinel(statsById, engines) {
   const el = document.getElementById("cc-stress-sentinel");
   if (!el) return;
 
@@ -2013,8 +2011,8 @@ async function loadCountry(countryKey) {
     renderEngineBreakdown(statsById, engines);
 
     renderMeaningfulHeatmap(countryKey, statsById, engines);
-    renderRegimeImplications(countryKey, statsById, engines);
-    renderStressSentinel(statsById, engines);
+    renderRegimeImplicationMapper(countryKey, statsById, engines);
+    renderStressSentinel(countryKey, statsById, engines);
 
     renderHeadlineTiles(statsById);
     renderInflectionSignals(statsById);
