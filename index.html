@@ -158,17 +158,15 @@
               </button>
             </div>
           </div>
-          
+
           <!-- Support / Login buttons -->
           <div class="flex items-center gap-1 text-xs bg-white border border-neutral-200 rounded-full p-0.5 shadow-subtle">
-            <!-- Support button -->
             <a
               href="mailto:help@cordobacapital.co.uk"
               class="px-3 py-1 rounded-full bg-cordobaGold text-white font-medium hover:opacity-90 transition"
             >
               Support
             </a>
-            <!-- Login button -->
             <a
               href="https://cordobacapital.co.uk/login/"
               class="px-3 py-1 rounded-full text-neutral-500 hover:bg-cordobaSoft hover:text-neutral-900 transition"
@@ -176,7 +174,6 @@
               Login
             </a>
           </div>
-
         </div>
       </header>
 
@@ -202,16 +199,31 @@
               </div>
             </div>
           </div>
+
           <p id="cc-regime-body" class="text-sm text-neutral-700 leading-relaxed">
             Pulling in latest macro data...
           </p>
+
           <div class="flex flex-wrap items-center gap-2 text-xs text-neutral-500">
             <span class="uppercase tracking-[0.18em] text-[10px]">Closest analogue periods:</span>
             <span id="cc-analogue-years" class="flex flex-wrap gap-1"></span>
           </div>
+
           <div class="flex flex-wrap items-center gap-2 text-xs text-neutral-500">
             <span class="uppercase tracking-[0.18em] text-[10px]">Risk flags:</span>
             <span id="cc-risk-flags" class="flex flex-wrap gap-1"></span>
+          </div>
+
+          <!-- Market lens (fills the whitespace under Risk flags) -->
+          <div class="mt-2">
+            <div class="flex items-center justify-between">
+              <span class="uppercase tracking-[0.18em] text-[10px] text-neutral-500">Market lens:</span>
+              <span id="cc-market-lens-stamp" class="text-[10px] text-neutral-400"></span>
+            </div>
+
+            <div id="cc-market-lens" class="mt-2 flex flex-wrap gap-2"></div>
+
+            <p id="cc-market-lens-note" class="mt-2 text-xs text-neutral-600 leading-relaxed"></p>
           </div>
         </div>
 
@@ -220,15 +232,12 @@
           <div class="text-[11px] uppercase tracking-[0.2em] text-neutral-500">
             Composite Engines
           </div>
-          <div id="cc-engine-cards" class="grid grid-cols-2 gap-2 text-xs">
-            <!-- Filled by JS -->
-          </div>
+          <div id="cc-engine-cards" class="grid grid-cols-2 gap-2 text-xs"></div>
         </div>
       </section>
 
       <!-- Headline indicators + inflection list -->
       <section class="grid grid-cols-1 xl:grid-cols-3 gap-4">
-        <!-- Headline tiles -->
         <div class="xl:col-span-2 rounded-2xl border border-neutral-200 bg-white shadow-subtle px-4 py-4">
           <div class="flex items-center justify-between mb-3">
             <div>
@@ -240,80 +249,48 @@
               </div>
             </div>
           </div>
+
           <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 text-sm">
             <div class="p-3 rounded-xl border border-neutral-200 bg-cordobaSoft">
-              <div class="text-[11px] uppercase tracking-[0.18em] text-neutral-500">
-                GDP growth
-              </div>
-              <div id="cc-gdp-latest" class="mt-1 text-lg font-semibold text-neutral-900">
-                –
-              </div>
-              <div class="text-xs text-neutral-600 mt-1" id="cc-gdp-extra">
-                Real GDP growth (annualised where applicable).
-              </div>
+              <div class="text-[11px] uppercase tracking-[0.18em] text-neutral-500">GDP growth</div>
+              <div id="cc-gdp-latest" class="mt-1 text-lg font-semibold text-neutral-900">–</div>
+              <div class="text-xs text-neutral-600 mt-1" id="cc-gdp-extra">Real GDP growth (annualised where applicable).</div>
             </div>
+
             <div class="p-3 rounded-xl border border-neutral-200 bg-cordobaSoft">
-              <div class="text-[11px] uppercase tracking-[0.18em] text-neutral-500">
-                Inflation (CPI)
-              </div>
-              <div id="cc-inflation-latest" class="mt-1 text-lg font-semibold text-neutral-900">
-                –
-              </div>
-              <div class="text-xs text-neutral-600 mt-1" id="cc-inflation-extra">
-                Headline CPI (annual % change).
-              </div>
+              <div class="text-[11px] uppercase tracking-[0.18em] text-neutral-500">Inflation (CPI)</div>
+              <div id="cc-inflation-latest" class="mt-1 text-lg font-semibold text-neutral-900">–</div>
+              <div class="text-xs text-neutral-600 mt-1" id="cc-inflation-extra">Headline CPI (annual % change).</div>
             </div>
+
             <div class="p-3 rounded-xl border border-neutral-200 bg-cordobaSoft">
-              <div class="text-[11px] uppercase tracking-[0.18em] text-neutral-500">
-                Unemployment
-              </div>
-              <div id="cc-unemployment-latest" class="mt-1 text-lg font-semibold text-neutral-900">
-                –
-              </div>
-              <div class="text-xs text-neutral-600 mt-1" id="cc-unemployment-extra">
-                % of labour force.
-              </div>
+              <div class="text-[11px] uppercase tracking-[0.18em] text-neutral-500">Unemployment</div>
+              <div id="cc-unemployment-latest" class="mt-1 text-lg font-semibold text-neutral-900">–</div>
+              <div class="text-xs text-neutral-600 mt-1" id="cc-unemployment-extra">% of labour force.</div>
             </div>
+
             <div class="p-3 rounded-xl border border-neutral-200 bg-cordobaSoft">
-              <div class="text-[11px] uppercase tracking-[0.18em] text-neutral-500">
-                Broad money growth
-              </div>
-              <div id="cc-money-latest" class="mt-1 text-lg font-semibold text-neutral-900">
-                –
-              </div>
-              <div class="text-xs text-neutral-600 mt-1" id="cc-money-extra">
-                M2 (or nearest equivalent) growth.
-              </div>
+              <div class="text-[11px] uppercase tracking-[0.18em] text-neutral-500">Broad money growth</div>
+              <div id="cc-money-latest" class="mt-1 text-lg font-semibold text-neutral-900">–</div>
+              <div class="text-xs text-neutral-600 mt-1" id="cc-money-extra">M2 (or nearest equivalent) growth.</div>
             </div>
+
             <div class="p-3 rounded-xl border border-neutral-200 bg-cordobaSoft">
-              <div class="text-[11px] uppercase tracking-[0.18em] text-neutral-500">
-                Current account / GDP
-              </div>
-              <div id="cc-ca-latest" class="mt-1 text-lg font-semibold text-neutral-900">
-                –
-              </div>
-              <div class="text-xs text-neutral-600 mt-1" id="cc-ca-extra">
-                External balance (% of GDP).
-              </div>
+              <div class="text-[11px] uppercase tracking-[0.18em] text-neutral-500">Current account / GDP</div>
+              <div id="cc-ca-latest" class="mt-1 text-lg font-semibold text-neutral-900">–</div>
+              <div class="text-xs text-neutral-600 mt-1" id="cc-ca-extra">External balance (% of GDP).</div>
             </div>
           </div>
         </div>
 
-        <!-- Inflection list -->
         <div class="rounded-2xl border border-neutral-200 bg-white shadow-subtle px-4 py-4 flex flex-col gap-3">
           <div class="flex items-center justify-between">
             <div>
-              <div class="text-[11px] uppercase tracking-[0.2em] text-neutral-500">
-                Key Inflection Signals
-              </div>
-              <div class="text-sm text-neutral-700">
-                z-scores vs recent history
-              </div>
+              <div class="text-[11px] uppercase tracking-[0.2em] text-neutral-500">Key Inflection Signals</div>
+              <div class="text-sm text-neutral-700">z-scores vs recent history</div>
             </div>
           </div>
-          <div id="cc-inflection-list" class="space-y-2 text-xs">
-            <!-- Filled by JS -->
-          </div>
+          <div id="cc-inflection-list" class="space-y-2 text-xs"></div>
         </div>
       </section>
 
@@ -321,26 +298,16 @@
       <section class="rounded-2xl border border-neutral-200 bg-white shadow-subtle px-4 py-4">
         <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-2 mb-3">
           <div>
-            <div class="text-[11px] uppercase tracking-[0.2em] text-neutral-500">
-              Indicator Grid
-            </div>
+            <div class="text-[11px] uppercase tracking-[0.2em] text-neutral-500">Indicator Grid</div>
             <div class="text-sm text-neutral-700">
               Key indicators – <span id="cc-signals-country">United States</span>
             </div>
           </div>
           <div class="flex items-center gap-2 text-[11px]">
-            <button
-              id="cc-filter-all"
-              class="px-2.5 py-1 rounded-full border border-neutral-200 bg-cordobaSoft"
-              type="button"
-            >
+            <button id="cc-filter-all" class="px-2.5 py-1 rounded-full border border-neutral-200 bg-cordobaSoft" type="button">
               All indicators
             </button>
-            <button
-              id="cc-filter-top"
-              class="px-2.5 py-1 rounded-full border border-neutral-200 bg-white"
-              type="button"
-            >
+            <button id="cc-filter-top" class="px-2.5 py-1 rounded-full border border-neutral-200 bg-white" type="button">
               Largest moves
             </button>
           </div>
@@ -353,15 +320,13 @@
                 <th class="py-2 text-left">Indicator</th>
                 <th class="py-2 text-left">Signal</th>
                 <th class="py-2 text-left">Trend (10yr)</th>
-                <th class="py-2 text-left"></th> <!-- sparkline -->
+                <th class="py-2 text-left"></th>
                 <th class="py-2 text-right">Last</th>
                 <th class="py-2 text-right">ZS</th>
                 <th class="py-2 text-left">Note</th>
               </tr>
             </thead>
-            <tbody id="cc-indicator-rows" class="divide-y divide-neutral-100">
-              <!-- Filled by JS -->
-            </tbody>
+            <tbody id="cc-indicator-rows" class="divide-y divide-neutral-100"></tbody>
           </table>
         </div>
       </section>
@@ -369,21 +334,14 @@
       <!-- Analyst note helper + Cordoba research row -->
       <section class="rounded-2xl border border-neutral-200 bg-white shadow-subtle px-4 py-4">
         <div class="grid grid-cols-1 xl:grid-cols-3 gap-4">
-          
-          <!-- Note helper -->
+
           <div class="xl:col-span-2 flex flex-col gap-3">
             <div class="flex items-center justify-between">
               <div>
-                <div class="text-[11px] uppercase tracking-[0.2em] text-neutral-500">
-                  Analyst Note Helper
-                </div>
-                <div class="text-sm text-neutral-700">
-                  Draft macro commentary for the selected country
-                </div>
+                <div class="text-[11px] uppercase tracking-[0.2em] text-neutral-500">Analyst Note Helper</div>
+                <div class="text-sm text-neutral-700">Draft macro commentary for the selected country</div>
               </div>
-              <div class="text-[11px] text-neutral-500">
-                Auto-generated from current engine configuration
-              </div>
+              <div class="text-[11px] text-neutral-500">Auto-generated from current engine configuration</div>
             </div>
 
             <textarea
@@ -393,41 +351,25 @@
             ></textarea>
 
             <div class="mt-2">
-              <div class="text-[11px] uppercase tracking-[0.18em] text-neutral-500 mb-1">
-                Pointers to structure your note
-              </div>
-              <ul id="cc-note-bullets" class="list-disc list-inside space-y-1 text-xs text-neutral-700">
-                <!-- Filled by JS -->
-              </ul>
+              <div class="text-[11px] uppercase tracking-[0.18em] text-neutral-500 mb-1">Pointers to structure your note</div>
+              <ul id="cc-note-bullets" class="list-disc list-inside space-y-1 text-xs text-neutral-700"></ul>
             </div>
 
-            <!-- Next 3 questions box -->
             <div class="mt-4 rounded-xl border border-neutral-200 bg-[#FFFCF9] px-3 py-3">
-              <div class="text-[11px] uppercase tracking-[0.18em] text-neutral-500 mb-1">
-                Next 3 questions to ask
-              </div>
-              <ul id="cc-question-list" class="list-disc list-inside space-y-1 text-xs text-neutral-700">
-                <!-- Filled by JS -->
-              </ul>
+              <div class="text-[11px] uppercase tracking-[0.18em] text-neutral-500 mb-1">Next 3 questions to ask</div>
+              <ul id="cc-question-list" class="list-disc list-inside space-y-1 text-xs text-neutral-700"></ul>
             </div>
           </div>
 
-          <!-- Cordoba research suggestions -->
           <div class="flex flex-col gap-3">
             <div>
-              <div class="text-[11px] uppercase tracking-[0.2em] text-neutral-500">
-                Cordoba Research Matches
-              </div>
-              <div class="text-sm text-neutral-700">
-                Notes most relevant to this regime
-              </div>
+              <div class="text-[11px] uppercase tracking-[0.2em] text-neutral-500">Cordoba Research Matches</div>
+              <div class="text-sm text-neutral-700">Notes most relevant to this regime</div>
               <div class="text-[11px] text-neutral-600 mt-1">
                 Suggested directly from the main Cordoba Capital site based on current engine scores.
               </div>
             </div>
-            <div id="cc-research-list" class="mt-2 space-y-2 text-xs">
-              <!-- Filled by JS -->
-            </div>
+            <div id="cc-research-list" class="mt-2 space-y-2 text-xs"></div>
             <div class="mt-2 text-[11px] text-neutral-500">
               Full library:&nbsp;
               <a
@@ -450,15 +392,12 @@
   <footer class="border-t border-neutral-200 bg-white/95 backdrop-blur text-xs text-neutral-500">
     <div class="w-full px-4 sm:px-6 lg:px-8 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-left">
       <div class="flex flex-wrap items-center gap-2 text-left">
-        <span>
-          Global Macro Engine
-        </span>
+        <span>Global Macro Engine</span>
         <span class="text-neutral-400">·</span>
         <span>v0.3.0 (Beta)</span>
         <span class="text-neutral-400">·</span>
       </div>
 
-      <!-- Right links -->
       <div class="flex flex-wrap items-center gap-4 text-left sm:text-right">
         <a
           href="https://cordobacapital.co.uk"
@@ -481,58 +420,29 @@
   </footer>
 
   <!-- Methodology & data notes modal -->
-  <div
-    id="cc-methodology-modal"
-    class="fixed inset-0 z-40 hidden"
-  >
-    <div
-      data-cc-methodology-overlay
-      class="absolute inset-0 bg-black/30"
-    ></div>
+  <div id="cc-methodology-modal" class="fixed inset-0 z-40 hidden">
+    <div data-cc-methodology-overlay class="absolute inset-0 bg-black/30"></div>
     <div class="relative z-10 flex min-h-full items-end sm:items-center justify-center p-4">
       <div class="w-full max-w-lg rounded-2xl bg-white shadow-subtle border border-neutral-200 px-5 py-4">
         <div class="flex items-center justify-between mb-2">
           <div>
-            <div class="text-[11px] uppercase tracking-[0.2em] text-neutral-500">
-              Methodology &amp; Data Notes
-            </div>
-            <div class="text-sm text-neutral-800">
-              How the engine builds scores and narratives
-            </div>
+            <div class="text-[11px] uppercase tracking-[0.2em] text-neutral-500">Methodology &amp; Data Notes</div>
+            <div class="text-sm text-neutral-800">How the engine builds scores and narratives</div>
           </div>
-          <button
-            id="cc-methodology-close"
-            type="button"
-            class="text-xs text-neutral-500 hover:text-neutral-800"
-          >
+          <button id="cc-methodology-close" type="button" class="text-xs text-neutral-500 hover:text-neutral-800">
             Close
           </button>
         </div>
+
         <div class="text-xs text-neutral-700 space-y-2 max-h-80 overflow-y-auto pr-1">
-          <p>
-            1. <span class="font-semibold">Data frequency.</span> The engine can ingest annual, quarterly, or monthly data. At present, most series are sourced from the World Bank WDI on an annual basis, with scope to plug in fresher national or FRED/OECD feeds over time.
-          </p>
-          <p>
-            2. <span class="font-semibold">History window.</span> For each indicator we work with a rolling history window (up to the last 40 observations). This keeps signals anchored in recent regimes rather than very old cycles.
-          </p>
-          <p>
-            3. <span class="font-semibold">Standardisation.</span> We compute z-scores for the latest observation using (latest − mean) / standard deviation over the history window. This lets us talk about how unusual a level is in standard-deviation terms.
-          </p>
-          <p>
-            4. <span class="font-semibold">Signals.</span> Qualitative labels such as “Strengthening above trend” or “Elevated but cooling” combine the z-score with the direction of change versus the prior observation.
-          </p>
-          <p>
-            5. <span class="font-semibold">Composite engines.</span> The Growth, Inflation, Liquidity, and External engines are simple weighted combinations of indicator z-scores, rescaled to a 10–90 range for ease of interpretation.
-          </p>
-          <p>
-            6. <span class="font-semibold">Analogues.</span> “Closest analogue periods” highlight historical points where the z-score profile is closest to today, as a quick pointer to prior regimes that looked similar.
-          </p>
-          <p>
-            7. <span class="font-semibold">Caveats.</span> All data is subject to revision and publication lag. Some series may be missing or interpolated for certain countries. The dashboard is designed as a qualitative screening tool, not a replacement for detailed country and asset-level work.
-          </p>
-          <p class="text-[11px] text-neutral-500">
-            This tool is for internal and educational use only and does not constitute investment advice or a recommendation to buy or sell any security or asset.
-          </p>
+          <p>1. <span class="font-semibold">Data frequency.</span> The engine can ingest annual, quarterly, or monthly data. At present, most series are sourced from the World Bank WDI on an annual basis, with scope to plug in fresher national or FRED/OECD feeds over time.</p>
+          <p>2. <span class="font-semibold">History window.</span> For each indicator we work with a rolling history window (up to the last 40 observations). This keeps signals anchored in recent regimes rather than very old cycles.</p>
+          <p>3. <span class="font-semibold">Standardisation.</span> We compute z-scores for the latest observation using (latest − mean) / standard deviation over the history window. This lets us talk about how unusual a level is in standard-deviation terms.</p>
+          <p>4. <span class="font-semibold">Signals.</span> Qualitative labels such as “Strengthening above trend” or “Elevated but cooling” combine the z-score with the direction of change versus the prior observation.</p>
+          <p>5. <span class="font-semibold">Composite engines.</span> The Growth, Inflation, Liquidity, and External engines are simple weighted combinations of indicator z-scores, rescaled to a 10–90 range for ease of interpretation.</p>
+          <p>6. <span class="font-semibold">Analogues.</span> “Closest analogue periods” highlight historical points where the z-score profile is closest to today, as a quick pointer to prior regimes that looked similar.</p>
+          <p>7. <span class="font-semibold">Caveats.</span> All data is subject to revision and publication lag. Some series may be missing or interpolated for certain countries. The dashboard is designed as a qualitative screening tool, not a replacement for detailed country and asset-level work.</p>
+          <p class="text-[11px] text-neutral-500">This tool is for internal and educational use only and does not constitute investment advice or a recommendation to buy or sell any security or asset.</p>
         </div>
       </div>
     </div>
@@ -540,6 +450,7 @@
 
   <!-- JS -->
   <script src="main.js"></script>
+
   <!-- Export libraries -->
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
