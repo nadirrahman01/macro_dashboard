@@ -121,7 +121,7 @@ const CORDOBA_RESEARCH = [
 const macroCache = {};
 
 // ---------------------------------------------------------------------------
-// WB fetch + cache (now returns {series, updatedAt})
+// WB fetch + cache (returns {series, updatedAt})
 // ---------------------------------------------------------------------------
 async function fetchWorldBankSeries(countryKey, indicatorCode) {
   const meta = COUNTRY_META[countryKey];
@@ -417,7 +417,7 @@ function riskLevelFromZ(z) {
 }
 
 // ---------------------------------------------------------------------------
-// Market lens (fills the white space under Risk flags)
+// Market lens
 // ---------------------------------------------------------------------------
 function buildMarketLens(engines) {
   const g = engines?.growth?.z ?? 0;
@@ -476,8 +476,7 @@ function renderMarketLens(engines) {
 }
 
 // ---------------------------------------------------------------------------
-// NEW: Composite engine decomposition, weights, heatmap, interpretation
-// This renders into tbody id "cc-engine-breakdown" (the section you added in HTML)
+// Composite engine decomposition
 // ---------------------------------------------------------------------------
 const ENGINE_MODEL = {
   growth: [
@@ -942,7 +941,6 @@ function renderRegimeSummary(countryKey, statsById, engines) {
     });
   }
 
-  // Market lens render
   renderMarketLens(engines);
 }
 
@@ -1192,8 +1190,8 @@ function renderIndicatorGrid(statsById, countryKey) {
 
     tr.innerHTML = `
       <td class="py-2 pr-3 text-neutral-900">${cfg.label}</td>
-      <td class="py-2 pr-3 text-neutral-600">${cfg.engine}</td>
-      <td class="py-2 pr-3 text-neutral-600">${cfg.bucket}</td>
+      <td class="py-2 pr-3 text-neutral-600"></td>
+      <td class="py-2 pr-3 text-neutral-600"></td>
       <td class="py-2 pr-3"></td>
       <td class="py-2 pr-3 text-left text-neutral-600">${formatPeriodLabel(stat.latest)}</td>
       <td class="py-2 pr-3 text-right text-neutral-900">${lastVal}</td>
@@ -1203,6 +1201,7 @@ function renderIndicatorGrid(statsById, countryKey) {
 
     const signalCell = tr.children[1];
     if (signalCell) {
+      signalCell.textContent = `${cfg.engine} · ${cfg.bucket}`;
       const badge = document.createElement("span");
       badge.className =
         "inline-flex items-center px-2 py-0.5 rounded-full border bg-white text-[11px] border-neutral-300 mt-1";
@@ -1214,12 +1213,16 @@ function renderIndicatorGrid(statsById, countryKey) {
     if (stat.spark && stat.spark.length) {
       const trendCell = tr.children[2];
       if (trendCell) {
+        trendCell.textContent = "";
         const wrapper = document.createElement("div");
         wrapper.className = "mt-1 text-neutral-500";
         const svg = createSparkline(stat.spark);
         if (svg) wrapper.appendChild(svg);
         trendCell.appendChild(wrapper);
       }
+    } else {
+      const trendCell = tr.children[2];
+      if (trendCell) trendCell.textContent = "—";
     }
 
     tbody.appendChild(tr);
@@ -1314,90 +1317,9 @@ function renderNextQuestions(statsById, engines) {
    8. Meaningful Heatmap
    =========================== */
 
-  const el = document.getElementById("cc-regime-implications");
-  if (!el) return;
-
-  const meta = COUNTRY_META[countryKey] || { name: countryKey, region: "" };
-  const g = engines?.growth?.z ?? 0;
-  const i = engines?.inflation?.z ?? 0;
-  const l = engines?.liquidity?.z ?? 0;
-  const e = engines?.external?.z ?? 0;
-
-  const items = [];
-
-  if (i > 0.7) {
-    items.push("Rates: inflation pressure implies higher for longer pricing risk, duration convexity becomes asymmetric.");
-  } else if (i < -0.7) {
-    items.push("Rates: disinflation impulse creates easing optionality, curve likely more sensitive to downside growth surprises.");
-  } else {
-    items.push("Rates: inflation signal is not dominant, rates risk likely driven by positioning and term premium rather than prints alone.");
-  }
-
-  if (g > 0.6 && l > 0.6) {
-    items.push("Risk: pro growth and pro liquidity regime, rallies tend to broaden, but valuation sensitivity increases sharply.");
-  } else if (g < -0.6 && l < -0.6) {
-    items.push("Risk: contraction and tightening impulse, credit usually reprices before equities, default risk becomes nonlinear.");
-  } else {
-    items.push("Risk: mixed regime, dispersion rises, stock selection and carry matter more than beta.");
-  }
-
-  if (e < -0.7) {
-    items.push("FX: weaker external balance, watch funding stress, reserve drawdowns, and sudden repricing in the currency channel.");
-  } else if (e > 0.7) {
-    items.push("FX: supportive external balance, carry and risk appetite tend to be more durable.");
-  } else {
-    items.push("FX: external engine near trend, FX stress is less likely to be the first crack unless a global shock hits.");
-  }
-
-  const ca = statsById.current_account;
-  if (ca && Math.abs(ca.z) > 1.0) {
-    items.push("Cross asset: external imbalance is unusually stretched, if markets move fast it often shows up in FX basis and credit spreads first.");
-  }
-
-  el.innerHTML = "";
-  items.slice(0, 5).forEach((text) => {
-    const li = document.createElement("li");
-    li.textContent = `${meta.name}: ${text}`;
-    el.appendChild(li);
-  });
-}
-
-  const el = document.getElementById("cc-stress-sentinel");
-  if (!el) return;
-
-  const risks = [];
-
-  const ca = statsById.current_account;
-  const money = statsById.money;
-  const u = statsById.unemployment;
-  const infl = statsById.inflation;
-
-  if (ca && ca.z < -0.7) {
-    risks.push("External funding stress: current account is weaker than usual, watch currency pressure and rollover risk.");
-  }
-  if (money && money.z < -0.7) {
-    risks.push("Liquidity rollover: money growth is weak versus history, risk premia can widen before the narrative changes.");
-  }
-  if ((engines.inflation?.z ?? 0) > 0.8 && (engines.growth?.z ?? 0) < 0.2) {
-    risks.push("Policy error risk: inflation is the binding constraint while growth is not strong, rates volatility tends to jump.");
-  }
-  if (u && u.delta > 0) {
-    risks.push("Labour market inflection: unemployment is rising, late cycle turns often show up here before GDP does.");
-  }
-  if (infl && Math.abs(infl.delta) > 0.6 && Math.abs(infl.z) > 0.6) {
-    risks.push("Inflation persistence: level is stretched and change is large, second round effects become the key risk.");
-  }
-
-  el.innerHTML = "";
-  (risks.length ? risks : ["No obvious near term macro failure point identified from current signals."])
-    .slice(0, 3)
-    .forEach((text) => {
-      const li = document.createElement("li");
-      li.textContent = text;
-      el.appendChild(li);
-    });
-}
-
+// ---------------------------------------------------------------------------
+// Meaningful Heatmap
+// ---------------------------------------------------------------------------
 function renderMeaningfulHeatmap(countryKey, statsById, engines) {
   const root = document.getElementById("cc-meaningful-heatmap");
   if (!root) return;
@@ -1460,6 +1382,9 @@ function renderMeaningfulHeatmap(countryKey, statsById, engines) {
   });
 }
 
+// ---------------------------------------------------------------------------
+// Workflow status + clipboard + export helpers
+// ---------------------------------------------------------------------------
 function setWorkflowStatus(text) {
   const el = document.getElementById("cc-workflow-status");
   if (!el) return;
@@ -1575,9 +1500,13 @@ function setupWorkflowShortcuts() {
 
   if (copyImplicationsBtn) {
     copyImplicationsBtn.addEventListener("click", async () => {
-      const list = document.getElementById("cc-regime-implications");
+      const list = document.getElementById("cc-implications");
       const text = list
-        ? Array.from(list.querySelectorAll("li")).map((li) => `• ${li.textContent}`).join("\n")
+        ? Array.from(list.querySelectorAll("div"))
+            .map((d) => d.innerText.replace(/\n+/g, "\n").trim())
+            .filter(Boolean)
+            .map((t) => `• ${t}`)
+            .join("\n\n")
         : "";
       const ok = await copyTextToClipboard(text);
       setWorkflowStatus(ok ? "Implications copied." : "Copy failed.");
@@ -1598,7 +1527,7 @@ function setupWorkflowShortcuts() {
 }
 
 // ---------------------------------------------------------------------------
-// NEW: Regime implication mapper + Stress sentinel (institutional formatting)
+// Regime implication mapper + Stress sentinel (institutional formatting)
 // ---------------------------------------------------------------------------
 
 function clamp01(x) {
@@ -1673,14 +1602,9 @@ function buildImplicationChannels(engines) {
   const lZ = engines?.liquidity?.z ?? 0;
   const eZ = engines?.external?.z ?? 0;
 
-  // Simple proxy weights
-  // Rates tends to dominate when inflation tension is high, or growth and inflation diverge
   const rates = clamp01(0.45 * zToHeat01(iZ) + 0.35 * clamp01(Math.abs(iZ - gZ) / 2.5) + 0.20 * zToHeat01(lZ));
-  // FX tends to dominate when external is stretched, especially on the weak side
   const fx = clamp01(0.65 * zToHeat01(eZ) + 0.20 * clamp01(Math.max(0, -eZ) / 2.5) + 0.15 * zToHeat01(iZ));
-  // Credit reacts to liquidity plus growth downside
   const credit = clamp01(0.55 * zToHeat01(lZ) + 0.30 * clamp01(Math.max(0, -gZ) / 2.5) + 0.15 * zToHeat01(eZ));
-  // Equities often respond to growth and liquidity mix, plus dispersion regimes
   const equities = clamp01(0.45 * zToHeat01(gZ) + 0.35 * zToHeat01(lZ) + 0.20 * clamp01(Math.abs(gZ - iZ) / 2.5));
 
   return [
@@ -1739,7 +1663,6 @@ function buildRegimeImplications(countryKey, statsById, engines) {
 
   const items = [];
 
-  // Rates
   items.push({
     topic: "Rates",
     headline:
@@ -1752,7 +1675,6 @@ function buildRegimeImplications(countryKey, statsById, engines) {
     confidence: Math.round(50 + 50 * clamp01(zToHeat01(iZ) + clamp01(Math.abs(iZ - gZ) / 2.5)) / 2)
   });
 
-  // Risk
   items.push({
     topic: "Risk",
     headline:
@@ -1765,7 +1687,6 @@ function buildRegimeImplications(countryKey, statsById, engines) {
     confidence: Math.round(50 + 50 * clamp01(zToHeat01(gZ) + zToHeat01(lZ)) / 2)
   });
 
-  // FX
   items.push({
     topic: "FX",
     headline:
@@ -1778,7 +1699,6 @@ function buildRegimeImplications(countryKey, statsById, engines) {
     confidence: Math.round(50 + 50 * zToHeat01(eZ))
   });
 
-  // Cross asset
   items.push({
     topic: "Cross asset",
     headline:
@@ -1791,12 +1711,12 @@ function buildRegimeImplications(countryKey, statsById, engines) {
     confidence: Math.round(50 + 50 * clamp01((zToHeat01(eZ) + zToHeat01(lZ) + clamp01(Math.abs(iZ - gZ) / 2.5)) / 3))
   });
 
-  // Normalise confidence into a quality label for the badge
   const avgConf = Math.round(items.reduce((s, x) => s + (x.confidence || 50), 0) / items.length);
 
   return { name, items, avgConf };
 }
 
+// ✅ FIX: this is the function your HTML expects (cc-implication-... ids)
 function renderRegimeImplicationMapper(countryKey, statsById, engines) {
   const graphic = document.getElementById("cc-implication-graphic");
   const stamp = document.getElementById("cc-implication-graphic-stamp");
@@ -1808,7 +1728,6 @@ function renderRegimeImplicationMapper(countryKey, statsById, engines) {
   const built = buildRegimeImplications(countryKey, statsById, engines);
   const channels = buildImplicationChannels(engines);
 
-  // Badge
   if (quality) {
     const q = qualityLabelFromConfidence(built.avgConf);
     const tone = q === "High" ? "high" : q === "Medium" ? "medium" : "low";
@@ -1817,7 +1736,6 @@ function renderRegimeImplicationMapper(countryKey, statsById, engines) {
 
   if (stamp) stamp.textContent = "derived from current engine scores";
 
-  // Graphic
   graphic.innerHTML = "";
   channels.forEach((c) => {
     graphic.appendChild(
@@ -1829,7 +1747,6 @@ function renderRegimeImplicationMapper(countryKey, statsById, engines) {
     );
   });
 
-  // Output list
   out.innerHTML = "";
   built.items.forEach((it, idx) => {
     const row = document.createElement("div");
@@ -1879,7 +1796,6 @@ function buildStressSentinel(countryKey, statsById, engines) {
 
   const nodes = [];
 
-  // External lane
   nodes.push({
     lane: "External funding",
     trigger:
@@ -1891,7 +1807,6 @@ function buildStressSentinel(countryKey, statsById, engines) {
     heat: ca ? zToHeat01(ca.z) : zToHeat01(eZ)
   });
 
-  // Liquidity lane
   nodes.push({
     lane: "Liquidity rollover",
     trigger:
@@ -1903,7 +1818,6 @@ function buildStressSentinel(countryKey, statsById, engines) {
     heat: m ? zToHeat01(m.z) : zToHeat01(lZ)
   });
 
-  // Labour lane
   nodes.push({
     lane: "Labour market turn",
     trigger:
@@ -1915,7 +1829,6 @@ function buildStressSentinel(countryKey, statsById, engines) {
     heat: u ? zToHeat01(u.z) : zToHeat01(Math.max(0, -gZ))
   });
 
-  // Inflation lane
   nodes.push({
     lane: "Inflation persistence",
     trigger:
@@ -1927,7 +1840,6 @@ function buildStressSentinel(countryKey, statsById, engines) {
     heat: i ? zToHeat01(i.z) : 0.4
   });
 
-  // Sort hottest first, take top 4
   return nodes
     .sort((a, b) => (b.heat || 0) - (a.heat || 0))
     .slice(0, 4);
@@ -1943,7 +1855,6 @@ function renderStressSentinel(countryKey, statsById, engines) {
 
   if (stamp) stamp.textContent = "ordered by current tension";
 
-  // Graphic
   graphic.innerHTML = "";
   nodes.forEach((n) => {
     graphic.appendChild(
@@ -1955,7 +1866,6 @@ function renderStressSentinel(countryKey, statsById, engines) {
     );
   });
 
-  // Output list
   out.innerHTML = "";
   nodes.forEach((n, idx) => {
     const row = document.createElement("div");
@@ -2062,8 +1972,10 @@ async function loadCountry(countryKey) {
     renderEngineBreakdown(statsById, engines);
 
     renderMeaningfulHeatmap(countryKey, statsById, engines);
-    renderRegimeImplications(countryKey, statsById, engines);
-    renderStressSentinel(statsById, engines);
+
+    // ✅ FIX: these were the two calls breaking your mapper section
+    renderRegimeImplicationMapper(countryKey, statsById, engines);
+    renderStressSentinel(countryKey, statsById, engines);
 
     renderHeadlineTiles(statsById);
     renderInflectionSignals(statsById);
