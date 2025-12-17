@@ -2,266 +2,238 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>Cordoba Capital · Commodity Lab</title>
 
-    <!-- Plotly for charts + export -->
+    <!-- Plotly charts -->
     <script src="https://cdn.plot.ly/plotly-2.30.0.min.js"></script>
-
-    <!-- SheetJS to parse Excel in-browser -->
+    <!-- Excel parser -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.19.3/dist/xlsx.full.min.js"></script>
 
     <style>
-      :root {
-        --cordoba-gold: #9a690f;
-        --cordoba-soft: #fff7f0;
-        --ink: #111;
-        --muted: #666;
-        --border: #e7ded4;
-        --bg: #faf7f2;
-        --card: #fff;
-        --shadow: 0 12px 28px rgba(0,0,0,0.05);
+      :root{
+        --cordoba-gold:#9A690F;
+        --cordoba-soft:#FFF7F0;
+        --cordoba-ink:#111111;
+        --cordoba-muted:#6A6A6A;
+        --cordoba-border:#E7DED4;
+        --cordoba-bg:#FBF8F3;
+        --card:#FFFFFF;
+        --shadow:0 14px 34px rgba(0,0,0,.06);
+        --radius:18px;
       }
 
-      * { box-sizing: border-box; }
-
-      body {
-        margin: 0;
+      *{box-sizing:border-box}
+      html,body{margin:0;padding:0}
+      body{
         font-family: Helvetica, Arial, system-ui, -apple-system, "Segoe UI", sans-serif;
-        font-weight: 300;
-        background: var(--bg);
-        color: var(--ink);
+        font-weight:300;
+        color:var(--cordoba-ink);
+        background:var(--cordoba-bg);
       }
 
-      .topbar {
-        position: sticky;
-        top: 0;
-        z-index: 10;
-        background: rgba(250, 247, 242, 0.92);
-        backdrop-filter: blur(8px);
-        border-bottom: 1px solid var(--border);
+      /* Top bar */
+      .topbar{
+        position:sticky; top:0; z-index:20;
+        background:rgba(251,248,243,.92);
+        backdrop-filter: blur(10px);
+        border-bottom:1px solid var(--cordoba-border);
+      }
+      .topbar-inner{
+        max-width:1280px; margin:0 auto;
+        padding:14px 16px;
+        display:flex; align-items:center; justify-content:space-between; gap:12px;
+      }
+      .brand{
+        display:flex; align-items:baseline; gap:12px;
+      }
+      .brand h1{
+        margin:0;
+        font-family:"Times New Roman", Times, serif;
+        font-weight:700;
+        font-size:18px;
+        letter-spacing:.2px;
+      }
+      .pill{
+        border:1px solid var(--cordoba-border);
+        background:var(--card);
+        color:var(--cordoba-muted);
+        border-radius:999px;
+        padding:6px 10px;
+        font-size:11px;
+        letter-spacing:.22em;
+        text-transform:uppercase;
+        white-space:nowrap;
       }
 
-      .topbar-inner {
-        max-width: 1260px;
-        margin: 0 auto;
-        padding: 14px 16px;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 12px;
+      /* Layout */
+      .wrap{
+        max-width:1280px;
+        margin:0 auto;
+        padding:16px 16px 28px;
+        display:grid;
+        grid-template-columns:400px 1fr;
+        gap:14px;
+      }
+      @media (max-width: 1020px){
+        .wrap{grid-template-columns:1fr}
       }
 
-      .brand {
-        display: flex;
-        align-items: baseline;
-        gap: 12px;
+      /* Cards */
+      .card{
+        background:var(--card);
+        border:1px solid var(--cordoba-border);
+        border-radius:var(--radius);
+        box-shadow:var(--shadow);
+        overflow:hidden;
+      }
+      .card-h{
+        padding:14px 14px 10px;
+        border-bottom:1px solid var(--cordoba-border);
+        display:flex; align-items:center; justify-content:space-between; gap:10px;
+      }
+      .card-h .h{
+        display:flex; flex-direction:column; gap:3px;
+      }
+      .card-h .h .title{
+        margin:0;
+        font-size:12px;
+        letter-spacing:.18em;
+        text-transform:uppercase;
+        color:#2b2b2b;
+        font-weight:600;
+      }
+      .card-h .h .sub{
+        font-size:12px;
+        color:var(--cordoba-muted);
+      }
+      .card-b{padding:14px}
+
+      .box{
+        border:1px solid var(--cordoba-border);
+        border-radius:16px;
+        padding:12px;
+        background:#fff;
       }
 
-      .brand .title {
-        font-family: "Times New Roman", Times, serif;
-        font-weight: 650;
-        letter-spacing: 0.2px;
-        font-size: 18px;
+      .muted{color:var(--cordoba-muted); font-size:13px; line-height:1.4}
+      .mono{font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace}
+      .gold{color:var(--cordoba-gold)}
+
+      label{
+        display:block;
+        margin:0 0 6px;
+        font-size:11px;
+        letter-spacing:.10em;
+        text-transform:uppercase;
+        color:var(--cordoba-muted);
       }
 
-      .badge {
-        font-size: 11px;
-        letter-spacing: 0.22em;
-        text-transform: uppercase;
-        padding: 6px 10px;
-        border-radius: 999px;
-        border: 1px solid var(--border);
-        background: var(--card);
-        color: var(--muted);
-        white-space: nowrap;
+      select,input[type="text"],input[type="number"]{
+        width:100%;
+        padding:10px 10px;
+        border:1px solid var(--cordoba-border);
+        border-radius:12px;
+        background:#fff;
+        font-weight:300;
       }
 
-      .wrap {
-        max-width: 1260px;
-        margin: 0 auto;
-        padding: 16px 16px 28px;
-        display: grid;
-        grid-template-columns: 390px 1fr;
-        gap: 14px;
+      input[type="file"]{
+        width:100%;
+        padding:10px;
+        border:1px dashed var(--cordoba-border);
+        border-radius:12px;
+        background:#fff;
       }
 
-      @media (max-width: 1020px) {
-        .wrap { grid-template-columns: 1fr; }
+      .grid2{display:grid; grid-template-columns:1fr 1fr; gap:10px}
+      .grid1{display:grid; grid-template-columns:1fr; gap:10px}
+
+      .btns{display:flex; gap:8px; flex-wrap:wrap}
+      button{
+        border:1px solid var(--cordoba-border);
+        background:#fff;
+        padding:10px 12px;
+        border-radius:12px;
+        cursor:pointer;
+        font-size:13px;
+        font-weight:600;
+      }
+      button.primary{
+        border-color:var(--cordoba-gold);
+        background:var(--cordoba-soft);
+      }
+      button:disabled{opacity:.55; cursor:not-allowed}
+
+      /* Tabs */
+      .tabs{
+        display:flex; gap:8px;
+        padding:10px 12px;
+        border-bottom:1px solid var(--cordoba-border);
+        background:#fff;
+        overflow-x:auto;
+      }
+      .tab{
+        border:1px solid var(--cordoba-border);
+        background:#fff;
+        padding:8px 10px;
+        border-radius:999px;
+        font-size:12px;
+        cursor:pointer;
+        white-space:nowrap;
+      }
+      .tab.active{
+        border-color:var(--cordoba-gold);
+        background:var(--cordoba-soft);
       }
 
-      .card {
-        background: var(--card);
-        border: 1px solid var(--border);
-        border-radius: 18px;
-        box-shadow: var(--shadow);
-        overflow: hidden;
+      /* KPI row */
+      .kpis{
+        display:grid;
+        grid-template-columns:repeat(4,1fr);
+        gap:10px;
+        margin-bottom:12px;
+      }
+      @media (max-width: 1020px){
+        .kpis{grid-template-columns:1fr}
+      }
+      .kpi{
+        border:1px solid var(--cordoba-border);
+        border-radius:16px;
+        padding:12px;
+        background:#fff;
+      }
+      .kpi .t{
+        font-size:11px;
+        letter-spacing:.12em;
+        text-transform:uppercase;
+        color:var(--cordoba-muted);
+        margin-bottom:6px;
+      }
+      .kpi .v{
+        font-family:"Times New Roman", Times, serif;
+        font-weight:700;
+        font-size:18px;
       }
 
-      .card-h {
-        padding: 14px 14px 10px;
-        border-bottom: 1px solid var(--border);
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 10px;
+      .chart{
+        height:540px;
+        border:1px solid var(--cordoba-border);
+        border-radius:16px;
+        overflow:hidden;
+        background:#fff;
       }
 
-      .card-h h3 {
-        margin: 0;
-        font-size: 12px;
-        letter-spacing: 0.18em;
-        text-transform: uppercase;
-        color: #333;
+      .foot{
+        max-width:1280px;
+        margin:0 auto;
+        padding:0 16px 22px;
       }
-
-      .card-b { padding: 14px; }
-
-      .mini {
-        border: 1px solid var(--border);
-        border-radius: 16px;
-        padding: 12px;
-        background: #fff;
-      }
-
-      .muted {
-        color: var(--muted);
-        font-size: 13px;
-        line-height: 1.4;
-      }
-
-      .mono {
-        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-      }
-
-      .gold { color: var(--cordoba-gold); }
-
-      label {
-        display: block;
-        font-size: 11px;
-        letter-spacing: 0.10em;
-        text-transform: uppercase;
-        color: var(--muted);
-        margin: 0 0 6px;
-      }
-
-      select, input[type="number"], input[type="text"] {
-        width: 100%;
-        padding: 10px 10px;
-        border: 1px solid var(--border);
-        border-radius: 12px;
-        background: white;
-        font-weight: 300;
-      }
-
-      input[type="file"] {
-        width: 100%;
-        padding: 10px;
-        border: 1px dashed var(--border);
-        border-radius: 12px;
-        background: white;
-      }
-
-      .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-      .row-1 { display: grid; grid-template-columns: 1fr; gap: 10px; }
-
-      .btns { display: flex; gap: 8px; flex-wrap: wrap; }
-
-      button {
-        border: 1px solid var(--border);
-        background: white;
-        padding: 10px 12px;
-        border-radius: 12px;
-        cursor: pointer;
-        font-weight: 450;
-        font-size: 13px;
-      }
-
-      button.primary {
-        border-color: var(--cordoba-gold);
-        background: var(--cordoba-soft);
-      }
-
-      button:disabled { opacity: 0.55; cursor: not-allowed; }
-
-      .tabs {
-        display: flex;
-        gap: 8px;
-        padding: 10px 12px;
-        border-bottom: 1px solid var(--border);
-        background: #fff;
-        overflow-x: auto;
-      }
-
-      .tab {
-        white-space: nowrap;
-        border: 1px solid var(--border);
-        padding: 8px 10px;
-        border-radius: 999px;
-        font-size: 12px;
-        cursor: pointer;
-        background: white;
-      }
-
-      .tab.active { border-color: var(--cordoba-gold); background: var(--cordoba-soft); }
-
-      .panel { padding: 12px; }
-
-      .chart {
-        height: 520px;
-        border: 1px solid var(--border);
-        border-radius: 16px;
-        overflow: hidden;
-        background: white;
-      }
-
-      .kpi {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 10px;
-        margin-bottom: 12px;
-      }
-
-      @media (max-width: 1020px) { .kpi { grid-template-columns: 1fr; } }
-
-      .kpi .box {
-        border: 1px solid var(--border);
-        border-radius: 16px;
-        padding: 12px;
-        background: #fff;
-      }
-
-      .kpi .box .t {
-        font-size: 11px;
-        text-transform: uppercase;
-        letter-spacing: 0.12em;
-        color: var(--muted);
-        margin-bottom: 6px;
-      }
-
-      .kpi .box .v {
-        font-size: 18px;
-        font-weight: 600;
-        font-family: "Times New Roman", Times, serif;
-      }
-
-      .foot {
-        max-width: 1260px;
-        margin: 0 auto;
-        padding: 0 16px 22px;
-      }
-
-      .disclaimer {
-        font-size: 12px;
-        color: var(--muted);
-        border-top: 1px solid var(--border);
-        padding-top: 14px;
-      }
-
-      .copyright {
-        margin-top: 10px;
-        font-size: 12px;
-        color: var(--muted);
+      .disc{
+        border-top:1px solid var(--cordoba-border);
+        padding-top:14px;
+        font-size:12px;
+        color:var(--cordoba-muted);
       }
     </style>
   </head>
@@ -270,10 +242,10 @@
     <div class="topbar">
       <div class="topbar-inner">
         <div class="brand">
-          <div class="title">Cordoba Capital · Commodity Lab</div>
-          <div class="badge">World Bank · Pink Sheet</div>
+          <h1>Cordoba Capital · Commodity Lab</h1>
+          <div class="pill">World Bank · Pink Sheet</div>
         </div>
-        <div class="badge">Assumptions → Scenarios → Exportable charts</div>
+        <div class="pill">Assumptions · Scenarios · Export</div>
       </div>
     </div>
 
@@ -281,35 +253,38 @@
       <!-- LEFT -->
       <div class="card">
         <div class="card-h">
-          <h3>Build</h3>
-          <span class="badge">Institutional workflow</span>
+          <div class="h">
+            <div class="title">Data & build</div>
+            <div class="sub">World Bank pull + Excel upload fallback</div>
+          </div>
+          <div class="pill">Monthly</div>
         </div>
 
         <div class="card-b">
-          <div class="row-1">
-            <div class="mini">
+          <div class="grid1">
+            <div class="box">
               <div class="muted">
-                Data is loaded from <span class="mono">/data/CMO-Historical-Data-Monthly.xlsx</span>.
-                If it’s missing, upload the same World Bank file manually.
+                Primary dataset is pulled from World Bank and cached locally to avoid browser blocks.
+                If you want your own curves, upload an Excel and we’ll run the same analysis on it.
               </div>
 
               <div style="height:10px"></div>
 
               <div class="btns">
-                <button class="primary" id="loadBtn">Load dataset</button>
+                <button class="primary" id="loadWbBtn">Load World Bank data</button>
                 <button id="reloadBtn" disabled>Reload</button>
               </div>
 
               <div style="height:10px"></div>
 
-              <label>Manual upload (fallback)</label>
+              <label>Upload Excel (optional)</label>
               <input id="fileInput" type="file" accept=".xlsx" />
 
               <div id="loadStatus" class="muted" style="margin-top:10px">Not loaded.</div>
             </div>
 
-            <div class="mini">
-              <div class="row">
+            <div class="box">
+              <div class="grid2">
                 <div>
                   <label>Sector</label>
                   <select id="sector">
@@ -325,16 +300,14 @@
                   <label>Quick pick</label>
                   <select id="quickPick">
                     <option value="">—</option>
-                    <option value="BRENT">Brent (benchmark)</option>
-                    <option value="WTI">WTI (benchmark)</option>
+                    <option value="BRENT">Brent</option>
+                    <option value="WTI">WTI</option>
                     <option value="GAS_EU">Nat Gas Europe</option>
                     <option value="COAL_AUS">Coal Australia</option>
                     <option value="COPPER">Copper</option>
-                    <option value="ALUMINUM">Aluminium</option>
                     <option value="GOLD">Gold</option>
                     <option value="WHEAT">Wheat</option>
                     <option value="MAIZE">Maize</option>
-                    <option value="RICE">Rice</option>
                     <option value="SUGAR">Sugar</option>
                   </select>
                 </div>
@@ -343,9 +316,9 @@
               <div style="height:10px"></div>
 
               <label>Search series</label>
-              <input id="searchBox" type="text" placeholder="e.g. brent, wti, copper, wheat, coal, gas" />
+              <input id="searchBox" type="text" placeholder="e.g. brent, copper, wheat, coal, gas" />
 
-              <div class="row" style="margin-top:10px">
+              <div class="grid2" style="margin-top:10px">
                 <div>
                   <label>Series A</label>
                   <select id="seriesA"></select>
@@ -356,7 +329,7 @@
                 </div>
               </div>
 
-              <div class="row" style="margin-top:10px">
+              <div class="grid2" style="margin-top:10px">
                 <div>
                   <label>View</label>
                   <select id="viewMode">
@@ -366,12 +339,12 @@
                   </select>
                 </div>
                 <div>
-                  <label>Z-score window (months)</label>
+                  <label>Z window (months)</label>
                   <input id="zWin" type="number" value="60" min="12" step="1" />
                 </div>
               </div>
 
-              <div class="row" style="margin-top:10px">
+              <div class="grid2" style="margin-top:10px">
                 <div>
                   <label>Return type</label>
                   <select id="retType">
@@ -395,23 +368,18 @@
                 <button id="resetBtn">Reset</button>
               </div>
 
-              <div id="status" class="muted" style="margin-top:10px">
-                Load the dataset to begin.
-              </div>
+              <div id="status" class="muted" style="margin-top:10px">Load data to begin.</div>
             </div>
 
-            <div class="mini">
-              <div style="font-family:Times New Roman,Times,serif;font-weight:650;font-size:16px;margin-bottom:6px">
-                Balance model
+            <div class="box">
+              <div style="font-family:'Times New Roman',Times,serif;font-weight:700;font-size:16px;margin-bottom:6px">
+                Balance engine (assumptions)
               </div>
               <div class="muted">
-                Use this to turn a view into numbers. It’s meant to test assumptions, not to pretend we “know” the future.
-                You can export a chart with the assumptions embedded, so clients can see the logic.
+                This is built for investor conversations: write the assumptions down, generate ranges, and export a chart that shows the logic.
               </div>
 
-              <div style="height:10px"></div>
-
-              <div class="row">
+              <div class="grid2" style="margin-top:10px">
                 <div>
                   <label>Demand growth (YoY, %)</label>
                   <input id="demandYoY" type="number" value="2.0" step="0.1" />
@@ -422,18 +390,18 @@
                 </div>
               </div>
 
-              <div class="row" style="margin-top:10px">
+              <div class="grid2" style="margin-top:10px">
                 <div>
                   <label>Inventory swing (% of demand)</label>
                   <input id="invChg" type="number" value="0.0" step="0.1" />
                 </div>
                 <div>
                   <label>Override balance (% of demand)</label>
-                  <input id="balanceOverride" type="number" value="" placeholder="optional" step="0.1" />
+                  <input id="balanceOverride" type="number" placeholder="optional" step="0.1" />
                 </div>
               </div>
 
-              <div class="row" style="margin-top:10px">
+              <div class="grid2" style="margin-top:10px">
                 <div>
                   <label>Demand elasticity (|εd|)</label>
                   <input id="ed" type="number" value="0.20" step="0.01" min="0.01" />
@@ -444,7 +412,7 @@
                 </div>
               </div>
 
-              <div class="row" style="margin-top:10px">
+              <div class="grid2" style="margin-top:10px">
                 <div>
                   <label>Scenario range (±, %)</label>
                   <input id="scenarioRange" type="number" value="2.0" step="0.5" min="0.5" />
@@ -463,7 +431,10 @@
       <!-- RIGHT -->
       <div class="card">
         <div class="card-h">
-          <h3>Workbench</h3>
+          <div class="h">
+            <div class="title">Workbench</div>
+            <div class="sub">Charts are Cordoba-stamped for client use</div>
+          </div>
           <div class="btns">
             <button id="exportPngBtn" disabled>Export PNG</button>
             <button id="exportSvgBtn" disabled>Export SVG</button>
@@ -474,38 +445,41 @@
         <div class="tabs">
           <div class="tab active" data-tab="market">Market</div>
           <div class="tab" data-tab="season">Seasonality</div>
-          <div class="tab" data-tab="sd">Balance</div>
+          <div class="tab" data-tab="balance">Balance</div>
           <div class="tab" data-tab="stress">Stress</div>
         </div>
 
-        <div class="panel">
-          <div class="kpi">
-            <div class="box">
+        <div style="padding:12px">
+          <div class="kpis">
+            <div class="kpi">
               <div class="t">Definition</div>
-              <div id="kDef" class="v">—</div>
+              <div class="v" id="kDef">—</div>
             </div>
-            <div class="box">
+            <div class="kpi">
               <div class="t">Latest level</div>
-              <div id="kLast" class="v">—</div>
+              <div class="v" id="kLast">—</div>
             </div>
-            <div class="box">
+            <div class="kpi">
               <div class="t">Latest z-score</div>
-              <div id="kZ" class="v">—</div>
+              <div class="v" id="kZ">—</div>
+            </div>
+            <div class="kpi">
+              <div class="t">Data source</div>
+              <div class="v" id="kSrc">—</div>
             </div>
           </div>
 
           <div id="chart" class="chart"></div>
-          <div id="note" class="mini" style="margin-top:12px; display:none"></div>
+          <div id="note" class="box" style="margin-top:12px;display:none"></div>
         </div>
       </div>
     </div>
 
     <div class="foot">
-      <div class="disclaimer">
-        This is a beta research interface for testing and visualising commodity assumptions. Data may be incomplete or incorrect.
-        Nothing here is investment advice. Charts are provided for research communication and internal testing.
+      <div class="disc">
+        This is a beta research interface for testing and visualising commodity assumptions. Data may be incomplete or incorrect. Nothing here is investment advice.
+        © <span class="gold">Cordoba Capital</span>.
       </div>
-      <div class="copyright">© <span class="gold">Cordoba Capital</span> · Commodity Lab</div>
     </div>
 
     <script src="commodity-lab.js"></script>
