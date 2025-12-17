@@ -8,6 +8,9 @@
     <!-- Plotly (charts + export) -->
     <script src="https://cdn.plot.ly/plotly-2.30.0.min.js"></script>
 
+    <!-- SheetJS (parse World Bank Excel in-browser) -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.19.3/dist/xlsx.full.min.js"></script>
+
     <style>
       :root {
         --cordoba-gold: #9a690f;
@@ -18,7 +21,6 @@
         --bg: #faf7f2;
         --card: #ffffff;
       }
-
       * { box-sizing: border-box; }
       body {
         margin: 0;
@@ -27,7 +29,6 @@
         background: var(--bg);
         color: var(--ink);
       }
-
       .topbar {
         position: sticky;
         top: 0;
@@ -36,7 +37,6 @@
         backdrop-filter: blur(8px);
         border-bottom: 1px solid var(--border);
       }
-
       .topbar-inner {
         max-width: 1200px;
         margin: 0 auto;
@@ -46,20 +46,13 @@
         justify-content: space-between;
         gap: 12px;
       }
-
-      .brand {
-        display: flex;
-        align-items: baseline;
-        gap: 10px;
-      }
-
+      .brand { display: flex; align-items: baseline; gap: 10px; }
       .brand .title {
         font-family: "Times New Roman", Times, serif;
         font-weight: 600;
         letter-spacing: 0.2px;
         font-size: 18px;
       }
-
       .pill {
         font-size: 11px;
         letter-spacing: 0.22em;
@@ -70,7 +63,6 @@
         background: var(--card);
         color: var(--muted);
       }
-
       .wrap {
         max-width: 1200px;
         margin: 0 auto;
@@ -79,11 +71,7 @@
         grid-template-columns: 360px 1fr;
         gap: 14px;
       }
-
-      @media (max-width: 980px) {
-        .wrap { grid-template-columns: 1fr; }
-      }
-
+      @media (max-width: 980px) { .wrap { grid-template-columns: 1fr; } }
       .card {
         background: var(--card);
         border: 1px solid var(--border);
@@ -91,7 +79,6 @@
         box-shadow: 0 10px 25px rgba(0,0,0,0.04);
         overflow: hidden;
       }
-
       .card-h {
         padding: 14px 14px 10px;
         border-bottom: 1px solid var(--border);
@@ -100,7 +87,6 @@
         justify-content: space-between;
         gap: 10px;
       }
-
       .card-h h3 {
         margin: 0;
         font-size: 13px;
@@ -108,12 +94,9 @@
         text-transform: uppercase;
         color: #333;
       }
-
       .card-b { padding: 14px; }
-
       .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
       .row-1 { display: grid; grid-template-columns: 1fr; gap: 10px; }
-
       label {
         display: block;
         font-size: 11px;
@@ -122,8 +105,7 @@
         color: var(--muted);
         margin-bottom: 6px;
       }
-
-      input[type="file"], select, input[type="number"] {
+      input[type="file"], select, input[type="number"], input[type="text"] {
         width: 100%;
         padding: 10px 10px;
         border: 1px solid var(--border);
@@ -131,7 +113,6 @@
         background: white;
         font-weight: 300;
       }
-
       .btns { display: flex; gap: 8px; flex-wrap: wrap; }
       button {
         border: 1px solid var(--border);
@@ -147,7 +128,6 @@
         background: var(--cordoba-soft);
       }
       button:disabled { opacity: 0.55; cursor: not-allowed; }
-
       .tabs {
         display: flex;
         gap: 8px;
@@ -165,11 +145,7 @@
         cursor: pointer;
         background: white;
       }
-      .tab.active {
-        border-color: var(--cordoba-gold);
-        background: var(--cordoba-soft);
-      }
-
+      .tab.active { border-color: var(--cordoba-gold); background: var(--cordoba-soft); }
       .panel { padding: 12px; }
       .chart {
         height: 460px;
@@ -178,22 +154,18 @@
         overflow: hidden;
         background: white;
       }
-
       .mini {
         border: 1px solid var(--border);
         border-radius: 16px;
         padding: 12px;
         background: #fff;
       }
-
       .kpi {
         display: grid;
         grid-template-columns: repeat(3, 1fr);
         gap: 10px;
       }
-      @media (max-width: 980px) {
-        .kpi { grid-template-columns: 1fr; }
-      }
+      @media (max-width: 980px) { .kpi { grid-template-columns: 1fr; } }
       .kpi .box {
         border: 1px solid var(--border);
         border-radius: 16px;
@@ -213,7 +185,6 @@
         font-family: "Times New Roman", Times, serif;
       }
       .muted { color: var(--muted); font-size: 13px; line-height: 1.35; }
-
       .foot {
         max-width: 1200px;
         margin: 0 auto;
@@ -232,6 +203,7 @@
       }
       .gold { color: var(--cordoba-gold); }
       .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+      .hide { display: none; }
     </style>
   </head>
 
@@ -242,7 +214,7 @@
           <div class="title">Cordoba Capital · Commodity Lab</div>
           <div class="pill">Phase 1 · Beta</div>
         </div>
-        <div class="pill">Export-ready charts · CSV in · PNG/SVG out</div>
+        <div class="pill">FRED + World Bank + CSV · Export-ready</div>
       </div>
     </div>
 
@@ -251,39 +223,106 @@
       <div class="card">
         <div class="card-h">
           <h3>Inputs</h3>
-          <span class="pill">Upload → Build → Test</span>
+          <span class="pill">Source → Build → Test</span>
         </div>
         <div class="card-b">
           <div class="row-1">
+
             <div class="mini">
-              <label>1) Time series CSV (required)</label>
+              <label>Data source</label>
+              <select id="dataSource">
+                <option value="csv">CSV Upload</option>
+                <option value="fred">FRED (API)</option>
+                <option value="wb">World Bank (Pink Sheet Monthly)</option>
+              </select>
+              <div class="muted" style="margin-top:8px">
+                FRED supports many daily/weekly series. World Bank Pink Sheet is monthly and broad. :contentReference[oaicite:3]{index=3}
+              </div>
+            </div>
+
+            <!-- CSV block -->
+            <div id="csvBlock" class="mini">
+              <label>Time series CSV (required)</label>
               <input id="tsFile" type="file" accept=".csv" />
               <div class="muted" style="margin-top:8px">
-                Format: first column <span class="mono">date</span> (YYYY-MM-DD), then one or more price columns.
+                Format: first column <span class="mono">date</span> (YYYY-MM-DD), then one or more numeric columns.
               </div>
-            </div>
 
-            <div class="mini">
-              <label>2) Curve CSV (optional)</label>
+              <div style="height:10px"></div>
+              <label>Curve CSV (optional)</label>
               <input id="curveFile" type="file" accept=".csv" />
               <div class="muted" style="margin-top:8px">
-                Format: first column <span class="mono">date</span>, then maturities as columns e.g. <span class="mono">1M,3M,6M,12M</span>.
+                Format: <span class="mono">date</span> then maturities columns e.g. <span class="mono">1M,3M,6M,12M</span>.
               </div>
             </div>
 
-            <div class="mini">
+            <!-- FRED block -->
+            <div id="fredBlock" class="mini hide">
+              <label>FRED API key (free)</label>
+              <input id="fredKey" type="text" placeholder="Paste your FRED API key (recommended)" />
+              <div class="muted" style="margin-top:8px">
+                FRED’s API supports JSON observations via <span class="mono">fred/series/observations</span>. :contentReference[oaicite:4]{index=4}
+              </div>
+
+              <div style="height:10px"></div>
               <div class="row">
                 <div>
-                  <label>Series A</label>
-                  <select id="seriesA"></select>
+                  <label>Series A (FRED)</label>
+                  <select id="fredA"></select>
                 </div>
                 <div>
-                  <label>Series B</label>
-                  <select id="seriesB"></select>
+                  <label>Series B (FRED)</label>
+                  <select id="fredB"></select>
                 </div>
               </div>
 
-              <div class="row" style="margin-top:10px">
+              <div style="height:10px"></div>
+              <div class="row">
+                <div>
+                  <label>Start date (optional)</label>
+                  <input id="fredStart" type="text" placeholder="e.g. 2015-01-01" />
+                </div>
+                <div>
+                  <label>End date (optional)</label>
+                  <input id="fredEnd" type="text" placeholder="e.g. 2025-12-01" />
+                </div>
+              </div>
+
+              <div class="muted" style="margin-top:10px">
+                Tip: start with Brent vs WTI (DCOILBRENTEU vs DCOILWTICO). :contentReference[oaicite:5]{index=5}
+              </div>
+            </div>
+
+            <!-- World Bank block -->
+            <div id="wbBlock" class="mini hide">
+              <label>World Bank dataset</label>
+              <div class="muted">
+                Uses the World Bank Pink Sheet Monthly historical Excel. :contentReference[oaicite:6]{index=6}
+              </div>
+
+              <div style="height:10px"></div>
+              <div class="row">
+                <div>
+                  <label>Series A (World Bank)</label>
+                  <select id="wbA"></select>
+                </div>
+                <div>
+                  <label>Series B (World Bank)</label>
+                  <select id="wbB"></select>
+                </div>
+              </div>
+
+              <div style="height:10px"></div>
+              <label>Search (optional)</label>
+              <input id="wbSearch" type="text" placeholder="Type to filter series list (e.g. brent, copper, wheat)" />
+              <div class="muted" style="margin-top:8px">
+                World Bank series are monthly. Use Monthly frequency for clean results.
+              </div>
+            </div>
+
+            <!-- Common controls -->
+            <div class="mini">
+              <div class="row">
                 <div>
                   <label>Frequency</label>
                   <select id="freq">
@@ -317,10 +356,9 @@
                 <button id="resetBtn">Reset</button>
               </div>
 
-              <div class="muted" style="margin-top:10px">
-                Outputs include: spread & z-score, seasonality, basic stationarity checks (ADF-lite), summary stats, and branded exports.
-              </div>
+              <div id="status" class="muted" style="margin-top:10px">Upload or select a source to begin.</div>
             </div>
+
           </div>
         </div>
       </div>
