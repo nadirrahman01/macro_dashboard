@@ -3,12 +3,12 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Cordoba Capital · Commodity Lab (Phase 1)</title>
+    <title>Cordoba Capital · Commodity Lab (World Bank)</title>
 
-    <!-- Plotly (charts + export) -->
+    <!-- Plotly for charts + export -->
     <script src="https://cdn.plot.ly/plotly-2.30.0.min.js"></script>
 
-    <!-- SheetJS (parse World Bank Excel in-browser) -->
+    <!-- SheetJS to parse the World Bank Excel in-browser -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.19.3/dist/xlsx.full.min.js"></script>
 
     <style>
@@ -19,7 +19,7 @@
         --muted: #666;
         --border: #e7ded4;
         --bg: #faf7f2;
-        --card: #ffffff;
+        --card: #fff;
       }
       * { box-sizing: border-box; }
       body {
@@ -38,7 +38,7 @@
         border-bottom: 1px solid var(--border);
       }
       .topbar-inner {
-        max-width: 1200px;
+        max-width: 1240px;
         margin: 0 auto;
         padding: 14px 16px;
         display: flex;
@@ -62,16 +62,19 @@
         border: 1px solid var(--border);
         background: var(--card);
         color: var(--muted);
+        white-space: nowrap;
       }
+
       .wrap {
-        max-width: 1200px;
+        max-width: 1240px;
         margin: 0 auto;
         padding: 18px 16px 28px;
         display: grid;
-        grid-template-columns: 360px 1fr;
+        grid-template-columns: 380px 1fr;
         gap: 14px;
       }
-      @media (max-width: 980px) { .wrap { grid-template-columns: 1fr; } }
+      @media (max-width: 1020px) { .wrap { grid-template-columns: 1fr; } }
+
       .card {
         background: var(--card);
         border: 1px solid var(--border);
@@ -95,8 +98,14 @@
         color: #333;
       }
       .card-b { padding: 14px; }
-      .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-      .row-1 { display: grid; grid-template-columns: 1fr; gap: 10px; }
+
+      .mini {
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 12px;
+        background: #fff;
+      }
+
       label {
         display: block;
         font-size: 11px;
@@ -105,7 +114,7 @@
         color: var(--muted);
         margin-bottom: 6px;
       }
-      input[type="file"], select, input[type="number"], input[type="text"] {
+      select, input[type="number"], input[type="text"] {
         width: 100%;
         padding: 10px 10px;
         border: 1px solid var(--border);
@@ -113,6 +122,10 @@
         background: white;
         font-weight: 300;
       }
+
+      .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+      .row-1 { display: grid; grid-template-columns: 1fr; gap: 10px; }
+
       .btns { display: flex; gap: 8px; flex-wrap: wrap; }
       button {
         border: 1px solid var(--border);
@@ -128,6 +141,11 @@
         background: var(--cordoba-soft);
       }
       button:disabled { opacity: 0.55; cursor: not-allowed; }
+
+      .muted { color: var(--muted); font-size: 13px; line-height: 1.35; }
+      .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+      .gold { color: var(--cordoba-gold); }
+
       .tabs {
         display: flex;
         gap: 8px;
@@ -146,26 +164,23 @@
         background: white;
       }
       .tab.active { border-color: var(--cordoba-gold); background: var(--cordoba-soft); }
+
       .panel { padding: 12px; }
       .chart {
-        height: 460px;
+        height: 500px;
         border: 1px solid var(--border);
         border-radius: 16px;
         overflow: hidden;
         background: white;
       }
-      .mini {
-        border: 1px solid var(--border);
-        border-radius: 16px;
-        padding: 12px;
-        background: #fff;
-      }
+
       .kpi {
         display: grid;
         grid-template-columns: repeat(3, 1fr);
         gap: 10px;
+        margin-bottom: 12px;
       }
-      @media (max-width: 980px) { .kpi { grid-template-columns: 1fr; } }
+      @media (max-width: 1020px) { .kpi { grid-template-columns: 1fr; } }
       .kpi .box {
         border: 1px solid var(--border);
         border-radius: 16px;
@@ -184,9 +199,9 @@
         font-weight: 500;
         font-family: "Times New Roman", Times, serif;
       }
-      .muted { color: var(--muted); font-size: 13px; line-height: 1.35; }
+
       .foot {
-        max-width: 1200px;
+        max-width: 1240px;
         margin: 0 auto;
         padding: 0 16px 22px;
       }
@@ -201,9 +216,6 @@
         font-size: 12px;
         color: var(--muted);
       }
-      .gold { color: var(--cordoba-gold); }
-      .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
-      .hide { display: none; }
     </style>
   </head>
 
@@ -212,141 +224,78 @@
       <div class="topbar-inner">
         <div class="brand">
           <div class="title">Cordoba Capital · Commodity Lab</div>
-          <div class="pill">Phase 1 · Beta</div>
+          <div class="pill">World Bank · Pink Sheet</div>
         </div>
-        <div class="pill">FRED + World Bank + CSV · Export-ready</div>
+        <div class="pill">Prices + Spreads + Supply–Demand Scenarios · Export</div>
       </div>
     </div>
 
     <div class="wrap">
-      <!-- LEFT: Inputs / Builder -->
+      <!-- LEFT: Builder -->
       <div class="card">
         <div class="card-h">
-          <h3>Inputs</h3>
-          <span class="pill">Source → Build → Test</span>
+          <h3>Build</h3>
+          <span class="pill">World Bank only</span>
         </div>
+
         <div class="card-b">
           <div class="row-1">
-
             <div class="mini">
-              <label>Data source</label>
-              <select id="dataSource">
-                <option value="csv">CSV Upload</option>
-                <option value="fred">FRED (API)</option>
-                <option value="wb">World Bank (Pink Sheet Monthly)</option>
-              </select>
-              <div class="muted" style="margin-top:8px">
-                FRED supports many daily/weekly series. World Bank Pink Sheet is monthly and broad. :contentReference[oaicite:3]{index=3}
-              </div>
-            </div>
-
-            <!-- CSV block -->
-            <div id="csvBlock" class="mini">
-              <label>Time series CSV (required)</label>
-              <input id="tsFile" type="file" accept=".csv" />
-              <div class="muted" style="margin-top:8px">
-                Format: first column <span class="mono">date</span> (YYYY-MM-DD), then one or more numeric columns.
-              </div>
-
-              <div style="height:10px"></div>
-              <label>Curve CSV (optional)</label>
-              <input id="curveFile" type="file" accept=".csv" />
-              <div class="muted" style="margin-top:8px">
-                Format: <span class="mono">date</span> then maturities columns e.g. <span class="mono">1M,3M,6M,12M</span>.
-              </div>
-            </div>
-
-            <!-- FRED block -->
-            <div id="fredBlock" class="mini hide">
-              <label>FRED API key (free)</label>
-              <input id="fredKey" type="text" placeholder="Paste your FRED API key (recommended)" />
-              <div class="muted" style="margin-top:8px">
-                FRED’s API supports JSON observations via <span class="mono">fred/series/observations</span>. :contentReference[oaicite:4]{index=4}
-              </div>
-
-              <div style="height:10px"></div>
-              <div class="row">
-                <div>
-                  <label>Series A (FRED)</label>
-                  <select id="fredA"></select>
-                </div>
-                <div>
-                  <label>Series B (FRED)</label>
-                  <select id="fredB"></select>
-                </div>
-              </div>
-
-              <div style="height:10px"></div>
-              <div class="row">
-                <div>
-                  <label>Start date (optional)</label>
-                  <input id="fredStart" type="text" placeholder="e.g. 2015-01-01" />
-                </div>
-                <div>
-                  <label>End date (optional)</label>
-                  <input id="fredEnd" type="text" placeholder="e.g. 2025-12-01" />
-                </div>
-              </div>
-
-              <div class="muted" style="margin-top:10px">
-                Tip: start with Brent vs WTI (DCOILBRENTEU vs DCOILWTICO). :contentReference[oaicite:5]{index=5}
-              </div>
-            </div>
-
-            <!-- World Bank block -->
-            <div id="wbBlock" class="mini hide">
-              <label>World Bank dataset</label>
               <div class="muted">
-                Uses the World Bank Pink Sheet Monthly historical Excel. :contentReference[oaicite:6]{index=6}
+                Data source is the World Bank’s <span class="mono">CMO-Historical-Data-Monthly.xlsx</span> (Pink Sheet history). :contentReference[oaicite:2]{index=2}
               </div>
-
               <div style="height:10px"></div>
-              <div class="row">
-                <div>
-                  <label>Series A (World Bank)</label>
-                  <select id="wbA"></select>
-                </div>
-                <div>
-                  <label>Series B (World Bank)</label>
-                  <select id="wbB"></select>
-                </div>
+              <div class="btns">
+                <button class="primary" id="loadBtn">Load World Bank dataset</button>
+                <button id="reloadBtn" disabled>Reload</button>
               </div>
-
-              <div style="height:10px"></div>
-              <label>Search (optional)</label>
-              <input id="wbSearch" type="text" placeholder="Type to filter series list (e.g. brent, copper, wheat)" />
-              <div class="muted" style="margin-top:8px">
-                World Bank series are monthly. Use Monthly frequency for clean results.
-              </div>
+              <div id="loadStatus" class="muted" style="margin-top:10px">Not loaded.</div>
             </div>
 
-            <!-- Common controls -->
             <div class="mini">
-              <div class="row">
+              <label>Search series</label>
+              <input id="searchBox" type="text" placeholder="e.g. brent, wti, copper, wheat, coal, gas" />
+              <div class="row" style="margin-top:10px">
                 <div>
-                  <label>Frequency</label>
-                  <select id="freq">
-                    <option value="D">Daily</option>
-                    <option value="W">Weekly (Fri)</option>
-                    <option value="M">Monthly (end)</option>
-                  </select>
+                  <label>Series A</label>
+                  <select id="seriesA"></select>
                 </div>
                 <div>
-                  <label>Z-score window</label>
-                  <input id="zWin" type="number" value="252" min="20" step="1" />
+                  <label>Series B</label>
+                  <select id="seriesB"></select>
                 </div>
               </div>
 
               <div class="row" style="margin-top:10px">
                 <div>
-                  <label>ADF lag (p)</label>
-                  <input id="adfLag" type="number" value="1" min="0" step="1" />
+                  <label>View</label>
+                  <select id="viewMode">
+                    <option value="single">Single series (A)</option>
+                    <option value="spread">Spread (A − B)</option>
+                    <option value="ratio">Ratio (A / B)</option>
+                  </select>
                 </div>
+                <div>
+                  <label>Z-score window</label>
+                  <input id="zWin" type="number" value="60" min="12" step="1" />
+                </div>
+              </div>
+
+              <div class="row" style="margin-top:10px">
                 <div>
                   <label>Return type</label>
                   <select id="retType">
                     <option value="log">Log returns</option>
                     <option value="simple">Simple returns</option>
+                  </select>
+                </div>
+                <div>
+                  <label>Smoothing</label>
+                  <select id="smooth">
+                    <option value="none">None</option>
+                    <option value="ma3">3M MA</option>
+                    <option value="ma6">6M MA</option>
+                    <option value="ma12">12M MA</option>
                   </select>
                 </div>
               </div>
@@ -356,14 +305,72 @@
                 <button id="resetBtn">Reset</button>
               </div>
 
-              <div id="status" class="muted" style="margin-top:10px">Upload or select a source to begin.</div>
+              <div id="status" class="muted" style="margin-top:10px">Load the dataset to begin.</div>
             </div>
 
+            <!-- Supply–Demand Model Controls -->
+            <div class="mini">
+              <h4 style="margin:0 0 8px; font-family:Times New Roman,Times,serif; font-weight:600">
+                Supply–Demand model
+              </h4>
+              <div class="muted" style="margin-bottom:10px">
+                This is a scenario engine investors can use to pressure-test a view. It is not a forecast.
+                It turns assumptions into an implied price move using simple elasticities.
+              </div>
+
+              <div class="row">
+                <div>
+                  <label>Demand growth (YoY, %)</label>
+                  <input id="demandYoY" type="number" value="2.0" step="0.1" />
+                </div>
+                <div>
+                  <label>Supply growth (YoY, %)</label>
+                  <input id="supplyYoY" type="number" value="1.5" step="0.1" />
+                </div>
+              </div>
+
+              <div class="row" style="margin-top:10px">
+                <div>
+                  <label>Inventory change (%, of demand)</label>
+                  <input id="invChg" type="number" value="0.0" step="0.1" />
+                </div>
+                <div>
+                  <label>Net balance shock (override, %)</label>
+                  <input id="balanceOverride" type="number" value="" placeholder="optional" step="0.1" />
+                </div>
+              </div>
+
+              <div class="row" style="margin-top:10px">
+                <div>
+                  <label>Demand elasticity (|εd|)</label>
+                  <input id="ed" type="number" value="0.20" step="0.01" min="0.01" />
+                </div>
+                <div>
+                  <label>Supply elasticity (εs)</label>
+                  <input id="es" type="number" value="0.10" step="0.01" min="0.01" />
+                </div>
+              </div>
+
+              <div class="row" style="margin-top:10px">
+                <div>
+                  <label>Scenario range (±, %)</label>
+                  <input id="scenarioRange" type="number" value="2.0" step="0.5" min="0.5" />
+                </div>
+                <div>
+                  <label>Steps</label>
+                  <input id="scenarioSteps" type="number" value="9" step="1" min="3" />
+                </div>
+              </div>
+
+              <div class="muted" style="margin-top:10px">
+                Intuition: when balance tightens, price needs to move until demand is rationed and supply responds.
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
-      <!-- RIGHT: Tabs + Charts -->
+      <!-- RIGHT: Workbench -->
       <div class="card">
         <div class="card-h">
           <h3>Workbench</h3>
@@ -374,42 +381,41 @@
         </div>
 
         <div class="tabs">
-          <div class="tab active" data-tab="spread">Spreads & Z-score</div>
+          <div class="tab active" data-tab="market">Market</div>
           <div class="tab" data-tab="season">Seasonality</div>
-          <div class="tab" data-tab="curve">Curve</div>
-          <div class="tab" data-tab="tests">Tests</div>
+          <div class="tab" data-tab="sd">Supply–Demand</div>
+          <div class="tab" data-tab="stress">Stress</div>
         </div>
 
         <div class="panel">
-          <div class="kpi" style="margin-bottom:12px">
+          <div class="kpi">
             <div class="box">
               <div class="t">Definition</div>
-              <div id="defn" class="v">—</div>
+              <div id="kDef" class="v">—</div>
             </div>
             <div class="box">
-              <div class="t">Latest spread</div>
-              <div id="latestSpread" class="v">—</div>
+              <div class="t">Latest level</div>
+              <div id="kLast" class="v">—</div>
             </div>
             <div class="box">
               <div class="t">Latest z-score</div>
-              <div id="latestZ" class="v">—</div>
+              <div id="kZ" class="v">—</div>
             </div>
           </div>
 
           <div id="chart" class="chart"></div>
 
-          <div id="testsBlock" class="mini" style="margin-top:12px; display:none"></div>
-          <div id="curveHint" class="mini" style="margin-top:12px; display:none"></div>
+          <div id="note" class="mini" style="margin-top:12px; display:none"></div>
         </div>
       </div>
     </div>
 
     <div class="foot">
       <div class="disclaimer">
-        This tool is a beta research interface for testing and visualising commodity assumptions. It is for informational and testing purposes only.
-        Data may be incomplete or incorrect. Nothing here is investment advice.
+        This is a beta research interface for testing and visualising commodity assumptions. It is for informational and testing purposes only.
+        Data may be incomplete or incorrect. Nothing here is investment advice. Data source: World Bank Pink Sheet history. :contentReference[oaicite:3]{index=3}
       </div>
-      <div class="copyright">© <span class="gold">Cordoba Capital</span> · Global Macro Engine</div>
+      <div class="copyright">© <span class="gold">Cordoba Capital</span> · Commodity Lab</div>
     </div>
 
     <script src="commodity-lab.js"></script>
