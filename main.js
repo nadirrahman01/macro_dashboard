@@ -112,6 +112,39 @@ const INDICATORS = [
     unit: "% of GDP",
     decimals: 1
   }
+
+INDICATORS.push(
+  {
+    id: "debt_gdp",
+    wb: "GC.DOD.TOTL.GD.ZS",
+    label: "Government debt (% of GDP)",
+    engine: "Debt",
+    bucket: "Stock",
+    higherIsGood: false,
+    unit: "% of GDP",
+    decimals: 1
+  },
+  {
+    id: "interest_revenue",
+    wb: "GC.XPN.INTP.ZS",
+    label: "Interest payments (% of revenue)",
+    engine: "Debt",
+    bucket: "Flow",
+    higherIsGood: false,
+    unit: "%",
+    decimals: 1
+  },
+  {
+    id: "primary_balance",
+    wb: "GC.BAL.PRIM.GD.ZS",
+    label: "Primary balance (% of GDP)",
+    engine: "Debt",
+    bucket: "Flow",
+    higherIsGood: true,
+    unit: "% of GDP",
+    decimals: 1
+  }
+);
 ];
 
 // ---------------------------------------------------------------------------
@@ -1940,6 +1973,102 @@ function renderStressSentinel(countryKey, statsById, engines) {
 
     out.appendChild(row);
   });
+}
+
+function computeDebtSustainability(statsById, engines) {
+  const debt = statsById.debt_gdp;
+  const interest = statsById.interest_revenue;
+  const primary = statsById.primary_balance;
+
+  if (!debt || !interest) return null;
+
+  // Proxy nominal growth from growth engine
+  const nominalGrowthProxy = 0.04 + (engines.growth?.z || 0) * 0.01;
+  const effectiveRate = interest.latest.value / 100;
+
+  const rMinusG = effectiveRate - nominalGrowthProxy;
+  const stabilisingPrimary = rMinusG * debt.latest.value / 100;
+
+  let score = 50;
+  if (rMinusG < 0) score += 20;
+  if (interest.latest.value < 10) score += 15;
+  if (primary && primary.latest.value > stabilisingPrimary) score += 15;
+
+  score = Math.max(15, Math.min(90, score));
+
+  return {
+    rMinusG,
+    stabilisingPrimary,
+    score
+  };
+}
+function debtNarrativeAssessment(debtScore, engines) {
+  const extZ = engines.external?.z || 0;
+  const liqZ = engines.liquidity?.z || 0;
+
+  if (debtScore < 40 && Math.abs(extZ) < 0.5 && Math.abs(liqZ) < 0.5) {
+    return "Latent debt risk: arithmetic is deteriorating but market pricing remains calm.";
+  }
+
+  if (debtScore > 65 && (Math.abs(extZ) > 0.7 || Math.abs(liqZ) > 0.7)) {
+    return "Market stress appears to be running ahead of debt fundamentals.";
+  }
+
+  return "Debt fundamentals and market pricing are broadly aligned.";
+}
+
+function renderDebtSustainability(countryKey, statsById, engines) {
+  const arithmeticEl = document.getElementById("cc-debt-arithmetic");
+  const constraintEl = document.getElementById("cc-debt-constraint");
+  const narrativeEl = document.getElementById("cc-debt-narrative");
+  const channelsEl = document.getElementById("cc-debt-channels");
+  const qualityEl = document.getElementById("cc-debt-quality");
+
+  if (!arithmeticEl) return;
+
+  const result = computeDebtSustainability(statsById, engines);
+  if (!result) {
+    arithmeticEl.innerHTML = "<div class='text-xs text-neutral-400'>Insufficient debt data.</div>";
+    return;
+  }
+
+  arithmeticEl.innerHTML = `
+    <div>r − g: <strong>${result.rMinusG.toFixed(2)}</strong></div>
+    <div>Stabilising primary balance: <strong>${result.stabilisingPrimary.toFixed(1)}%</strong></div>
+    <div>Debt carry score: <strong>${result.score}/100</strong></div>
+  `;
+
+  constraintEl.innerHTML = `
+    <div>${result.rMinusG > 0 ? "Debt requires active policy support." : "Debt stabilises mechanically."}</div>
+    <div class="text-[11px] text-neutral-600">
+      Policy space ${result.score < 45 ? "is constrained." : "remains available."}
+    </div>
+  `;
+
+  narrativeEl.textContent = debtNarrativeAssessment(result.score, engines);
+
+  const channels = [
+    { name: "Rates", z: Math.abs(engines.inflation?.z || 0) },
+    { name: "FX", z: Math.abs(engines.external?.z || 0) },
+    { name: "Credit", z: Math.abs(engines.liquidity?.z || 0) },
+    { name: "Risk assets", z: Math.abs(engines.growth?.z || 0) }
+  ];
+
+  channelsEl.innerHTML = "";
+  channels.forEach(c => {
+    const div = document.createElement("div");
+    div.className = "rounded-xl border border-neutral-200 bg-white px-3 py-2";
+    div.innerHTML = `
+      <div class="text-xs font-medium">${c.name}</div>
+      <div class="text-[11px] text-neutral-500 mt-1">
+        Sensitivity ${Math.round(Math.min(1, c.z) * 100)}%
+      </div>
+    `;
+    channelsEl.appendChild(div);
+  });
+
+  qualityEl.textContent =
+    result.score > 65 ? "Sustainable" : result.score < 40 ? "Fragile" : "Constrained";
 }
 
 // ---------------------------------------------------------------------------
