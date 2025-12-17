@@ -1,37 +1,29 @@
-/* Cordoba Capital · Commodity Lab — World Bank only (same-origin first)
-   Why your data didn’t load:
-   - Cross-origin downloads from thedocs.worldbank.org often fail in-browser due to CORS.
-   Institutional fix:
-   - Host the Excel file in your own repo: /data/CMO-Historical-Data-Monthly.xlsx
-   - Keep manual upload as fallback so the tool never breaks in front of clients.
+/* Cordoba Capital · Commodity Lab
+   World Bank pull (cached) + Excel upload fallback.
 
-   What this Phase 1 is for (investors):
-   - Price context: level + z-score + returns
-   - Relative value: spread / ratio
-   - Seasonality: quickly sanity-check narratives
-   - Balance: turn a view into explicit assumptions
-   - Stress: map outcomes for demand/supply shocks
-   - Export: Cordoba-stamped charts + “Investor Pack” (assumptions + metadata)
+   Why we cache:
+   - The World Bank Pink Sheet Excel is hosted on thedocs.worldbank.org and can be blocked by browsers (CORS).
+   - For a client-facing institutional tool, we always load from same-origin cache.
+   - A GitHub Action keeps the cache up to date by downloading from World Bank on a schedule.
+
+   Source file (World Bank Pink Sheet historical monthly xlsx): :contentReference[oaicite:1]{index=1}
 */
 
-const CORDOBA = {
-  gold: "#9A690F",
-  soft: "#FFF7F0",
-  ink: "#111111",
-  muted: "#666666",
-  border: "#E7DED4"
-};
+const CORDOBA = { gold:"#9A690F", soft:"#FFF7F0", ink:"#111111", muted:"#6A6A6A", border:"#E7DED4" };
 
-// Same-origin path (recommended)
-const LOCAL_XLSX_PATH = "/data/CMO-Historical-Data-Monthly.xlsx";
+// This is the cached file in your repo (kept fresh by GitHub Action)
+const WB_CACHE_PATH = "/data/worldbank/CMO-Historical-Data-Monthly.xlsx";
+
+// This is the World Bank original source (used by the GitHub Action)
+const WB_SOURCE_URL = "https://thedocs.worldbank.org/en/doc/5d903e848db1d1b83e0ec8f744e55570-0350012021/related/CMO-Historical-Data-Monthly.xlsx";
 
 const el = (id) => document.getElementById(id);
 
 // UI
-const loadBtn = el("loadBtn");
+const loadWbBtn = el("loadWbBtn");
 const reloadBtn = el("reloadBtn");
-const loadStatus = el("loadStatus");
 const fileInput = el("fileInput");
+const loadStatus = el("loadStatus");
 
 const sector = el("sector");
 const quickPick = el("quickPick");
@@ -42,23 +34,10 @@ const viewMode = el("viewMode");
 const zWin = el("zWin");
 const retType = el("retType");
 const smooth = el("smooth");
-
 const buildBtn = el("buildBtn");
 const resetBtn = el("resetBtn");
 const status = el("status");
 
-const exportPngBtn = el("exportPngBtn");
-const exportSvgBtn = el("exportSvgBtn");
-const exportPackBtn = el("exportPackBtn");
-
-const kDef = el("kDef");
-const kLast = el("kLast");
-const kZ = el("kZ");
-
-const chartDiv = el("chart");
-const note = el("note");
-
-// Balance controls
 const demandYoY = el("demandYoY");
 const supplyYoY = el("supplyYoY");
 const invChg = el("invChg");
@@ -68,14 +47,26 @@ const es = el("es");
 const scenarioRange = el("scenarioRange");
 const scenarioSteps = el("scenarioSteps");
 
-// Tabs
+const exportPngBtn = el("exportPngBtn");
+const exportSvgBtn = el("exportSvgBtn");
+const exportPackBtn = el("exportPackBtn");
+
+const kDef = el("kDef");
+const kLast = el("kLast");
+const kZ = el("kZ");
+const kSrc = el("kSrc");
+
+const chartDiv = el("chart");
+const note = el("note");
+
 const tabs = document.querySelectorAll(".tab");
 
 const state = {
   loaded: false,
-  // map: rawName -> { rawName, cleanName, sector, unitGuess, points:[{date,value}] }
-  series: new Map(),
-  list: [],
+  source: null, // "World Bank" or "Upload"
+  // seriesMap: rawName -> {rawName, cleanName, sector, unitGuess, points:[{date,value}]}
+  seriesMap: new Map(),
+  seriesList: [],
   activeTab: "market",
   built: null
 };
@@ -90,34 +81,38 @@ tabs.forEach(t => {
 });
 
 // ---------- events ----------
-loadBtn.addEventListener("click", async () => {
-  await loadData();
+loadWbBtn.addEventListener("click", async () => {
+  await loadWorldBankCached();
 });
 
 reloadBtn.addEventListener("click", async () => {
-  resetRuntime();
-  await loadData(true);
+  hardResetRuntime();
+  await loadWorldBankCached(true);
 });
 
 fileInput.addEventListener("change", async () => {
-  const f = fileInput.files && fileInput.files[0];
+  const f = fileInput.files?.[0];
   if (!f) return;
-  resetRuntime();
-  loadStatus.textContent = "Reading uploaded file…";
+
+  hardResetRuntime();
+  loadStatus.textContent = "Reading uploaded Excel…";
+
   try {
     const buf = await f.arrayBuffer();
     await parseWorkbook(buf);
-    loadStatus.textContent = `Loaded from upload: ${state.list.length} series.`;
+    state.source = `Upload · ${f.name}`;
+    kSrc.textContent = "Upload";
+    loadStatus.textContent = `Loaded upload: ${state.seriesList.length} series.`;
     status.textContent = "Pick series and Build.";
     buildBtn.disabled = false;
     reloadBtn.disabled = false;
   } catch (e) {
     loadStatus.textContent = `Upload failed: ${e.message}`;
-    status.textContent = "Could not load dataset.";
+    status.textContent = "Could not load upload.";
   }
 });
 
-[sector, quickPick, searchBox].forEach(x => x.addEventListener("change", () => refreshDropdowns()));
+[sector, quickPick].forEach(x => x.addEventListener("change", () => refreshDropdowns()));
 searchBox.addEventListener("input", () => refreshDropdowns());
 
 [
@@ -126,12 +121,8 @@ searchBox.addEventListener("input", () => refreshDropdowns());
 ].forEach(ctrl => {
   ctrl.addEventListener("change", () => {
     if (!state.built) return;
-    try {
-      state.built = buildAll();
-      render();
-    } catch (e) {
-      status.textContent = `Update error: ${e.message}`;
-    }
+    try { state.built = buildAll(); render(); }
+    catch(e){ status.textContent = `Update error: ${e.message}`; }
   });
 });
 
@@ -149,51 +140,53 @@ buildBtn.addEventListener("click", () => {
 
 resetBtn.addEventListener("click", () => fullReset());
 
-exportPngBtn.addEventListener("click", async () => exportChart("png"));
-exportSvgBtn.addEventListener("click", async () => exportChart("svg"));
-exportPackBtn.addEventListener("click", async () => exportInvestorPack());
+exportPngBtn.addEventListener("click", () => exportChart("png"));
+exportSvgBtn.addEventListener("click", () => exportChart("svg"));
+exportPackBtn.addEventListener("click", () => exportInvestorPack());
 
 // boot
 renderEmpty();
 
-// ---------- load ----------
-async function loadData(isReload=false) {
+// ---------- world bank cached load ----------
+async function loadWorldBankCached(isReload=false) {
   try {
-    loadBtn.disabled = true;
+    loadWbBtn.disabled = true;
     reloadBtn.disabled = true;
     buildBtn.disabled = true;
 
-    loadStatus.textContent = isReload ? "Reloading… (same-origin)" : "Loading… (same-origin)";
+    loadStatus.textContent = isReload ? "Reloading World Bank cache…" : "Loading World Bank cache…";
     status.textContent = "Loading dataset…";
 
-    const res = await fetch(LOCAL_XLSX_PATH, { cache: "no-store" });
+    const res = await fetch(WB_CACHE_PATH, { cache: "no-store" });
     if (!res.ok) {
       throw new Error(
-        "Could not find /data/CMO-Historical-Data-Monthly.xlsx. Add it to your repo or upload the file below."
+        `Missing cache file at ${WB_CACHE_PATH}. Add the GitHub Action below (or upload Excel).`
       );
     }
 
     const buf = await res.arrayBuffer();
     await parseWorkbook(buf);
 
-    loadStatus.textContent = `Loaded: ${state.list.length} series (monthly).`;
+    state.source = "World Bank · Pink Sheet";
+    kSrc.textContent = "World Bank";
+    loadStatus.textContent = `Loaded World Bank: ${state.seriesList.length} series (monthly).`;
     status.textContent = "Pick series and Build.";
     buildBtn.disabled = false;
     reloadBtn.disabled = false;
 
   } catch (e) {
     loadStatus.textContent = e.message;
-    status.textContent = "Use manual upload as fallback.";
-    loadBtn.disabled = false;
+    status.textContent = "If needed, upload Excel below.";
+    loadWbBtn.disabled = false;
     reloadBtn.disabled = false;
   }
 }
 
-// ---------- parse workbook ----------
+// ---------- parse workbook (World Bank OR upload) ----------
 async function parseWorkbook(arrayBuffer) {
   const wb = XLSX.read(arrayBuffer, { type: "array" });
 
-  // Prefer a sheet that looks like monthly prices (this file’s layout can change)
+  // World Bank file has varying tab names over time; pick a “monthly/prices” tab if it exists.
   const sheetName =
     wb.SheetNames.find(n => /monthly/i.test(n)) ||
     wb.SheetNames.find(n => /prices/i.test(n)) ||
@@ -203,14 +196,14 @@ async function parseWorkbook(arrayBuffer) {
   const rows = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: null });
 
   const headerIdx = findHeaderRowIndex(rows);
-  if (headerIdx === -1) throw new Error("Could not locate header row (file layout changed).");
+  if (headerIdx === -1) throw new Error("Could not locate header row.");
 
   const headers = rows[headerIdx].map(h => (h == null ? "" : String(h).trim()));
   const dateCol = headers.findIndex(h => /^date$/i.test(h) || /^time$/i.test(h));
-  if (dateCol === -1) throw new Error("Could not find Date column.");
+  if (dateCol === -1) throw new Error("Could not find a Date column.");
 
+  // Build raw series arrays
   const rawSeries = new Map();
-
   for (let c = 0; c < headers.length; c++) {
     if (c === dateCol) continue;
     const rawName = headers[c];
@@ -220,7 +213,7 @@ async function parseWorkbook(arrayBuffer) {
 
   const dataRows = rows.slice(headerIdx + 1);
   for (const r of dataRows) {
-    const d = parseWbDate(r[dateCol]);
+    const d = parseDate(r[dateCol]);
     if (!d) continue;
 
     for (let c = 0; c < headers.length; c++) {
@@ -233,13 +226,14 @@ async function parseWorkbook(arrayBuffer) {
     }
   }
 
-  state.series.clear();
-  state.list = [];
+  // Clean & filter to “real” commodity series
+  state.seriesMap.clear();
+  state.seriesList = [];
 
   for (const [rawName, pts] of rawSeries.entries()) {
-    pts.sort((a,b) => a.date - b.date);
+    pts.sort((a,b)=>a.date-b.date);
 
-    // Keep only “real” series (enough history)
+    // Keep meaningful series only (avoid empty columns / short runs)
     if (pts.length < 48) continue;
 
     const cleanName = cleanSeriesName(rawName);
@@ -247,11 +241,11 @@ async function parseWorkbook(arrayBuffer) {
     const unit = guessUnit(rawName);
 
     const obj = { rawName, cleanName, sector: sec, unitGuess: unit, points: pts };
-    state.series.set(rawName, obj);
-    state.list.push(obj);
+    state.seriesMap.set(rawName, obj);
+    state.seriesList.push(obj);
   }
 
-  state.list.sort((a,b) => a.cleanName.localeCompare(b.cleanName));
+  state.seriesList.sort((a,b)=>a.cleanName.localeCompare(b.cleanName));
   state.loaded = true;
 
   // defaults
@@ -262,36 +256,38 @@ async function parseWorkbook(arrayBuffer) {
   refreshDropdowns(true);
 }
 
+// ---------- dropdowns ----------
 function refreshDropdowns(setDefaults=false) {
   if (!state.loaded) return;
 
-  // Quick pick forces Series A (and sometimes B)
+  // quick pick nudges the search so users actually see the series list update
   const qp = quickPick.value;
   if (qp) applyQuickPick(qp);
 
   const sec = sector.value;
   const q = (searchBox.value || "").trim().toLowerCase();
 
-  const filtered = state.list.filter(s => {
-    const okSector = sec === "ALL" ? true : s.sector === sec;
-    const okText = !q ? true : s.cleanName.toLowerCase().includes(q) || s.rawName.toLowerCase().includes(q);
+  const filtered = state.seriesList.filter(s => {
+    const okSector = (sec === "ALL") ? true : s.sector === sec;
+    const okText = !q ? true :
+      s.cleanName.toLowerCase().includes(q) || s.rawName.toLowerCase().includes(q);
     return okSector && okText;
   });
-
-  const cap = 600;
 
   seriesA.innerHTML = "";
   seriesB.innerHTML = "";
 
-  for (const s of filtered.slice(0, cap)) {
+  for (const s of filtered.slice(0, 700)) {
+    const label = `${s.cleanName}${s.unitGuess ? " · " + s.unitGuess : ""}`;
+
     const o1 = document.createElement("option");
     o1.value = s.rawName;
-    o1.textContent = `${s.cleanName}${s.unitGuess ? " · " + s.unitGuess : ""}`;
+    o1.textContent = label;
     seriesA.appendChild(o1);
 
     const o2 = document.createElement("option");
     o2.value = s.rawName;
-    o2.textContent = `${s.cleanName}${s.unitGuess ? " · " + s.unitGuess : ""}`;
+    o2.textContent = label;
     seriesB.appendChild(o2);
   }
 
@@ -304,90 +300,72 @@ function refreshDropdowns(setDefaults=false) {
 }
 
 function applyQuickPick(code) {
-  // sets Series A (and in a couple cases suggests a Series B pair)
   const map = {
     BRENT: /brent/i,
     WTI: /\bwti\b|west texas/i,
     GAS_EU: /natural gas.*europe|gas.*europe/i,
     COAL_AUS: /coal.*australia/i,
     COPPER: /copper/i,
-    ALUMINUM: /aluminum|aluminium/i,
     GOLD: /\bgold\b/i,
     WHEAT: /\bwheat\b/i,
     MAIZE: /maize|corn/i,
-    RICE: /\brice\b/i,
     SUGAR: /\bsugar\b/i
   };
-
   const rx = map[code];
   if (!rx) return;
-
   const picked = pickByRegex(rx);
   if (!picked) return;
-
-  // set search to the pick so it’s visible
-  searchBox.value = picked.cleanName.split("·")[0].trim();
+  searchBox.value = picked.cleanName;
 }
 
 function pickByRegex(rx) {
-  return state.list.find(s => rx.test(s.rawName) || rx.test(s.cleanName));
+  return state.seriesList.find(s => rx.test(s.rawName) || rx.test(s.cleanName));
 }
 
 // ---------- build ----------
 function buildAll() {
-  if (!state.loaded) throw new Error("Dataset not loaded.");
+  if (!state.loaded) throw new Error("No data loaded.");
 
   const AName = seriesA.value;
   const BName = seriesB.value;
   const mode = viewMode.value;
 
-  const zw = Math.max(12, Number(zWin.value || 60));
-  const rType = retType.value;
-  const sm = smooth.value;
-
-  const A = state.series.get(AName)?.points || [];
-  const B = state.series.get(BName)?.points || [];
+  const A = state.seriesMap.get(AName)?.points || [];
+  const B = state.seriesMap.get(BName)?.points || [];
 
   if (!A.length) throw new Error("Series A has no data.");
   if (mode !== "single" && !B.length) throw new Error("Series B has no data.");
 
+  const zw = Math.max(12, Number(zWin.value || 60));
+  const rType = retType.value;
+  const sm = smooth.value;
+
   const aligned = (mode === "single")
     ? A.map(x => ({ date: x.date, a: x.value, b: null }))
-    : alignTwoSeries(A, B);
+    : alignTwo(A, B);
 
   let y = [];
-  if (mode === "single") {
-    y = aligned.map(r => ({ date: r.date, y: r.a }));
-  } else if (mode === "spread") {
-    y = aligned.map(r => ({ date: r.date, y: r.a - r.b }));
-  } else {
-    y = aligned
-      .map(r => ({ date: r.date, y: (r.b === 0 ? null : r.a / r.b) }))
-      .filter(x => x.y != null);
-  }
+  if (mode === "single") y = aligned.map(r => ({ date: r.date, y: r.a }));
+  if (mode === "spread") y = aligned.map(r => ({ date: r.date, y: r.a - r.b }));
+  if (mode === "ratio")  y = aligned.map(r => ({ date: r.date, y: r.b === 0 ? null : r.a / r.b })).filter(p => p.y != null);
 
   if (sm !== "none") {
     const win = sm === "ma3" ? 3 : sm === "ma6" ? 6 : 12;
     y = movingAverage(y, win);
   }
 
-  if (y.length < zw + 10) throw new Error("Not enough history for chosen z-window.");
+  if (y.length < zw + 10) throw new Error("Not enough history for z-window.");
 
   const z = rollingZ(y.map(p => p.y), zw);
   const ret = returns(y.map(p => p.y), rType);
 
-  const series = y.map((p, i) => ({
-    date: p.date,
-    y: p.y,
-    z: z[i],
-    ret: ret[i]
-  }));
+  const series = y.map((p,i)=>({ date:p.date, y:p.y, z:z[i], ret:ret[i] }));
 
-  const season = seasonalityMonthly(series);
+  const season = seasonality(series);
   const balance = balanceEngine();
 
-  const ALabel = labelFor(AName);
-  const BLabel = labelFor(BName);
+  const ALabel = state.seriesMap.get(AName)?.cleanName || AName;
+  const BLabel = state.seriesMap.get(BName)?.cleanName || BName;
 
   const definition =
     mode === "single" ? `${ALabel} · level`
@@ -397,17 +375,19 @@ function buildAll() {
   const last = [...series].reverse().find(x => x.y != null);
   const lastZ = [...series].reverse().find(x => x.z != null);
 
-  kDef.textContent = `${definition} · z(${zw}) · monthly`;
+  kDef.textContent = `${definition} · z(${zw})`;
   kLast.textContent = last ? fmt(last.y) : "—";
   kZ.textContent = lastZ ? fmt(lastZ.z) : "—";
 
   return {
     meta: {
-      A: AName, B: BName,
-      ALabel, BLabel,
-      mode, zw, rType, sm,
       definition,
-      builtAt: new Date().toISOString()
+      source: state.source,
+      mode, zw, rType, sm,
+      seriesA: ALabel,
+      seriesB: BLabel,
+      builtAt: new Date().toISOString(),
+      worldBankSourceUrl: WB_SOURCE_URL
     },
     series,
     season,
@@ -415,192 +395,188 @@ function buildAll() {
   };
 }
 
-function labelFor(rawName) {
-  const s = state.series.get(rawName);
-  if (!s) return rawName;
-  return s.cleanName;
-}
-
-// ---------- rendering ----------
+// ---------- render ----------
 function render() {
-  if (!state.built) {
-    renderEmpty();
-    return;
-  }
+  if (!state.built) return renderEmpty();
 
   note.style.display = "none";
 
   if (state.activeTab === "market") return renderMarket();
-  if (state.activeTab === "season") return renderSeasonality();
-  if (state.activeTab === "sd") return renderBalance();
+  if (state.activeTab === "season") return renderSeason();
+  if (state.activeTab === "balance") return renderBalance();
   if (state.activeTab === "stress") return renderStress();
 }
 
 function renderEmpty() {
-  Plotly.newPlot(chartDiv, [], baseLayout("Load the dataset to begin"), {
-    displayModeBar: false, responsive: true
-  });
-
+  Plotly.newPlot(chartDiv, [], baseLayout("Load data to begin"), { displayModeBar:false, responsive:true });
   note.style.display = "block";
   note.innerHTML = `
-    <div style="font-family:Times New Roman,Times,serif;font-weight:650;font-size:16px;margin-bottom:6px">
+    <div style="font-family:'Times New Roman',Times,serif;font-weight:700;font-size:16px;margin-bottom:6px">
       What this is
     </div>
     <div class="muted">
-      A commodity workbench for investors. It’s designed to pressure-test a view:
-      level and z-score, spreads and ratios, seasonality, and a simple balance engine that turns assumptions into ranges.
-      Export charts with Cordoba branding so they’re ready for a note or a client deck.
+      This is a client-ready commodity workbench. Load World Bank Pink Sheet data, or upload an Excel file.
+      Then build levels, spreads, and scenario ranges with exportable Cordoba-stamped charts.
     </div>
   `;
 }
 
 function renderMarket() {
   const s = state.built.series;
-  const x = s.map(d => d.date);
-  const y = s.map(d => d.y);
-  const z = s.map(d => d.z);
+  const x = s.map(d=>d.date);
+  const y = s.map(d=>d.y);
+  const z = s.map(d=>d.z);
 
   const traces = [
-    { x, y, type: "scatter", mode: "lines", name: "Level / Spread / Ratio", line: { width: 2 } },
-    { x, y: z, type: "scatter", mode: "lines", name: "Z-score", yaxis: "y2", line: { width: 2, dash: "dot" } }
+    { x, y, type:"scatter", mode:"lines", name:"Level / Spread / Ratio", line:{ width:2 } },
+    { x, y:z, type:"scatter", mode:"lines", name:"Z-score", yaxis:"y2", line:{ width:2, dash:"dot" } }
   ];
 
-  const layout = baseLayout(`${state.built.meta.definition}`);
+  const layout = baseLayout(state.built.meta.definition);
   layout.yaxis.title = "Value";
-  layout.yaxis2 = { title: "Z-score", overlaying: "y", side: "right", gridcolor: "rgba(0,0,0,0)", zeroline: false };
-  layout.shapes = [
-    { type: "line", xref: "paper", x0: 0, x1: 1, yref: "y2", y0: 2, y1: 2, line: { width: 1, color: "rgba(154,105,15,0.35)" } },
-    { type: "line", xref: "paper", x0: 0, x1: 1, yref: "y2", y0: -2, y1: -2, line: { width: 1, color: "rgba(154,105,15,0.35)" } }
-  ];
+  layout.yaxis2 = { title:"Z-score", overlaying:"y", side:"right", gridcolor:"rgba(0,0,0,0)", zeroline:false };
 
-  Plotly.newPlot(chartDiv, traces, layout, { displayModeBar: false, responsive: true });
+  Plotly.newPlot(chartDiv, traces, layout, { displayModeBar:false, responsive:true });
 
   note.style.display = "block";
   note.innerHTML = `
-    <div style="font-family:Times New Roman,Times,serif;font-weight:650;font-size:16px;margin-bottom:6px">
-      How to read this
+    <div style="font-family:'Times New Roman',Times,serif;font-weight:700;font-size:16px;margin-bottom:6px">
+      Investor framing
     </div>
     <div class="muted">
-      This is the “where are we” panel. Z-score is there to keep the conversation honest.
-      If the trade needs a big catalyst, the chart should look stretched. If it doesn’t, the thesis is usually missing something.
+      This panel answers “where are we?”. Z-score keeps the call honest. If you need a big catalyst,
+      you normally want the chart to look stretched. If it’s not stretched, the thesis needs more work.
     </div>
   `;
 }
 
-function renderSeasonality() {
-  const m = state.built.season.avg;
-  const n = state.built.season.n;
+function renderSeason() {
   const labels = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  const avg = state.built.season.avg;
+  const n = state.built.season.n;
 
-  const traces = [{ x: labels, y: m, type: "bar", name: "Avg monthly return" }];
-
+  const traces = [{ x:labels, y:avg, type:"bar", name:"Avg monthly return" }];
   const layout = baseLayout("Seasonality · average monthly returns");
   layout.yaxis.title = "Average return";
   layout.annotations = [
-    ...brandStamp(state.built.meta),
+    ...layout.annotations,
     {
-      xref: "paper", yref: "paper", x: 0.01, y: 1.09,
-      text: `<span style="color:${CORDOBA.muted};font-size:12px">Obs per month: ${n.join(", ")}</span>`,
-      showarrow: false, align: "left"
+      xref:"paper", yref:"paper", x:0.01, y:1.09,
+      text:`<span style="color:${CORDOBA.muted};font-size:12px">Obs per month: ${n.join(", ")}</span>`,
+      showarrow:false, align:"left"
     }
   ];
 
-  Plotly.newPlot(chartDiv, traces, layout, { displayModeBar: false, responsive: true });
+  Plotly.newPlot(chartDiv, traces, layout, { displayModeBar:false, responsive:true });
 
   note.style.display = "block";
   note.innerHTML = `
-    <div style="font-family:Times New Roman,Times,serif;font-weight:650;font-size:16px;margin-bottom:6px">
-      What this is for
+    <div style="font-family:'Times New Roman',Times,serif;font-weight:700;font-size:16px;margin-bottom:6px">
+      Why this exists
     </div>
     <div class="muted">
-      It’s not “seasonality makes money”. It’s a quick lie detector.
-      If your narrative depends on a seasonal swing, you should see it here. If you don’t, trade smaller or widen the range.
+      It’s a quick lie detector. If your narrative depends on a seasonal swing, it should show up here.
+      If it doesn’t, either widen your range or reduce size.
     </div>
   `;
 }
 
 function renderBalance() {
   const b = state.built.balance;
-
-  const traces = [
-    {
-      x: b.scenarios.map(p => p.balanceShock),
-      y: b.scenarios.map(p => p.impliedMove),
-      type: "scatter",
-      mode: "lines+markers",
-      name: "Implied price move"
-    }
-  ];
+  const traces = [{
+    x: b.scenarios.map(p=>p.balanceShock),
+    y: b.scenarios.map(p=>p.impliedMove),
+    type:"scatter",
+    mode:"lines+markers",
+    name:"Implied price move"
+  }];
 
   const layout = baseLayout("Balance · assumptions → implied price move");
   layout.xaxis.title = "Net balance shock (% of demand, + tighter)";
   layout.yaxis.title = "Implied price move (%)";
 
-  Plotly.newPlot(chartDiv, traces, layout, { displayModeBar: false, responsive: true });
+  Plotly.newPlot(chartDiv, traces, layout, { displayModeBar:false, responsive:true });
 
   note.style.display = "block";
   note.innerHTML = `
-    <div style="font-family:Times New Roman,Times,serif;font-weight:650;font-size:16px;margin-bottom:6px">
-      Investor use case
+    <div style="font-family:'Times New Roman',Times,serif;font-weight:700;font-size:16px;margin-bottom:6px">
+      What clients pay for
     </div>
     <div class="muted">
-      This is the part clients actually pay for. It turns “supply is tight” into a number, then into a range.
-      You can export the chart with the assumptions attached, so the thesis is auditable.
-      <br/><br/>
-      Mechanics: net balance shock is demand growth minus supply growth minus inventory build.
-      Positive means tighter. The implied move solves the price adjustment needed to clear, given elasticities.
+      This turns “tight” or “loose” into numbers. You write down supply, demand, inventory assumptions,
+      then you get an implied range. Export it so the view is auditable.
     </div>
   `;
 }
 
 function renderStress() {
   const g = state.built.balance.stressGrid;
-
   const traces = [{
     x: g.demandShocks,
     y: g.supplyShocks,
     z: g.impliedMoves,
-    type: "surface",
-    name: "Implied move"
+    type:"surface",
+    name:"Implied move"
   }];
 
   const layout = baseLayout("Stress · demand shock vs supply shock");
   layout.scene = {
-    xaxis: { title: "Demand shock (%)" },
-    yaxis: { title: "Supply shock (%)" },
-    zaxis: { title: "Implied price move (%)" }
+    xaxis:{ title:"Demand shock (%)" },
+    yaxis:{ title:"Supply shock (%)" },
+    zaxis:{ title:"Implied price move (%)" }
   };
-  layout.margin = { l: 20, r: 20, t: 60, b: 20 };
+  layout.margin = { l:20, r:20, t:60, b:20 };
 
-  Plotly.newPlot(chartDiv, traces, layout, { displayModeBar: false, responsive: true });
+  Plotly.newPlot(chartDiv, traces, layout, { displayModeBar:false, responsive:true });
+}
 
-  note.style.display = "block";
-  note.innerHTML = `
-    <div style="font-family:Times New Roman,Times,serif;font-weight:650;font-size:16px;margin-bottom:6px">
-      What this adds
-    </div>
-    <div class="muted">
-      This is how you communicate risk like a real desk.
-      Instead of a single target, you show a surface of outcomes driven by the two forces that matter: demand and supply.
-      It’s simple, but it’s defensible.
-    </div>
-  `;
+// ---------- exports ----------
+function enableExports(){
+  exportPngBtn.disabled = false;
+  exportSvgBtn.disabled = false;
+  exportPackBtn.disabled = false;
+}
+
+async function exportChart(fmt){
+  if (!state.built) return;
+  const base = `cordoba_commodity_${state.activeTab}_${new Date().toISOString().slice(0,10)}`;
+  const url = await Plotly.toImage(chartDiv, { format:fmt, height:900, width:1600, scale:2 });
+  download(url, `${base}.${fmt}`);
+}
+
+function exportInvestorPack(){
+  if (!state.built) return;
+
+  const pack = {
+    cordoba: { product:"Commodity Lab", exportedAt:new Date().toISOString(), brand:{primary:CORDOBA.gold} },
+    selection: state.built.meta,
+    balanceInputs: state.built.balance.inputs,
+    kpis: { definition:kDef.textContent, latestLevel:kLast.textContent, latestZ:kZ.textContent, source:kSrc.textContent }
+  };
+
+  const blob = new Blob([JSON.stringify(pack, null, 2)], { type:"application/json" });
+  const url = URL.createObjectURL(blob);
+  download(url, `cordoba_investor_pack_${new Date().toISOString().slice(0,10)}.json`);
+  URL.revokeObjectURL(url);
+}
+
+function download(dataUrl, filename){
+  const a=document.createElement("a");
+  a.href=dataUrl; a.download=filename;
+  document.body.appendChild(a); a.click(); a.remove();
 }
 
 // ---------- balance engine ----------
-function balanceEngine() {
+function balanceEngine(){
   const dYoY = Number(demandYoY.value || 0);
   const sYoY = Number(supplyYoY.value || 0);
   const inv = Number(invChg.value || 0);
 
-  const edAbs = Math.max(0.01, Number(ed.value || 0.2)); // |εd|
-  const esVal = Math.max(0.01, Number(es.value || 0.1)); // εs
+  const edAbs = Math.max(0.01, Number(ed.value || 0.2));
+  const esVal = Math.max(0.01, Number(es.value || 0.1));
 
   let baseBalance = (dYoY - sYoY - inv);
-
-  if (String(balanceOverride.value || "").trim() !== "") {
-    baseBalance = Number(balanceOverride.value);
-  }
+  if (String(balanceOverride.value||"").trim() !== "") baseBalance = Number(balanceOverride.value);
 
   const denom = edAbs + esVal;
 
@@ -610,175 +586,101 @@ function balanceEngine() {
   const end = baseBalance + rng;
 
   const scenarios = [];
-  for (let i = 0; i < steps; i++) {
-    const bal = start + (i * (end - start)) / (steps - 1);
-    scenarios.push({ balanceShock: bal, impliedMove: bal / denom });
+  for (let i=0;i<steps;i++){
+    const bal = start + (i*(end-start))/(steps-1);
+    scenarios.push({ balanceShock: bal, impliedMove: bal/denom });
   }
 
-  const ds = linspace(-3, 3, 13);
-  const ss = linspace(-3, 3, 13);
+  const ds = linspace(-3,3,13);
+  const ss = linspace(-3,3,13);
   const impliedMoves = [];
-
-  for (let yi = 0; yi < ss.length; yi++) {
-    const row = [];
-    for (let xi = 0; xi < ds.length; xi++) {
+  for (let yi=0;yi<ss.length;yi++){
+    const row=[];
+    for (let xi=0;xi<ds.length;xi++){
       const bal = (ds[xi] - ss[yi] - inv);
-      row.push(bal / denom);
+      row.push(bal/denom);
     }
     impliedMoves.push(row);
   }
 
   return {
-    inputs: {
-      demandYoY: dYoY,
-      supplyYoY: sYoY,
-      inventorySwing: inv,
-      demandElasticityAbs: edAbs,
-      supplyElasticity: esVal,
-      baseBalanceShock: baseBalance
-    },
+    inputs: { demandYoY:dYoY, supplyYoY:sYoY, inventorySwing:inv, demandElasticityAbs:edAbs, supplyElasticity:esVal, baseBalanceShock:baseBalance },
     scenarios,
-    stressGrid: { demandShocks: ds, supplyShocks: ss, impliedMoves }
+    stressGrid: { demandShocks:ds, supplyShocks:ss, impliedMoves }
   };
 }
 
-// ---------- export ----------
-function enableExports() {
-  exportPngBtn.disabled = false;
-  exportSvgBtn.disabled = false;
-  exportPackBtn.disabled = false;
+// ---------- utilities ----------
+function hardResetRuntime(){
+  state.loaded=false;
+  state.seriesMap.clear();
+  state.seriesList=[];
+  state.built=null;
+
+  buildBtn.disabled=true;
+  exportPngBtn.disabled=true;
+  exportSvgBtn.disabled=true;
+  exportPackBtn.disabled=true;
+
+  kDef.textContent="—";
+  kLast.textContent="—";
+  kZ.textContent="—";
+  kSrc.textContent="—";
 }
 
-async function exportChart(fmt) {
-  if (!state.built) return;
-  const baseName = `cordoba_commodity_${state.activeTab}_${new Date().toISOString().slice(0,10)}`;
-  const url = await Plotly.toImage(chartDiv, { format: fmt, height: 900, width: 1600, scale: 2 });
-  downloadDataUrl(url, `${baseName}.${fmt}`);
-}
+function fullReset(){
+  state.built=null;
+  viewMode.value="single";
+  zWin.value=60;
+  retType.value="log";
+  smooth.value="none";
 
-async function exportInvestorPack() {
-  if (!state.built) return;
+  demandYoY.value=2.0;
+  supplyYoY.value=1.5;
+  invChg.value=0.0;
+  balanceOverride.value="";
+  ed.value=0.20;
+  es.value=0.10;
+  scenarioRange.value=2.0;
+  scenarioSteps.value=9;
 
-  // pack includes:
-  // - metadata
-  // - balance assumptions
-  // - last values
-  // - series name mapping
-  const pack = {
-    cordoba: {
-      product: "Commodity Lab",
-      exportedAt: new Date().toISOString(),
-      brand: { primary: CORDOBA.gold }
-    },
-    selection: state.built.meta,
-    balance: state.built.balance.inputs,
-    kpis: {
-      definition: kDef.textContent,
-      latestLevel: kLast.textContent,
-      latestZ: kZ.textContent
-    }
-  };
+  exportPngBtn.disabled=true;
+  exportSvgBtn.disabled=true;
+  exportPackBtn.disabled=true;
 
-  const blob = new Blob([JSON.stringify(pack, null, 2)], { type: "application/json" });
-  const url = URL.createObjectURL(blob);
-  downloadDataUrl(url, `cordoba_investor_pack_${new Date().toISOString().slice(0,10)}.json`);
-  URL.revokeObjectURL(url);
-}
+  kDef.textContent="—";
+  kLast.textContent="—";
+  kZ.textContent="—";
 
-function downloadDataUrl(dataUrl, filename) {
-  const a = document.createElement("a");
-  a.href = dataUrl;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-}
-
-// ---------- helpers ----------
-function resetRuntime() {
-  state.loaded = false;
-  state.series.clear();
-  state.list = [];
-  state.built = null;
-
-  buildBtn.disabled = true;
-  exportPngBtn.disabled = true;
-  exportSvgBtn.disabled = true;
-  exportPackBtn.disabled = true;
-
-  kDef.textContent = "—";
-  kLast.textContent = "—";
-  kZ.textContent = "—";
-}
-
-function fullReset() {
-  state.built = null;
-
-  viewMode.value = "single";
-  smooth.value = "none";
-  zWin.value = 60;
-  retType.value = "log";
-
-  demandYoY.value = 2.0;
-  supplyYoY.value = 1.5;
-  invChg.value = 0.0;
-  balanceOverride.value = "";
-  ed.value = 0.20;
-  es.value = 0.10;
-  scenarioRange.value = 2.0;
-  scenarioSteps.value = 9;
-
-  exportPngBtn.disabled = true;
-  exportSvgBtn.disabled = true;
-  exportPackBtn.disabled = true;
-
-  kDef.textContent = "—";
-  kLast.textContent = "—";
-  kZ.textContent = "—";
-
-  status.textContent = state.loaded ? "Pick series and Build." : "Load the dataset to begin.";
+  status.textContent = state.loaded ? "Pick series and Build." : "Load data to begin.";
   renderEmpty();
 }
 
-function baseLayout(title) {
+function baseLayout(title){
   return {
-    title: {
-      text: `<span style="font-family:Times New Roman,Times,serif;font-weight:650">${escapeHtml(title)}</span>`,
-      x: 0.02
-    },
-    paper_bgcolor: "#ffffff",
-    plot_bgcolor: "#ffffff",
-    margin: { l: 56, r: 18, t: 60, b: 52 },
-    xaxis: { gridcolor: "rgba(0,0,0,0.06)", zeroline: false },
-    yaxis: { gridcolor: "rgba(0,0,0,0.06)", zeroline: false },
-    font: { family: "Helvetica, Arial, sans-serif", color: CORDOBA.ink },
+    title:{ text:`<span style="font-family:'Times New Roman',Times,serif;font-weight:700">${escapeHtml(title)}</span>`, x:0.02 },
+    paper_bgcolor:"#ffffff",
+    plot_bgcolor:"#ffffff",
+    margin:{ l:56, r:18, t:60, b:52 },
+    xaxis:{ gridcolor:"rgba(0,0,0,0.06)", zeroline:false },
+    yaxis:{ gridcolor:"rgba(0,0,0,0.06)", zeroline:false },
+    font:{ family:"Helvetica, Arial, sans-serif", color:CORDOBA.ink },
     annotations: brandStamp(state.built?.meta)
   };
 }
 
-function brandStamp(meta) {
-  const now = new Date();
-  const stampLeft = `${now.toISOString().slice(0,10)} · Cordoba Capital`;
-  const stampRight = meta ? `${meta.definition} · World Bank monthly` : "World Bank monthly";
-
+function brandStamp(meta){
+  const d=new Date().toISOString().slice(0,10);
+  const left = `${d} · Cordoba Capital`;
+  const right = meta?.source ? `${meta.source} · monthly` : "monthly";
   return [
-    {
-      xref: "paper", yref: "paper",
-      x: 0.01, y: -0.18,
-      text: `<span style="color:${CORDOBA.muted};font-size:11px">${escapeHtml(stampLeft)}</span>`,
-      showarrow: false, align: "left"
-    },
-    {
-      xref: "paper", yref: "paper",
-      x: 0.99, y: -0.18,
-      text: `<span style="color:${CORDOBA.muted};font-size:11px">${escapeHtml(stampRight)}</span>`,
-      showarrow: false, align: "right"
-    }
+    { xref:"paper", yref:"paper", x:0.01, y:-0.18, text:`<span style="color:${CORDOBA.muted};font-size:11px">${escapeHtml(left)}</span>`, showarrow:false, align:"left" },
+    { xref:"paper", yref:"paper", x:0.99, y:-0.18, text:`<span style="color:${CORDOBA.muted};font-size:11px">${escapeHtml(right)}</span>`, showarrow:false, align:"right" }
   ];
 }
 
-function escapeHtml(s) {
-  return String(s || "")
+function escapeHtml(s){
+  return String(s||"")
     .replaceAll("&","&amp;")
     .replaceAll("<","&lt;")
     .replaceAll(">","&gt;")
@@ -786,196 +688,146 @@ function escapeHtml(s) {
     .replaceAll("'","&#039;");
 }
 
-function alignTwoSeries(A, B) {
-  const key = (d) => new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1))
-    .toISOString().slice(0, 10);
+function findHeaderRowIndex(rows){
+  for (let i=0;i<Math.min(rows.length,200);i++){
+    const r=rows[i];
+    if (!Array.isArray(r) || r.length<5) continue;
+    const first = r[0]==null ? "" : String(r[0]).trim();
+    if (/date/i.test(first) && r.filter(x=>x!=null && String(x).trim().length>0).length>=5) return i;
+  }
+  for (let i=0;i<Math.min(rows.length,260);i++){
+    const r=rows[i];
+    if (!Array.isArray(r)) continue;
+    if (r.some(x=>x!=null && /^date$/i.test(String(x).trim()))) return i;
+  }
+  return -1;
+}
 
-  const mapA = new Map(A.map(x => [key(x.date), x.value]));
-  const mapB = new Map(B.map(x => [key(x.date), x.value]));
+function parseDate(x){
+  if (x==null) return null;
+  if (x instanceof Date && !Number.isNaN(+x)) return x;
 
-  const out = [];
-  for (const [k, va] of mapA.entries()) {
-    if (!mapB.has(k)) continue;
-    const vb = mapB.get(k);
+  // Excel serial
+  if (typeof x==="number" && x>20000 && x<60000){
+    const epoch = new Date(Date.UTC(1899,11,30));
+    return new Date(epoch.getTime() + x*86400000);
+  }
+
+  const s=String(x).trim();
+  if (!s) return null;
+
+  if (/^\d{4}-\d{2}(-\d{2})?$/.test(s)){
+    const d = new Date(s.length===7 ? `${s}-01` : s);
+    return Number.isNaN(+d) ? null : d;
+  }
+
+  const d=new Date(s);
+  return Number.isNaN(+d) ? null : d;
+}
+
+function alignTwo(A,B){
+  const key = (d)=> new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1)).toISOString().slice(0,10);
+  const mA=new Map(A.map(p=>[key(p.date), p.value]));
+  const mB=new Map(B.map(p=>[key(p.date), p.value]));
+  const out=[];
+  for (const [k,va] of mA.entries()){
+    if (!mB.has(k)) continue;
+    const vb=mB.get(k);
     if (!Number.isFinite(va) || !Number.isFinite(vb)) continue;
-    out.push({ date: new Date(k), a: va, b: vb });
+    out.push({ date:new Date(k), a:va, b:vb });
   }
-  out.sort((x,y) => x.date - y.date);
+  out.sort((x,y)=>x.date-y.date);
   return out;
 }
 
-function movingAverage(series, win) {
-  const out = [];
-  let sum = 0;
-  const q = [];
-
-  for (let i = 0; i < series.length; i++) {
-    const v = series[i].y;
-    q.push(v);
-    sum += v;
-
-    if (q.length > win) sum -= q.shift();
-    if (q.length === win) out.push({ date: series[i].date, y: sum / win });
+function movingAverage(series, win){
+  const out=[]; let sum=0; const q=[];
+  for (let i=0;i<series.length;i++){
+    const v=series[i].y;
+    q.push(v); sum+=v;
+    if (q.length>win) sum-=q.shift();
+    if (q.length===win) out.push({ date:series[i].date, y:sum/win });
   }
   return out;
 }
 
-function rollingZ(vals, win) {
-  const z = new Array(vals.length).fill(null);
-  let sum = 0, sumsq = 0;
-  const q = [];
-
-  for (let i = 0; i < vals.length; i++) {
-    const v = vals[i];
-    q.push(v);
-    sum += v;
-    sumsq += v * v;
-
-    if (q.length > win) {
-      const old = q.shift();
-      sum -= old;
-      sumsq -= old * old;
+function rollingZ(vals, win){
+  const z=new Array(vals.length).fill(null);
+  let sum=0,sumsq=0; const q=[];
+  for (let i=0;i<vals.length;i++){
+    const v=vals[i];
+    q.push(v); sum+=v; sumsq+=v*v;
+    if (q.length>win){
+      const old=q.shift();
+      sum-=old; sumsq-=old*old;
     }
-
-    if (q.length === win) {
-      const mean = sum / win;
-      const varr = (sumsq / win) - mean * mean;
-      const sd = Math.sqrt(Math.max(varr, 1e-12));
-      z[i] = (v - mean) / sd;
+    if (q.length===win){
+      const mean=sum/win;
+      const varr=(sumsq/win) - mean*mean;
+      const sd=Math.sqrt(Math.max(varr, 1e-12));
+      z[i]=(v-mean)/sd;
     }
   }
   return z;
 }
 
-function returns(levels, type="log") {
-  const r = new Array(levels.length).fill(null);
-  for (let i = 1; i < levels.length; i++) {
-    const a = levels[i-1], b = levels[i];
-    if (a == null || b == null) { r[i] = null; continue; }
-    if (type === "log") r[i] = Math.log(b / a);
-    else r[i] = (b / a) - 1;
+function returns(levels, type="log"){
+  const r=new Array(levels.length).fill(null);
+  for (let i=1;i<levels.length;i++){
+    const a=levels[i-1], b=levels[i];
+    if (a==null || b==null) { r[i]=null; continue; }
+    r[i] = (type==="log") ? Math.log(b/a) : (b/a)-1;
   }
   return r;
 }
 
-function seasonalityMonthly(series) {
-  const buckets = Array.from({ length: 12 }, () => []);
-  for (const x of series) {
-    if (x.ret == null || !Number.isFinite(x.ret)) continue;
+function seasonality(series){
+  const buckets=Array.from({length:12},()=>[]);
+  for (const x of series){
+    if (x.ret==null || !Number.isFinite(x.ret)) continue;
     buckets[x.date.getUTCMonth()].push(x.ret);
   }
-  const avg = buckets.map(arr => arr.length ? mean(arr) : null);
-  const n = buckets.map(arr => arr.length);
-  return { avg, n };
+  return {
+    avg: buckets.map(a=>a.length? (a.reduce((s,v)=>s+v,0)/a.length) : null),
+    n: buckets.map(a=>a.length)
+  };
 }
 
-function mean(a) { return a.reduce((s,v) => s + v, 0) / a.length; }
-
-function fmt(x) {
-  if (x == null || !Number.isFinite(x)) return "—";
-  const ax = Math.abs(x);
-  const dp = ax >= 100 ? 1 : ax >= 10 ? 2 : 3;
+function fmt(x){
+  if (x==null || !Number.isFinite(x)) return "—";
+  const ax=Math.abs(x);
+  const dp=ax>=100?1:ax>=10?2:3;
   return x.toFixed(dp);
 }
 
-function linspace(a, b, n) {
-  const out = [];
-  for (let i = 0; i < n; i++) out.push(a + (i * (b - a)) / (n - 1));
+function linspace(a,b,n){
+  const out=[];
+  for (let i=0;i<n;i++) out.push(a + (i*(b-a))/(n-1));
   return out;
 }
 
-function findHeaderRowIndex(rows) {
-  for (let i = 0; i < Math.min(rows.length, 160); i++) {
-    const r = rows[i];
-    if (!Array.isArray(r) || r.length < 5) continue;
-    const first = r[0] == null ? "" : String(r[0]).trim();
-    if (/date/i.test(first) && r.filter(x => x != null && String(x).trim().length > 0).length >= 5) return i;
-  }
-  for (let i = 0; i < Math.min(rows.length, 240); i++) {
-    const r = rows[i];
-    if (!Array.isArray(r)) continue;
-    if (r.some(x => x != null && /^date$/i.test(String(x).trim()))) return i;
-  }
-  return -1;
+// ---------- naming / classification ----------
+function cleanSeriesName(raw){
+  return String(raw).trim().replace(/\s+/g," ");
 }
 
-function parseWbDate(x) {
-  if (x == null) return null;
-  if (x instanceof Date && !Number.isNaN(+x)) return x;
-
-  // Excel serial date
-  if (typeof x === "number" && x > 20000 && x < 60000) {
-    const epoch = new Date(Date.UTC(1899, 11, 30));
-    return new Date(epoch.getTime() + x * 86400000);
-  }
-
-  const s = String(x).trim();
-  if (!s) return null;
-
-  // YYYY-MM or YYYY-MM-DD
-  if (/^\d{4}-\d{2}(-\d{2})?$/.test(s)) {
-    const d = new Date(s.length === 7 ? `${s}-01` : s);
-    return Number.isNaN(+d) ? null : d;
-  }
-
-  const d = new Date(s);
-  return Number.isNaN(+d) ? null : d;
-}
-
-// ---------- cleaning / classification ----------
-function cleanSeriesName(raw) {
-  let s = String(raw).trim();
-
-  // Remove repeated “(US$)” clutter etc if present
-  s = s.replace(/\s+/g, " ");
-
-  // Small quality tweaks
-  s = s.replace(/\bU\.S\.\b/g, "US");
-  s = s.replace(/\bU\.K\.\b/g, "UK");
-
-  return s;
-}
-
-function classifySector(name) {
-  const s = String(name).toLowerCase();
-
-  // indexes
-  if (/\bindex\b|indices|non-energy|energy price index|metals and minerals index|agriculture index/.test(s)) {
-    return "INDEX";
-  }
-
-  // energy
-  if (/crude|brent|wti|dubai|oil|gasoline|diesel|fuel|natural gas|lng|coal|propane|naphtha/.test(s)) {
-    return "ENERGY";
-  }
-
-  // fertilisers
-  if (/urea|dap|phosphate|potash|fertili/.test(s)) {
-    return "FERTS";
-  }
-
-  // metals
-  if (/gold|silver|platinum|palladium|copper|aluminum|aluminium|zinc|nickel|lead|tin|iron ore|steel/.test(s)) {
-    return "METALS";
-  }
-
-  // agriculture
-  if (/wheat|maize|corn|rice|soy|beans|coffee|cocoa|tea|sugar|cotton|beef|pork|poultry|banana|orange|palmoil|palm oil/.test(s)) {
-    return "AGRI";
-  }
-
+function classifySector(name){
+  const s=String(name).toLowerCase();
+  if (/\bindex\b|indices|non-energy|energy price index|metals and minerals index|agriculture index/.test(s)) return "INDEX";
+  if (/crude|brent|wti|dubai|oil|gasoline|diesel|fuel|natural gas|lng|coal|propane|naphtha/.test(s)) return "ENERGY";
+  if (/urea|dap|phosphate|potash|fertili/.test(s)) return "FERTS";
+  if (/gold|silver|platinum|palladium|copper|aluminum|aluminium|zinc|nickel|lead|tin|iron ore|steel/.test(s)) return "METALS";
+  if (/wheat|maize|corn|rice|soy|beans|coffee|cocoa|tea|sugar|cotton|beef|pork|poultry|banana|orange|palm oil|palmoil/.test(s)) return "AGRI";
   return "ALL";
 }
 
-function guessUnit(name) {
-  const s = String(name).toLowerCase();
-  if (/\$\/bbl|\bbbl\b/.test(s) || /crude|brent|wti|oil/.test(s)) return "$/bbl";
-  if (/natural gas|lng/.test(s)) return "unit varies";
-  if (/coal|iron ore/.test(s)) return "$/mt";
+function guessUnit(name){
+  const s=String(name).toLowerCase();
+  if (/crude|brent|wti|oil/.test(s)) return "$/bbl";
   if (/gold|silver|platinum|palladium/.test(s)) return "$/oz";
   if (/copper|aluminum|aluminium|zinc|nickel|lead|tin/.test(s)) return "$/mt";
+  if (/coal|iron ore/.test(s)) return "$/mt";
   if (/wheat|maize|corn|rice|soy/.test(s)) return "$/mt";
-  if (/coffee|cocoa|tea|sugar|cotton/.test(s)) return "unit varies";
   if (/\bindex\b|indices|price index/.test(s)) return "index";
   return "";
 }
