@@ -1,14 +1,15 @@
-/* Cordoba Capital · Commodity Lab (Phase 1) — FRED + World Bank + CSV
-   Outputs:
-   - Spread (A - B) + rolling z-score
-   - Seasonality (avg monthly returns)
-   - Curve snapshot (CSV curve upload only, Phase 1)
-   - Tests: summary stats + ADF-lite screening
-   - Export PNG/SVG with Cordoba stamp
+/* Cordoba Capital · Commodity Lab — World Bank only
+   Data:
+   - World Bank "World Bank Commodities Price Data (The Pink Sheet)" historical monthly Excel:
+     CMO-Historical-Data-Monthly.xlsx :contentReference[oaicite:4]{index=4}
 
-   Sources:
-   - FRED API: fred/series/observations :contentReference[oaicite:7]{index=7}
-   - World Bank Pink Sheet Monthly historical Excel :contentReference[oaicite:8]{index=8}
+   Investor-grade workflow (Phase 1):
+   1) Market: level / spread / ratio + rolling z-score + returns
+   2) Seasonality: average monthly returns + sample counts
+   3) Supply–Demand: scenario engine (assumptions -> implied price move)
+   4) Stress: supply shock vs demand shock map (heat-style surface)
+
+   Note: This is not a forecast engine. It is an assumption-testing bench.
 */
 
 const CORDOBA = {
@@ -19,123 +20,117 @@ const CORDOBA = {
   border: "#E7DED4"
 };
 
+// Official file surfaced by World Bank Pink Sheet page / related downloads. :contentReference[oaicite:5]{index=5}
+const WORLD_BANK_PINK_SHEET_XLSX =
+  "https://thedocs.worldbank.org/en/doc/5d903e848db1d1b83e0ec8f744e55570-0350012021/related/CMO-Historical-Data-Monthly.xlsx";
+
 const el = (id) => document.getElementById(id);
 
-const state = {
-  activeTab: "spread",
+// UI elements
+const loadBtn = el("loadBtn");
+const reloadBtn = el("reloadBtn");
+const loadStatus = el("loadStatus");
 
-  // CSV mode
-  tsRaw: null,      // { cols: [], rows: [{date: Date, ...}] }
-  curveRaw: null,   // { maturities: [], rows: [{date: Date, ...}] }
+const searchBox = el("searchBox");
+const seriesA = el("seriesA");
+const seriesB = el("seriesB");
+const viewMode = el("viewMode");
+const zWin = el("zWin");
+const retType = el("retType");
+const smooth = el("smooth");
 
-  // Unified built data (whatever the source)
-  built: null,      // computed outputs
-
-  // World Bank cache
-  wb: {
-    loaded: false,
-    seriesMap: new Map(), // name -> [{date, value}]
-    names: []
-  }
-};
-
-// UI
-const dataSource = el("dataSource");
-const csvBlock = el("csvBlock");
-const fredBlock = el("fredBlock");
-const wbBlock = el("wbBlock");
-
-const tsFile = el("tsFile");
-const curveFile = el("curveFile");
 const buildBtn = el("buildBtn");
 const resetBtn = el("resetBtn");
-const exportPngBtn = el("exportPngBtn");
-const exportSvgBtn = el("exportSvgBtn");
 const status = el("status");
 
-const freq = el("freq");
-const zWin = el("zWin");
-const adfLag = el("adfLag");
-const retType = el("retType");
+const exportPngBtn = el("exportPngBtn");
+const exportSvgBtn = el("exportSvgBtn");
 
-const fredKey = el("fredKey");
-const fredA = el("fredA");
-const fredB = el("fredB");
-const fredStart = el("fredStart");
-const fredEnd = el("fredEnd");
-
-const wbA = el("wbA");
-const wbB = el("wbB");
-const wbSearch = el("wbSearch");
-
-const defn = el("defn");
-const latestSpread = el("latestSpread");
-const latestZ = el("latestZ");
+const kDef = el("kDef");
+const kLast = el("kLast");
+const kZ = el("kZ");
 
 const chartDiv = el("chart");
-const testsBlock = el("testsBlock");
-const curveHint = el("curveHint");
+const note = el("note");
+
+// Supply–Demand controls
+const demandYoY = el("demandYoY");
+const supplyYoY = el("supplyYoY");
+const invChg = el("invChg");
+const balanceOverride = el("balanceOverride");
+const ed = el("ed");
+const es = el("es");
+const scenarioRange = el("scenarioRange");
+const scenarioSteps = el("scenarioSteps");
 
 // Tabs
-document.querySelectorAll(".tab").forEach(t => {
+const tabs = document.querySelectorAll(".tab");
+
+const state = {
+  loaded: false,
+  // seriesMap: name -> [{date: Date, value: number}]
+  seriesMap: new Map(),
+  names: [],
+  activeTab: "market",
+  built: null
+};
+
+tabs.forEach(t => {
   t.addEventListener("click", () => {
-    document.querySelectorAll(".tab").forEach(x => x.classList.remove("active"));
+    tabs.forEach(x => x.classList.remove("active"));
     t.classList.add("active");
     state.activeTab = t.dataset.tab;
     render();
   });
 });
 
-// Source switch
-dataSource.addEventListener("change", async () => {
-  const mode = dataSource.value;
-  setMode(mode);
-  await ensureModeReady(mode);
-  updateBuildEnabled();
+// Events
+loadBtn.addEventListener("click", async () => {
+  await loadWorldBank();
 });
 
-// CSV uploads
-tsFile.addEventListener("change", async (e) => {
-  const f = e.target.files?.[0];
-  if (!f) return;
-  try {
-    state.tsRaw = await parseCSVFile(f);
-    status.textContent = `Loaded CSV with columns: ${state.tsRaw.cols.filter(c => c !== "date").join(", ")}`;
-    updateBuildEnabled();
-  } catch (err) {
-    status.textContent = `CSV error: ${err.message}`;
-    state.tsRaw = null;
-    updateBuildEnabled();
-  }
+reloadBtn.addEventListener("click", async () => {
+  state.loaded = false;
+  state.seriesMap.clear();
+  state.names = [];
+  state.built = null;
+  buildBtn.disabled = true;
+  exportPngBtn.disabled = true;
+  exportSvgBtn.disabled = true;
+  loadStatus.textContent = "Reloading…";
+  await loadWorldBank();
 });
 
-curveFile.addEventListener("change", async (e) => {
-  const f = e.target.files?.[0];
-  if (!f) return;
-  try {
-    state.curveRaw = await parseCurveCSVFile(f);
-    status.textContent = `Loaded curve CSV with maturities: ${state.curveRaw.maturities.join(", ")}`;
-  } catch (err) {
-    status.textContent = `Curve CSV error: ${err.message}`;
-    state.curveRaw = null;
-  }
+searchBox.addEventListener("input", () => {
+  if (!state.loaded) return;
+  populateSeriesDropdowns(searchBox.value);
 });
 
-wbSearch.addEventListener("input", () => {
-  if (!state.wb.loaded) return;
-  populateWorldBankDropdowns(wbSearch.value);
+[seriesA, seriesB, viewMode, zWin, retType, smooth,
+ demandYoY, supplyYoY, invChg, balanceOverride, ed, es, scenarioRange, scenarioSteps
+].forEach(ctrl => {
+  ctrl.addEventListener("change", () => {
+    if (!state.built) return;
+    // Rebuild quickly on param changes
+    try {
+      state.built = buildAll();
+      render();
+    } catch (e) {
+      status.textContent = `Update error: ${e.message}`;
+    }
+  });
 });
 
-buildBtn.addEventListener("click", async () => {
+buildBtn.addEventListener("click", () => {
   try {
     status.textContent = "Building…";
-    state.built = await buildAll();
+    state.built = buildAll();
     exportPngBtn.disabled = false;
     exportSvgBtn.disabled = false;
-    status.textContent = "Built successfully.";
+    status.textContent = "Built.";
     render();
-  } catch (err) {
-    status.textContent = `Build error: ${err.message}`;
+  } catch (e) {
+    status.textContent = `Build error: ${e.message}`;
   }
 });
 
@@ -144,517 +139,412 @@ resetBtn.addEventListener("click", () => resetAll());
 exportPngBtn.addEventListener("click", async () => exportChart("png"));
 exportSvgBtn.addEventListener("click", async () => exportChart("svg"));
 
-/* ---------------------------
-   Mode handling
---------------------------- */
-
-function setMode(mode) {
-  csvBlock.classList.toggle("hide", mode !== "csv");
-  fredBlock.classList.toggle("hide", mode !== "fred");
-  wbBlock.classList.toggle("hide", mode !== "wb");
-
-  // Clear built view on mode switch
-  state.built = null;
-  exportPngBtn.disabled = true;
-  exportSvgBtn.disabled = true;
-
-  defn.textContent = "—";
-  latestSpread.textContent = "—";
-  latestZ.textContent = "—";
-
-  Plotly.purge(chartDiv);
-  render();
-}
-
-async function ensureModeReady(mode) {
-  if (mode === "fred") {
-    populateFredDropdowns();
-    status.textContent = "Select two FRED series (A and B), then Build.";
-  }
-
-  if (mode === "wb") {
-    if (!state.wb.loaded) {
-      status.textContent = "Loading World Bank Pink Sheet dataset…";
-      await loadWorldBankPinkSheet();
-      populateWorldBankDropdowns("");
-      status.textContent = "Select two World Bank series (A and B), then Build.";
-    } else {
-      populateWorldBankDropdowns(wbSearch.value || "");
-      status.textContent = "Select two World Bank series (A and B), then Build.";
-    }
-  }
-
-  if (mode === "csv") {
-    status.textContent = "Upload a CSV to begin (and optional curve CSV).";
-  }
-}
-
-function updateBuildEnabled() {
-  const mode = dataSource.value;
-  if (mode === "csv") buildBtn.disabled = !state.tsRaw;
-  if (mode === "fred") buildBtn.disabled = !(fredA.value && fredB.value);
-  if (mode === "wb") buildBtn.disabled = !(state.wb.loaded && wbA.value && wbB.value);
-}
+// Boot
+renderEmpty();
 
 /* ---------------------------
-   FRED integration
+   Load World Bank dataset
 --------------------------- */
 
-const FRED_SERIES = [
-  { id: "DCOILBRENTEU", name: "Brent crude (Europe) — DCOILBRENTEU" },              // :contentReference[oaicite:9]{index=9}
-  { id: "DCOILWTICO", name: "WTI crude — DCOILWTICO" },
-  { id: "DHHNGSP", name: "Henry Hub natural gas — DHHNGSP" },                       // :contentReference[oaicite:10]{index=10}
-  { id: "GOLDAMGBD228NLBM", name: "Gold (LBMA AM) — GOLDAMGBD228NLBM" },
-  { id: "PCOPPUSDM", name: "Copper (global price) — PCOPPUSDM" },                   // :contentReference[oaicite:11]{index=11}
-  { id: "PALUMUSDM", name: "Aluminum (global price) — PALUMUSDM" },                 // :contentReference[oaicite:12]{index=12}
-  // You can add more FRED commodity IDs here as you like.
-];
+async function loadWorldBank() {
+  try {
+    loadBtn.disabled = true;
+    reloadBtn.disabled = true;
+    loadStatus.textContent = "Downloading World Bank Pink Sheet history…";
+    status.textContent = "Loading dataset…";
 
-function populateFredDropdowns() {
-  fredA.innerHTML = "";
-  fredB.innerHTML = "";
+    const res = await fetch(WORLD_BANK_PINK_SHEET_XLSX);
+    if (!res.ok) throw new Error("Download failed.");
 
-  for (const s of FRED_SERIES) {
-    const o1 = document.createElement("option");
-    o1.value = s.id;
-    o1.textContent = s.name;
-    fredA.appendChild(o1);
+    const buf = await res.arrayBuffer();
+    const wb = XLSX.read(buf, { type: "array" });
 
-    const o2 = document.createElement("option");
-    o2.value = s.id;
-    o2.textContent = s.name;
-    fredB.appendChild(o2);
-  }
+    // Choose a “Monthly Prices” style sheet if present, otherwise first.
+    let sheetName =
+      wb.SheetNames.find(n => /monthly/i.test(n)) ||
+      wb.SheetNames.find(n => /prices/i.test(n)) ||
+      wb.SheetNames[0];
 
-  // default: Brent vs WTI
-  fredA.value = "DCOILBRENTEU";
-  fredB.value = "DCOILWTICO";
+    const ws = wb.Sheets[sheetName];
+    const rows = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: null });
 
-  fredA.addEventListener("change", updateBuildEnabled);
-  fredB.addEventListener("change", updateBuildEnabled);
-}
+    const headerIdx = findHeaderRowIndex(rows);
+    if (headerIdx === -1) throw new Error("Could not locate header row (file layout changed).");
 
-async function fetchFredSeries(seriesId, apiKey, start, end) {
-  // Official endpoint supports file_type=json. :contentReference[oaicite:13]{index=13}
-  const params = new URLSearchParams();
-  params.set("series_id", seriesId);
-  params.set("file_type", "json");
+    const headers = rows[headerIdx].map(h => (h == null ? "" : String(h).trim()));
+    const dateCol = headers.findIndex(h => /^date$/i.test(h) || /^time$/i.test(h));
+    if (dateCol === -1) throw new Error("Could not find Date column.");
 
-  if (apiKey && apiKey.trim()) params.set("api_key", apiKey.trim());
-  if (start && start.trim()) params.set("observation_start", start.trim());
-  if (end && end.trim()) params.set("observation_end", end.trim());
-
-  const url = `https://api.stlouisfed.org/fred/series/observations?${params.toString()}`;
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`FRED fetch failed (${seriesId})`);
-
-  const json = await res.json();
-  if (!json || !Array.isArray(json.observations)) {
-    throw new Error(`FRED response unexpected (${seriesId})`);
-  }
-
-  return json.observations
-    .filter(o => o.value !== "." && o.value != null)
-    .map(o => ({ date: new Date(o.date), value: Number(o.value) }))
-    .filter(x => Number.isFinite(x.value))
-    .sort((a,b) => a.date - b.date);
-}
-
-/* ---------------------------
-   World Bank Pink Sheet integration (Monthly Excel)
---------------------------- */
-
-const WORLD_BANK_PINK_SHEET_XLSX =
-  "https://thedocs.worldbank.org/en/doc/5d903e848db1d1b83e0ec8f744e55570-0350012021/related/CMO-Historical-Data-Monthly.xlsx"; // :contentReference[oaicite:14]{index=14}
-
-async function loadWorldBankPinkSheet() {
-  // Downloads the official historical monthly file and parses it in the browser. :contentReference[oaicite:15]{index=15}
-  const res = await fetch(WORLD_BANK_PINK_SHEET_XLSX);
-  if (!res.ok) throw new Error("World Bank Pink Sheet download failed.");
-
-  const buf = await res.arrayBuffer();
-  const wb = XLSX.read(buf, { type: "array" });
-
-  // Try to choose a sensible sheet (many versions have "Monthly Prices" or similar)
-  let sheetName = wb.SheetNames.find(n => /monthly/i.test(n)) || wb.SheetNames[0];
-  const ws = wb.Sheets[sheetName];
-
-  // Convert to rows (array-of-arrays)
-  const rows = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: null });
-
-  // Find header row by scanning for a "Date" first column and many text columns
-  const headerIdx = findHeaderRowIndex(rows);
-  if (headerIdx === -1) {
-    throw new Error("Could not locate a header row in the World Bank file (format may have changed).");
-  }
-
-  const headers = rows[headerIdx].map(h => (h == null ? "" : String(h).trim()));
-  const dataRows = rows.slice(headerIdx + 1);
-
-  // Identify date column (first header that looks like "Date" or "Time")
-  const dateCol = headers.findIndex(h => /^date$/i.test(h) || /^time$/i.test(h));
-  if (dateCol === -1) throw new Error("World Bank file: could not find a Date column.");
-
-  // Build series for every numeric column
-  const seriesMap = new Map();
-
-  for (let c = 0; c < headers.length; c++) {
-    if (c === dateCol) continue;
-    const name = headers[c];
-    if (!name || name.length < 2) continue;
-    seriesMap.set(name, []);
-  }
-
-  for (const r of dataRows) {
-    const rawDate = r[dateCol];
-    const d = parseWbDate(rawDate);
-    if (!d) continue;
-
+    const seriesMap = new Map();
     for (let c = 0; c < headers.length; c++) {
       if (c === dateCol) continue;
       const name = headers[c];
-      if (!seriesMap.has(name)) continue;
-
-      const v = r[c];
-      const num = (v == null || v === "") ? null : Number(v);
-      if (Number.isFinite(num)) seriesMap.get(name).push({ date: d, value: num });
+      if (!name || name.length < 2) continue;
+      seriesMap.set(name, []);
     }
-  }
 
-  // Cleanup: sort and drop series with too few points
-  const names = [];
-  for (const [name, arr] of seriesMap.entries()) {
-    arr.sort((a,b) => a.date - b.date);
-    if (arr.length >= 24) { // keep series with 2y+ monthly points
-      names.push(name);
-    } else {
-      seriesMap.delete(name);
+    const dataRows = rows.slice(headerIdx + 1);
+    for (const r of dataRows) {
+      const d = parseWbDate(r[dateCol]);
+      if (!d) continue;
+
+      for (let c = 0; c < headers.length; c++) {
+        if (c === dateCol) continue;
+        const name = headers[c];
+        if (!seriesMap.has(name)) continue;
+        const v = r[c];
+        const num = (v == null || v === "") ? null : Number(v);
+        if (Number.isFinite(num)) seriesMap.get(name).push({ date: d, value: num });
+      }
     }
-  }
 
-  names.sort((a,b) => a.localeCompare(b));
-
-  state.wb.seriesMap = seriesMap;
-  state.wb.names = names;
-  state.wb.loaded = true;
-}
-
-function findHeaderRowIndex(rows) {
-  // Heuristic: row where first cell is "Date" (or contains "Date") and it has many columns.
-  for (let i = 0; i < Math.min(rows.length, 80); i++) {
-    const r = rows[i];
-    if (!Array.isArray(r) || r.length < 5) continue;
-    const first = r[0] == null ? "" : String(r[0]).trim();
-    if (/date/i.test(first) && r.filter(x => x != null && String(x).trim().length > 0).length >= 5) {
-      return i;
+    // Clean + keep “real” series
+    const names = [];
+    for (const [name, arr] of seriesMap.entries()) {
+      arr.sort((a,b) => a.date - b.date);
+      if (arr.length >= 36) names.push(name); // 3y+ monthly points
+      else seriesMap.delete(name);
     }
+    names.sort((a,b) => a.localeCompare(b));
+
+    state.seriesMap = seriesMap;
+    state.names = names;
+    state.loaded = true;
+
+    populateSeriesDropdowns("");
+
+    loadStatus.textContent = `Loaded: ${names.length} series (monthly).`;
+    status.textContent = "Pick series and Build.";
+    buildBtn.disabled = false;
+    reloadBtn.disabled = false;
+
+  } catch (e) {
+    loadStatus.textContent = `Load failed: ${e.message}`;
+    status.textContent = "Could not load dataset.";
+    buildBtn.disabled = true;
+    loadBtn.disabled = false;
+    reloadBtn.disabled = false;
   }
-
-  // fallback: search anywhere for a cell equal to "Date" and treat that row as header
-  for (let i = 0; i < Math.min(rows.length, 120); i++) {
-    const r = rows[i];
-    if (!Array.isArray(r)) continue;
-    if (r.some(x => x != null && /^date$/i.test(String(x).trim()))) return i;
-  }
-
-  return -1;
-}
-
-function parseWbDate(x) {
-  // World Bank sheet often uses Excel dates or YYYY-MM formats or Date objects
-  if (x == null) return null;
-
-  // If it's already a Date
-  if (x instanceof Date && !Number.isNaN(+x)) return x;
-
-  // Excel serial date
-  if (typeof x === "number" && x > 20000 && x < 60000) {
-    // Excel date to JS (Excel epoch 1899-12-30)
-    const epoch = new Date(Date.UTC(1899, 11, 30));
-    const d = new Date(epoch.getTime() + x * 86400000);
-    return d;
-  }
-
-  // String date
-  const s = String(x).trim();
-  if (!s) return null;
-
-  // Accept YYYY-MM or YYYY-MM-DD
-  if (/^\d{4}-\d{2}(-\d{2})?$/.test(s)) {
-    const d = new Date(s.length === 7 ? `${s}-01` : s);
-    return Number.isNaN(+d) ? null : d;
-  }
-
-  // Try Date parse
-  const d = new Date(s);
-  return Number.isNaN(+d) ? null : d;
-}
-
-function populateWorldBankDropdowns(filterText) {
-  const q = (filterText || "").trim().toLowerCase();
-  const names = q
-    ? state.wb.names.filter(n => n.toLowerCase().includes(q))
-    : state.wb.names;
-
-  wbA.innerHTML = "";
-  wbB.innerHTML = "";
-
-  for (const name of names.slice(0, 500)) { // UI cap
-    const o1 = document.createElement("option");
-    o1.value = name;
-    o1.textContent = name;
-    wbA.appendChild(o1);
-
-    const o2 = document.createElement("option");
-    o2.value = name;
-    o2.textContent = name;
-    wbB.appendChild(o2);
-  }
-
-  // Try to default to “Crude oil, UK Brent” if it exists, else first two.
-  const guessBrent = names.find(n => /brent/i.test(n)) || names[0];
-  const guessWti = names.find(n => /west texas|wti/i.test(n)) || names[1] || names[0];
-
-  if (guessBrent) wbA.value = guessBrent;
-  if (guessWti) wbB.value = guessWti;
-
-  wbA.addEventListener("change", updateBuildEnabled);
-  wbB.addEventListener("change", updateBuildEnabled);
-  updateBuildEnabled();
 }
 
 /* ---------------------------
-   CSV parsing
+   Build outputs
 --------------------------- */
 
-async function parseCSVFile(file) {
-  const text = await file.text();
-  const lines = text.split(/\r?\n/).filter(Boolean);
-  if (lines.length < 2) throw new Error("CSV appears empty.");
+function buildAll() {
+  if (!state.loaded) throw new Error("Dataset not loaded.");
 
-  const headers = splitCSVLine(lines[0]).map(h => h.trim());
-  if (!headers[0] || headers[0].toLowerCase() !== "date") {
-    throw new Error("First column must be 'date'.");
-  }
+  const AName = seriesA.value;
+  const BName = seriesB.value;
+  const mode = viewMode.value;
 
-  const rows = [];
-  for (let i = 1; i < lines.length; i++) {
-    const parts = splitCSVLine(lines[i]);
-    if (parts.length === 0) continue;
-    const d = new Date(parts[0]);
-    if (Number.isNaN(+d)) continue;
-
-    const row = { date: d };
-    for (let j = 1; j < headers.length; j++) {
-      const v = parts[j] === undefined ? "" : String(parts[j]).trim();
-      const num = v === "" ? null : Number(v);
-      row[headers[j]] = Number.isFinite(num) ? num : null;
-    }
-    rows.push(row);
-  }
-
-  rows.sort((a, b) => a.date - b.date);
-  return { cols: headers.map(h => (h === "Date" ? "date" : h)), rows };
-}
-
-async function parseCurveCSVFile(file) {
-  const raw = await parseCSVFile(file);
-  const maturities = raw.cols.filter(c => c !== "date");
-  return { maturities, rows: raw.rows };
-}
-
-function splitCSVLine(line) {
-  const out = [];
-  let cur = "";
-  let inQ = false;
-
-  for (let i = 0; i < line.length; i++) {
-    const ch = line[i];
-    if (ch === '"') {
-      if (inQ && line[i+1] === '"') { cur += '"'; i++; }
-      else inQ = !inQ;
-    } else if (ch === "," && !inQ) {
-      out.push(cur);
-      cur = "";
-    } else {
-      cur += ch;
-    }
-  }
-  out.push(cur);
-  return out;
-}
-
-/* ---------------------------
-   Build (unified)
---------------------------- */
-
-async function buildAll() {
-  const mode = dataSource.value;
-  const f = freq.value;
-  const zw = Math.max(20, Number(zWin.value || 252));
-  const lag = Math.max(0, Number(adfLag.value || 1));
+  const zw = Math.max(12, Number(zWin.value || 60));
   const rType = retType.value;
+  const sm = smooth.value;
 
-  // Pull A/B data as {date, value} arrays
-  let AName, BName, seriesAData, seriesBData;
-  let curveForThisBuild = null;
+  const A = state.seriesMap.get(AName) || [];
+  const B = state.seriesMap.get(BName) || [];
 
-  if (mode === "csv") {
-    if (!state.tsRaw) throw new Error("Upload a CSV first.");
-    const cols = state.tsRaw.cols.filter(c => c !== "date");
-    if (cols.length < 1) throw new Error("CSV needs at least one numeric column.");
+  if (!A.length) throw new Error("Series A has no data.");
+  if ((mode !== "single") && !B.length) throw new Error("Series B has no data.");
 
-    // Use first two columns by default if present
-    AName = cols[0];
-    BName = cols[1] || cols[0];
+  const aligned = (mode === "single") ? A.map(x => ({ date: x.date, a: x.value, b: null })) : alignTwoSeries(A, B);
 
-    seriesAData = state.tsRaw.rows.map(r => ({ date: r.date, value: r[AName] })).filter(x => x.value != null);
-    seriesBData = state.tsRaw.rows.map(r => ({ date: r.date, value: r[BName] })).filter(x => x.value != null);
-
-    // Curve (optional, only in CSV mode in Phase 1)
-    curveForThisBuild = state.curveRaw;
-
-    // If you want dropdowns for CSV columns later, we can add them—kept simple for now.
+  // Build series Y
+  let y = [];
+  if (mode === "single") {
+    y = aligned.map(r => ({ date: r.date, y: r.a }));
+  } else if (mode === "spread") {
+    y = aligned.map(r => ({ date: r.date, y: r.a - r.b }));
+  } else {
+    y = aligned.map(r => ({ date: r.date, y: (r.b === 0 ? null : r.a / r.b) })).filter(x => x.y != null);
   }
 
-  if (mode === "fred") {
-    AName = fredA.value;
-    BName = fredB.value;
-
-    const key = fredKey.value || "";
-    const s = fredStart.value || "";
-    const e = fredEnd.value || "";
-
-    const a = await fetchFredSeries(AName, key, s, e);
-    const b = await fetchFredSeries(BName, key, s, e);
-
-    seriesAData = a;
-    seriesBData = b;
+  // Optional smoothing
+  if (sm !== "none") {
+    const win = sm === "ma3" ? 3 : sm === "ma6" ? 6 : 12;
+    y = movingAverage(y, win);
   }
 
-  if (mode === "wb") {
-    if (!state.wb.loaded) throw new Error("World Bank dataset not loaded.");
-    AName = wbA.value;
-    BName = wbB.value;
+  if (y.length < zw + 10) throw new Error("Not enough data points for chosen z-window.");
 
-    seriesAData = state.wb.seriesMap.get(AName) || [];
-    seriesBData = state.wb.seriesMap.get(BName) || [];
-  }
+  const z = rollingZ(y.map(p => p.y), zw);
+  const ret = returns(y.map(p => p.y), rType);
 
-  // Align + resample + spread + z + returns
-  const aligned = alignTwoSeries(seriesAData, seriesBData);
-  const res = resample(aligned, f);
-
-  const spread = res.map(r => ({
-    date: r.date,
-    A: r.A,
-    B: r.B,
-    spread: (r.A == null || r.B == null) ? null : (r.A - r.B)
-  })).filter(r => r.spread != null);
-
-  if (spread.length < 40) throw new Error("Not enough overlapping data points after alignment.");
-
-  const zs = rollingZ(spread.map(x => x.spread), zw);
-  const spreadZ = spread.map((x, i) => ({ ...x, z: zs[i] }));
-
-  const rets = returns(spreadZ.map(x => x.spread), rType);
-  const retSeries = spreadZ.map((x, i) => ({
-    date: x.date,
-    spread: x.spread,
-    z: x.z,
-    ret: rets[i]
+  const series = y.map((p, i) => ({
+    date: p.date,
+    y: p.y,
+    z: z[i],
+    ret: ret[i]
   }));
 
-  const season = seasonalityMonthly(retSeries);
+  const season = seasonalityMonthly(series);
 
-  const spreadLevels = retSeries.map(x => x.spread).filter(v => v != null);
-  const spreadReturns = retSeries.map(x => x.ret).filter(v => v != null);
-  const tests = {
-    summary: summaryStats(spreadReturns),
-    adfSpread: adfLite(spreadLevels, lag),
-    adfReturns: adfLite(spreadReturns, lag)
+  // Supply–Demand scenario model (investor workflow)
+  const sd = supplyDemandEngine();
+
+  const definition =
+    mode === "single" ? `${AName} · level`
+    : mode === "spread" ? `${AName} − ${BName} · spread`
+    : `${AName} / ${BName} · ratio`;
+
+  // KPIs
+  const last = [...series].reverse().find(x => x.y != null);
+  const lastZ = [...series].reverse().find(x => x.z != null);
+
+  kDef.textContent = `${definition} · z(${zw}) · monthly`;
+  kLast.textContent = last ? fmt(last.y) : "—";
+  kZ.textContent = lastZ ? fmt(lastZ.z) : "—";
+
+  return { AName, BName, mode, zw, rType, sm, definition, series, season, sd };
+}
+
+/* ---------------------------
+   Rendering
+--------------------------- */
+
+function render() {
+  if (!state.built) {
+    renderEmpty();
+    return;
+  }
+
+  note.style.display = "none";
+
+  if (state.activeTab === "market") return renderMarket();
+  if (state.activeTab === "season") return renderSeasonality();
+  if (state.activeTab === "sd") return renderSupplyDemand();
+  if (state.activeTab === "stress") return renderStress();
+}
+
+function renderEmpty() {
+  Plotly.newPlot(chartDiv, [], baseLayout("Load World Bank dataset to begin"), {
+    displayModeBar: false, responsive: true
+  });
+  note.style.display = "block";
+  note.innerHTML = `
+    <div style="font-family:Times New Roman,Times,serif;font-weight:600;font-size:16px;margin-bottom:6px">
+      What this is
+    </div>
+    <div class="muted">
+      A World Bank-only commodity workbench for investors. Start by loading the Pink Sheet historical monthly data, then build a level, spread, or ratio.
+      After that, use Supply–Demand to turn assumptions into an implied price move.
+    </div>
+  `;
+}
+
+function renderMarket() {
+  const s = state.built.series;
+  const x = s.map(d => d.date);
+  const y = s.map(d => d.y);
+  const z = s.map(d => d.z);
+
+  const traces = [
+    { x, y, type: "scatter", mode: "lines", name: "Level / Spread / Ratio", line: { width: 2 } },
+    { x, y: z, type: "scatter", mode: "lines", name: "Z-score", yaxis: "y2", line: { width: 2, dash: "dot" } }
+  ];
+
+  const layout = baseLayout(`${state.built.definition} · World Bank monthly`);
+  layout.yaxis.title = "Value";
+  layout.yaxis2 = { title: "Z-score", overlaying: "y", side: "right", gridcolor: "rgba(0,0,0,0)", zeroline: false };
+  layout.shapes = [
+    { type: "line", xref: "paper", x0: 0, x1: 1, yref: "y2", y0: 2, y1: 2, line: { width: 1, color: "rgba(154,105,15,0.35)" } },
+    { type: "line", xref: "paper", x0: 0, x1: 1, yref: "y2", y0: -2, y1: -2, line: { width: 1, color: "rgba(154,105,15,0.35)" } }
+  ];
+
+  Plotly.newPlot(chartDiv, traces, layout, { displayModeBar: false, responsive: true });
+}
+
+function renderSeasonality() {
+  const m = state.built.season.avg;
+  const n = state.built.season.n;
+  const labels = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+
+  const traces = [{ x: labels, y: m, type: "bar", name: "Avg monthly return" }];
+
+  const layout = baseLayout("Seasonality · average monthly returns");
+  layout.yaxis.title = "Average return";
+  layout.annotations = [
+    ...brandStamp(),
+    {
+      xref: "paper", yref: "paper", x: 0.01, y: 1.09,
+      text: `<span style="color:${CORDOBA.muted};font-size:12px">Obs per month: ${n.join(", ")}</span>`,
+      showarrow: false, align: "left"
+    }
+  ];
+
+  Plotly.newPlot(chartDiv, traces, layout, { displayModeBar: false, responsive: true });
+}
+
+function renderSupplyDemand() {
+  const sd = state.built.sd;
+
+  const traces = [
+    { x: sd.scenarios.map(p => p.balanceShock), y: sd.scenarios.map(p => p.impliedPriceMove),
+      type: "scatter", mode: "lines+markers", name: "Implied price move" }
+  ];
+
+  const layout = baseLayout("Supply–Demand · assumptions → implied price move");
+  layout.xaxis.title = "Net balance shock (% of demand, + tighter)";
+  layout.yaxis.title = "Implied price move (%)";
+
+  Plotly.newPlot(chartDiv, traces, layout, { displayModeBar: false, responsive: true });
+
+  note.style.display = "block";
+  note.innerHTML = `
+    <div style="font-family:Times New Roman,Times,serif;font-weight:600;font-size:16px;margin-bottom:6px">
+      How investors use this
+    </div>
+    <div class="muted">
+      This is where the tool becomes sellable. You can show your work.
+      You write down assumptions (demand growth, supply growth, inventory draw/build), then you see what price move is implied under elasticities.
+      It stops “feel” trades and forces a discipline around balance.
+      <br/><br/>
+      <span class="mono">Balance shock</span> is your tightness input. Positive means tighter (demand > supply, or inventories drawing).
+      The model then solves for the price move that would reconcile the balance, given elasticities.
+    </div>
+    <div class="muted" style="margin-top:10px">
+      This is a scenario engine, not a forecast engine.
+    </div>
+  `;
+}
+
+function renderStress() {
+  const sd = state.built.sd;
+  const grid = sd.stressGrid;
+
+  const traces = [{
+    x: grid.demandShocks,
+    y: grid.supplyShocks,
+    z: grid.impliedMoves,
+    type: "surface",
+    name: "Implied move"
+  }];
+
+  const layout = baseLayout("Stress map · demand shock vs supply shock");
+  layout.scene = {
+    xaxis: { title: "Demand shock (%)" },
+    yaxis: { title: "Supply shock (%)" },
+    zaxis: { title: "Implied price move (%)" }
   };
+  layout.margin = { l: 20, r: 20, t: 60, b: 20 };
 
-  const definition = `${AName} minus ${BName} · ${mode.toUpperCase()} · ${f === "D" ? "Daily" : f === "W" ? "Weekly" : "Monthly"} · z(${zw})`;
+  Plotly.newPlot(chartDiv, traces, layout, { displayModeBar: false, responsive: true });
 
-  // KPI updates
-  defn.textContent = definition;
-  const last = [...retSeries].reverse().find(x => x.spread != null);
-  const lastZ = [...retSeries].reverse().find(x => x.z != null);
-  latestSpread.textContent = last ? fmt(last.spread) : "—";
-  latestZ.textContent = lastZ ? fmt(lastZ.z) : "—";
+  note.style.display = "block";
+  note.innerHTML = `
+    <div style="font-family:Times New Roman,Times,serif;font-weight:600;font-size:16px;margin-bottom:6px">
+      Why this matters
+    </div>
+    <div class="muted">
+      Investors pay for tools that turn headlines into ranges.
+      This stress map lets you translate “China demand is weaker” or “OPEC cuts are real” into an implied distribution of outcomes.
+      It is simple enough to explain, but structured enough to defend.
+    </div>
+  `;
+}
+
+/* ---------------------------
+   Supply–Demand Engine (simple partial-equilibrium)
+--------------------------- */
+
+function supplyDemandEngine() {
+  const dYoY = Number(demandYoY.value || 0);
+  const sYoY = Number(supplyYoY.value || 0);
+  const inv = Number(invChg.value || 0);
+
+  const edAbs = Math.max(0.01, Number(ed.value || 0.2)); // |εd|
+  const esVal = Math.max(0.01, Number(es.value || 0.1)); // εs
+
+  // Net balance shock (% of demand): positive = tighter
+  // Default: demand growth - supply growth - inventory build (inventory draw is negative inv -> tighter)
+  let baseBalance = (dYoY - sYoY - inv);
+
+  // Optional override
+  if (String(balanceOverride.value || "").trim() !== "") {
+    baseBalance = Number(balanceOverride.value);
+  }
+
+  // Solve implied % price move using elasticities:
+  // Approx: balanceShock ≈ (|ed| + es) * ΔP
+  // so ΔP ≈ balanceShock / (|ed| + es)
+  const denom = edAbs + esVal;
+  const impliedBase = baseBalance / denom;
+
+  // Scenario line around base
+  const rng = Math.max(0.5, Number(scenarioRange.value || 2));
+  const steps = Math.max(3, Math.floor(Number(scenarioSteps.value || 9)));
+  const start = baseBalance - rng;
+  const end = baseBalance + rng;
+
+  const scenarios = [];
+  for (let i = 0; i < steps; i++) {
+    const b = start + (i * (end - start)) / (steps - 1);
+    scenarios.push({ balanceShock: b, impliedPriceMove: b / denom });
+  }
+
+  // Stress grid (demand vs supply shocks)
+  // demandShock and supplyShock are in %, net balance = demandShock - supplyShock - inv
+  const ds = linspace(-3, 3, 13);
+  const ss = linspace(-3, 3, 13);
+  const impliedMoves = [];
+
+  for (let yi = 0; yi < ss.length; yi++) {
+    const row = [];
+    for (let xi = 0; xi < ds.length; xi++) {
+      const bal = (ds[xi] - ss[yi] - inv);
+      row.push(bal / denom);
+    }
+    impliedMoves.push(row);
+  }
 
   return {
-    mode, AName, BName, f, zw, lag, rType,
-    definition,
-    series: retSeries,
-    season,
-    tests,
-    curve: curveForThisBuild
+    inputs: { dYoY, sYoY, inv, edAbs, esVal, baseBalance, impliedBase },
+    scenarios,
+    stressGrid: { demandShocks: ds, supplyShocks: ss, impliedMoves }
   };
 }
 
-function alignTwoSeries(a, b) {
-  // Inner join on exact date string (YYYY-MM-DD) after normalising to UTC date.
-  const key = (d) => new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()))
-    .toISOString().slice(0,10);
+/* ---------------------------
+   Utilities
+--------------------------- */
 
-  const mapA = new Map(a.map(x => [key(x.date), x.value]));
-  const mapB = new Map(b.map(x => [key(x.date), x.value]));
+function alignTwoSeries(A, B) {
+  const key = (d) => new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()))
+    .toISOString().slice(0, 10);
+
+  const mapA = new Map(A.map(x => [key(x.date), x.value]));
+  const mapB = new Map(B.map(x => [key(x.date), x.value]));
 
   const out = [];
   for (const [k, va] of mapA.entries()) {
     if (!mapB.has(k)) continue;
     const vb = mapB.get(k);
-    const d = new Date(k);
-    if (Number.isFinite(va) && Number.isFinite(vb)) out.push({ date: d, A: va, B: vb });
+    if (!Number.isFinite(va) || !Number.isFinite(vb)) continue;
+    out.push({ date: new Date(k), a: va, b: vb });
   }
-
   out.sort((x,y) => x.date - y.date);
   return out;
 }
 
-/* ---------------------------
-   Resampling
---------------------------- */
-
-function resample(data, f) {
-  if (f === "D") return data;
-
-  const buckets = new Map();
-  for (const r of data) {
-    const d = r.date;
-    let k;
-    if (f === "W") k = isoWeekKey(d).key;
-    else k = `${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,"0")}`;
-
-    if (!buckets.has(k)) buckets.set(k, []);
-    buckets.get(k).push(r);
-  }
-
+function movingAverage(series, win) {
   const out = [];
-  for (const arr of buckets.values()) {
-    arr.sort((a,b) => a.date - b.date);
-    out.push(arr[arr.length - 1]); // last obs in period
-  }
+  let sum = 0;
+  const q = [];
 
-  out.sort((a,b) => a.date - b.date);
+  for (let i = 0; i < series.length; i++) {
+    const v = series[i].y;
+    q.push(v);
+    sum += v;
+
+    if (q.length > win) sum -= q.shift();
+
+    if (q.length === win) {
+      out.push({ date: series[i].date, y: sum / win });
+    }
+  }
   return out;
 }
-
-function isoWeekKey(date) {
-  const d = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
-  const day = d.getUTCDay() || 7;
-  d.setUTCDate(d.getUTCDate() + 4 - day);
-  const yearStart = new Date(Date.UTC(d.getUTCFullYear(),0,1));
-  const weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
-  const yr = d.getUTCFullYear();
-  return { key: `${yr}-W${String(weekNo).padStart(2,"0")}` };
-}
-
-/* ---------------------------
-   Math helpers
---------------------------- */
 
 function rollingZ(vals, win) {
   const z = new Array(vals.length).fill(null);
@@ -665,17 +555,17 @@ function rollingZ(vals, win) {
     const v = vals[i];
     q.push(v);
     sum += v;
-    sumsq += v*v;
+    sumsq += v * v;
 
     if (q.length > win) {
       const old = q.shift();
       sum -= old;
-      sumsq -= old*old;
+      sumsq -= old * old;
     }
 
     if (q.length === win) {
       const mean = sum / win;
-      const varr = (sumsq / win) - mean*mean;
+      const varr = (sumsq / win) - mean * mean;
       const sd = Math.sqrt(Math.max(varr, 1e-12));
       z[i] = (v - mean) / sd;
     }
@@ -694,60 +584,18 @@ function returns(levels, type="log") {
   return r;
 }
 
-function seasonalityMonthly(retSeries) {
+function seasonalityMonthly(series) {
   const buckets = Array.from({ length: 12 }, () => []);
-  for (const x of retSeries) {
-    if (x.ret == null) continue;
-    const m = x.date.getUTCMonth();
-    buckets[m].push(x.ret);
+  for (const x of series) {
+    if (x.ret == null || !Number.isFinite(x.ret)) continue;
+    buckets[x.date.getUTCMonth()].push(x.ret);
   }
   const avg = buckets.map(arr => arr.length ? mean(arr) : null);
   const n = buckets.map(arr => arr.length);
   return { avg, n };
 }
 
-function summaryStats(arr) {
-  const clean = arr.filter(v => v != null && Number.isFinite(v));
-  if (clean.length < 5) return { n: clean.length };
-
-  const m = mean(clean);
-  const sd = stdev(clean);
-  const sk = skew(clean, m, sd);
-  const ku = kurt(clean, m, sd);
-  const minv = Math.min(...clean);
-  const maxv = Math.max(...clean);
-
-  return {
-    n: clean.length,
-    mean: m,
-    stdev: sd,
-    annVol: sd * Math.sqrt(252),
-    skew: sk,
-    kurt: ku,
-    min: minv,
-    max: maxv
-  };
-}
-
-function mean(a) { let s = 0; for (const v of a) s += v; return s / a.length; }
-function stdev(a) {
-  const m = mean(a);
-  let s2 = 0;
-  for (const v of a) s2 += (v - m) * (v - m);
-  return Math.sqrt(s2 / (a.length - 1));
-}
-function skew(a, m, sd) {
-  if (!sd || sd === 0) return 0;
-  let s3 = 0;
-  for (const v of a) s3 += Math.pow((v - m) / sd, 3);
-  return s3 / a.length;
-}
-function kurt(a, m, sd) {
-  if (!sd || sd === 0) return 0;
-  let s4 = 0;
-  for (const v of a) s4 += Math.pow((v - m) / sd, 4);
-  return s4 / a.length;
-}
+function mean(a) { return a.reduce((s,v) => s + v, 0) / a.length; }
 
 function fmt(x) {
   if (x == null || !Number.isFinite(x)) return "—";
@@ -756,160 +604,55 @@ function fmt(x) {
   return x.toFixed(dp);
 }
 
-/* ---------------------------
-   ADF-lite + OLS
---------------------------- */
-
-function adfLite(series, p=1) {
-  const y = series.filter(v => v != null && Number.isFinite(v));
-  const n = y.length;
-  if (n < 40) return { ok: false, reason: "Not enough data (need ~40+ points)." };
-
-  const dy = [];
-  for (let i = 1; i < n; i++) dy.push(y[i] - y[i-1]);
-
-  const X = [];
-  const Y = [];
-
-  for (let t = p + 1; t < n; t++) {
-    const row = [1, y[t-1]];
-    for (let i = 1; i <= p; i++) row.push(dy[t - i - 1]);
-    X.push(row);
-    Y.push(dy[t-1]);
-  }
-
-  const ols = OLS(X, Y);
-  if (!ols.ok) return { ok: false, reason: ols.reason };
-
-  const b = ols.beta[1];
-  const tstat = ols.t[1];
-  const crit5 = -2.86;
-
-  return {
-    ok: true,
-    nObs: Y.length,
-    lag: p,
-    b,
-    tstat,
-    crit5,
-    rejectUnitRootAt5: (tstat < crit5),
-    note: "ADF-lite uses a rough 5% critical value (intercept only). Treat as a screening check."
-  };
-}
-
-function OLS(X, Y) {
-  const n = X.length;
-  const k = X[0].length;
-  if (n <= k + 5) return { ok: false, reason: "Not enough observations for regression." };
-
-  const Xt = transpose(X);
-  const XtX = matMul(Xt, X);
-  const XtY = matVecMul(Xt, Y);
-
-  const inv = matInv(XtX);
-  if (!inv) return { ok: false, reason: "Matrix inversion failed (collinearity?)." };
-
-  const beta = matVecMul(inv, XtY);
-
-  const yhat = X.map(r => dot(r, beta));
-  const resid = Y.map((y, i) => y - yhat[i]);
-
-  const dof = n - k;
-  const s2 = resid.reduce((a,b) => a + b*b, 0) / dof;
-
-  const varB = inv.map(row => row.map(v => v * s2));
-  const se = [];
-  for (let i = 0; i < k; i++) se.push(Math.sqrt(Math.max(varB[i][i], 1e-12)));
-  const t = beta.map((b,i) => b / se[i]);
-
-  return { ok: true, beta, se, t };
-}
-
-function transpose(A) {
-  const r = A.length, c = A[0].length;
-  const out = Array.from({ length: c }, () => Array(r).fill(0));
-  for (let i = 0; i < r; i++) for (let j = 0; j < c; j++) out[j][i] = A[i][j];
+function linspace(a, b, n) {
+  const out = [];
+  for (let i = 0; i < n; i++) out.push(a + (i * (b - a)) / (n - 1));
   return out;
 }
-function matMul(A, B) {
-  const r = A.length, c = B[0].length, mid = B.length;
-  const out = Array.from({ length: r }, () => Array(c).fill(0));
-  for (let i = 0; i < r; i++) {
-    for (let k = 0; k < mid; k++) {
-      for (let j = 0; j < c; j++) out[i][j] += A[i][k] * B[k][j];
-    }
-  }
-  return out;
-}
-function matVecMul(A, v) {
-  const r = A.length, c = A[0].length;
-  const out = Array(r).fill(0);
-  for (let i = 0; i < r; i++) {
-    let s = 0;
-    for (let j = 0; j < c; j++) s += A[i][j] * v[j];
-    out[i] = s;
-  }
-  return out;
-}
-function matInv(M) {
-  const n = M.length;
-  const A = M.map(row => row.slice());
-  const I = Array.from({ length: n }, (_, i) =>
-    Array.from({ length: n }, (_, j) => (i === j ? 1 : 0))
-  );
-
-  for (let i = 0; i < n; i++) {
-    let pivot = A[i][i];
-    let pivotRow = i;
-    for (let r = i + 1; r < n; r++) {
-      if (Math.abs(A[r][i]) > Math.abs(pivot)) {
-        pivot = A[r][i];
-        pivotRow = r;
-      }
-    }
-    if (Math.abs(pivot) < 1e-12) return null;
-
-    if (pivotRow !== i) {
-      [A[i], A[pivotRow]] = [A[pivotRow], A[i]];
-      [I[i], I[pivotRow]] = [I[pivotRow], I[i]];
-    }
-
-    const div = A[i][i];
-    for (let j = 0; j < n; j++) { A[i][j] /= div; I[i][j] /= div; }
-
-    for (let r = 0; r < n; r++) {
-      if (r === i) continue;
-      const factor = A[r][i];
-      for (let j = 0; j < n; j++) {
-        A[r][j] -= factor * A[i][j];
-        I[r][j] -= factor * I[i][j];
-      }
-    }
-  }
-  return I;
-}
-function dot(a, b) { let s = 0; for (let i = 0; i < a.length; i++) s += a[i] * b[i]; return s; }
 
 /* ---------------------------
-   Rendering
+   Excel parsing helpers
 --------------------------- */
 
-function render() {
-  if (!state.built) {
-    Plotly.newPlot(chartDiv, [], baseLayout("Choose a source and Build"), { displayModeBar: false, responsive: true });
-    testsBlock.style.display = "none";
-    curveHint.style.display = "none";
-    return;
+function findHeaderRowIndex(rows) {
+  for (let i = 0; i < Math.min(rows.length, 120); i++) {
+    const r = rows[i];
+    if (!Array.isArray(r) || r.length < 5) continue;
+    const first = r[0] == null ? "" : String(r[0]).trim();
+    if (/date/i.test(first) && r.filter(x => x != null && String(x).trim().length > 0).length >= 5) return i;
+  }
+  for (let i = 0; i < Math.min(rows.length, 200); i++) {
+    const r = rows[i];
+    if (!Array.isArray(r)) continue;
+    if (r.some(x => x != null && /^date$/i.test(String(x).trim()))) return i;
+  }
+  return -1;
+}
+
+function parseWbDate(x) {
+  if (x == null) return null;
+  if (x instanceof Date && !Number.isNaN(+x)) return x;
+
+  if (typeof x === "number" && x > 20000 && x < 60000) {
+    const epoch = new Date(Date.UTC(1899, 11, 30));
+    return new Date(epoch.getTime() + x * 86400000);
   }
 
-  testsBlock.style.display = "none";
-  curveHint.style.display = "none";
+  const s = String(x).trim();
+  if (!s) return null;
 
-  if (state.activeTab === "spread") renderSpread();
-  if (state.activeTab === "season") renderSeasonality();
-  if (state.activeTab === "curve") renderCurve();
-  if (state.activeTab === "tests") renderTests();
+  if (/^\d{4}-\d{2}(-\d{2})?$/.test(s)) {
+    const d = new Date(s.length === 7 ? `${s}-01` : s);
+    return Number.isNaN(+d) ? null : d;
+  }
+
+  const d = new Date(s);
+  return Number.isNaN(+d) ? null : d;
 }
+
+/* ---------------------------
+   Layout + Export
+--------------------------- */
 
 function baseLayout(title) {
   return {
@@ -935,184 +678,19 @@ function brandStamp() {
       xref: "paper", yref: "paper",
       x: 0.01, y: -0.18,
       text: `<span style="color:${CORDOBA.muted};font-size:11px">${stamp}</span>`,
-      showarrow: false,
-      align: "left"
+      showarrow: false, align: "left"
     },
     {
       xref: "paper", yref: "paper",
       x: 0.99, y: -0.18,
-      text: `<span style="color:${CORDOBA.muted};font-size:11px">Beta · Testing only</span>`,
-      showarrow: false,
-      align: "right"
+      text: `<span style="color:${CORDOBA.muted};font-size:11px">World Bank Pink Sheet · Monthly</span>`,
+      showarrow: false, align: "right"
     }
   ];
 }
-
-function renderSpread() {
-  const s = state.built.series;
-  const x = s.map(d => d.date);
-  const y = s.map(d => d.spread);
-  const z = s.map(d => d.z);
-
-  const traces = [
-    { x, y, type: "scatter", mode: "lines", name: "Spread", line: { width: 2 } },
-    { x, y: z, type: "scatter", mode: "lines", name: "Z-score", yaxis: "y2", line: { width: 2, dash: "dot" } }
-  ];
-
-  const layout = baseLayout(state.built.definition);
-  layout.yaxis.title = "Spread (A - B)";
-  layout.yaxis2 = {
-    title: "Z-score",
-    overlaying: "y",
-    side: "right",
-    gridcolor: "rgba(0,0,0,0)",
-    zeroline: false
-  };
-
-  layout.shapes = [
-    {
-      type: "line",
-      xref: "paper", x0: 0, x1: 1,
-      yref: "y2", y0: 2, y1: 2,
-      line: { width: 1, color: "rgba(154,105,15,0.35)" }
-    },
-    {
-      type: "line",
-      xref: "paper", x0: 0, x1: 1,
-      yref: "y2", y0: -2, y1: -2,
-      line: { width: 1, color: "rgba(154,105,15,0.35)" }
-    }
-  ];
-
-  Plotly.newPlot(chartDiv, traces, layout, { displayModeBar: false, responsive: true });
-}
-
-function renderSeasonality() {
-  const m = state.built.season.avg;
-  const n = state.built.season.n;
-  const labels = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-
-  const traces = [{ x: labels, y: m, type: "bar", name: "Avg monthly return" }];
-
-  const layout = baseLayout("Seasonality · average monthly returns (spread)");
-  layout.yaxis.title = "Average return";
-  layout.annotations = [
-    ...brandStamp(),
-    {
-      xref: "paper", yref: "paper",
-      x: 0.01, y: 1.09,
-      text: `<span style="color:${CORDOBA.muted};font-size:12px">Obs per month: ${n.join(", ")}</span>`,
-      showarrow: false,
-      align: "left"
-    }
-  ];
-
-  Plotly.newPlot(chartDiv, traces, layout, { displayModeBar: false, responsive: true });
-}
-
-function renderCurve() {
-  // Only available in CSV mode in Phase 1 (because WB/FRED don’t provide full curves for free in a stable way).
-  if (!state.built.curve) {
-    Plotly.newPlot(chartDiv, [], baseLayout("Curve · upload a curve CSV (Phase 1)"), { displayModeBar: false, responsive: true });
-    curveHint.style.display = "block";
-    curveHint.innerHTML = `
-      <div style="font-family:Times New Roman,Times,serif;font-weight:600;font-size:16px;margin-bottom:6px">Curve not available</div>
-      <div class="muted">
-        Phase 1 supports curve snapshots via CSV upload only. In Phase 2 we can add curve feeds where available.
-      </div>
-    `;
-    return;
-  }
-
-  const rows = state.built.curve.rows;
-  if (!rows || !rows.length) return;
-
-  const maturities = state.built.curve.maturities;
-  const last = rows[rows.length - 1];
-
-  const x = maturities;
-  const y = maturities.map(m => last[m]).map(v => (v == null ? null : v));
-
-  const traces = [{ x, y, type: "scatter", mode: "lines+markers", name: "Curve" }];
-
-  const layout = baseLayout(`Curve snapshot · ${last.date.toISOString().slice(0,10)}`);
-  layout.yaxis.title = "Level";
-  layout.xaxis.title = "Maturity";
-
-  Plotly.newPlot(chartDiv, traces, layout, { displayModeBar: false, responsive: true });
-}
-
-function renderTests() {
-  testsBlock.style.display = "block";
-
-  const t = state.built.tests;
-  const s = t.summary;
-
-  const adf1 = t.adfSpread;
-  const adf2 = t.adfReturns;
-
-  const fmtBool = (b) => (b ? "Yes" : "No");
-
-  testsBlock.innerHTML = `
-    <div style="font-family:Times New Roman,Times,serif;font-weight:600;font-size:18px;margin-bottom:10px">
-      Tests (Phase 1)
-    </div>
-
-    <div class="muted" style="margin-bottom:12px">
-      Screening checks for discipline. If the series is structurally trending, z-scores can lie.
-    </div>
-
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-      <div style="border:1px solid ${CORDOBA.border};border-radius:14px;padding:12px">
-        <div style="font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:${CORDOBA.muted};margin-bottom:6px">Return summary (spread)</div>
-        <div style="font-size:13px;line-height:1.5">
-          n: <span class="mono">${s.n ?? "—"}</span><br/>
-          mean: <span class="mono">${s.mean != null ? s.mean.toFixed(6) : "—"}</span><br/>
-          stdev: <span class="mono">${s.stdev != null ? s.stdev.toFixed(6) : "—"}</span><br/>
-          ann vol (252): <span class="mono">${s.annVol != null ? s.annVol.toFixed(4) : "—"}</span><br/>
-          skew: <span class="mono">${s.skew != null ? s.skew.toFixed(3) : "—"}</span><br/>
-          kurt: <span class="mono">${s.kurt != null ? s.kurt.toFixed(3) : "—"}</span><br/>
-          min: <span class="mono">${s.min != null ? s.min.toFixed(6) : "—"}</span><br/>
-          max: <span class="mono">${s.max != null ? s.max.toFixed(6) : "—"}</span>
-        </div>
-      </div>
-
-      <div style="border:1px solid ${CORDOBA.border};border-radius:14px;padding:12px">
-        <div style="font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:${CORDOBA.muted};margin-bottom:6px">ADF-lite (spread levels)</div>
-        ${adfCard(adf1)}
-        <div style="height:10px"></div>
-        <div style="font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:${CORDOBA.muted};margin-bottom:6px">ADF-lite (spread returns)</div>
-        ${adfCard(adf2)}
-      </div>
-    </div>
-  `;
-
-  const layout = baseLayout("Tests view · charts come from other tabs");
-  Plotly.newPlot(chartDiv, [], layout, { displayModeBar: false, responsive: true });
-
-  function adfCard(adf) {
-    if (!adf.ok) return `<div class="muted">Not available: ${adf.reason}</div>`;
-    return `
-      <div style="font-size:13px;line-height:1.5">
-        n obs: <span class="mono">${adf.nObs}</span><br/>
-        lag p: <span class="mono">${adf.lag}</span><br/>
-        b (y_{t-1}): <span class="mono">${adf.b.toFixed(6)}</span><br/>
-        t-stat: <span class="mono">${adf.tstat.toFixed(3)}</span><br/>
-        5% crit (rough): <span class="mono">${adf.crit5.toFixed(2)}</span><br/>
-        reject unit root at 5%: <span class="mono">${fmtBool(adf.rejectUnitRootAt5)}</span>
-        <div class="muted" style="margin-top:6px">${adf.note}</div>
-      </div>
-    `;
-  }
-}
-
-/* ---------------------------
-   Export
---------------------------- */
 
 async function exportChart(fmt) {
   if (!state.built) return;
-
   const baseName = `cordoba_commodity_lab_${state.activeTab}_${new Date().toISOString().slice(0,10)}`;
   const url = await Plotly.toImage(chartDiv, { format: fmt, height: 900, width: 1600, scale: 2 });
   downloadDataUrl(url, `${baseName}.${fmt}`);
@@ -1128,65 +706,61 @@ function downloadDataUrl(dataUrl, filename) {
 }
 
 /* ---------------------------
-   Reset
+   Dropdown population + reset
 --------------------------- */
 
+function populateSeriesDropdowns(filterText) {
+  const q = (filterText || "").trim().toLowerCase();
+  const names = q ? state.names.filter(n => n.toLowerCase().includes(q)) : state.names;
+
+  seriesA.innerHTML = "";
+  seriesB.innerHTML = "";
+
+  const cap = 700;
+  for (const name of names.slice(0, cap)) {
+    const o1 = document.createElement("option");
+    o1.value = name;
+    o1.textContent = name;
+    seriesA.appendChild(o1);
+
+    const o2 = document.createElement("option");
+    o2.value = name;
+    o2.textContent = name;
+    seriesB.appendChild(o2);
+  }
+
+  // Reasonable defaults if present
+  const defA = names.find(n => /brent/i.test(n)) || names[0];
+  const defB = names.find(n => /west texas|wti/i.test(n)) || names[1] || names[0];
+
+  if (defA) seriesA.value = defA;
+  if (defB) seriesB.value = defB;
+}
+
 function resetAll() {
-  state.tsRaw = null;
-  state.curveRaw = null;
   state.built = null;
+  searchBox.value = "";
+  viewMode.value = "single";
+  smooth.value = "none";
+  zWin.value = 60;
+  retType.value = "log";
 
-  tsFile.value = "";
-  curveFile.value = "";
-  fredKey.value = "";
-  fredStart.value = "";
-  fredEnd.value = "";
-  wbSearch.value = "";
+  demandYoY.value = 2.0;
+  supplyYoY.value = 1.5;
+  invChg.value = 0.0;
+  balanceOverride.value = "";
+  ed.value = 0.20;
+  es.value = 0.10;
+  scenarioRange.value = 2.0;
+  scenarioSteps.value = 9;
 
-  buildBtn.disabled = true;
   exportPngBtn.disabled = true;
   exportSvgBtn.disabled = true;
 
-  defn.textContent = "—";
-  latestSpread.textContent = "—";
-  latestZ.textContent = "—";
+  kDef.textContent = "—";
+  kLast.textContent = "—";
+  kZ.textContent = "—";
 
-  testsBlock.style.display = "none";
-  curveHint.style.display = "none";
-  Plotly.purge(chartDiv);
-
-  status.textContent = "Reset done.";
-  render();
-}
-
-/* ---------------------------
-   Initial boot
---------------------------- */
-
-(function boot() {
-  setMode(dataSource.value);
-  populateFredDropdowns();
-  updateBuildEnabled();
-  render();
-})();
-
-function renderEmpty() {
-  Plotly.newPlot(chartDiv, [], baseLayout("Choose a source and Build"), { displayModeBar: false, responsive: true });
-}
-
-function render() {
-  if (!state.built) {
-    renderEmpty();
-    testsBlock.style.display = "none";
-    curveHint.style.display = "none";
-    return;
-  }
-
-  testsBlock.style.display = "none";
-  curveHint.style.display = "none";
-
-  if (state.activeTab === "spread") renderSpread();
-  if (state.activeTab === "season") renderSeasonality();
-  if (state.activeTab === "curve") renderCurve();
-  if (state.activeTab === "tests") renderTests();
+  status.textContent = state.loaded ? "Pick series and Build." : "Load the dataset to begin.";
+  renderEmpty();
 }
