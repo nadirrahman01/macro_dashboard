@@ -113,8 +113,6 @@ const INDICATORS = [
     decimals: 1
   }
 ];
-
-// ---------------------------------------------------------------------------
 // Cordoba research metadata
 // ---------------------------------------------------------------------------
 const CORDOBA_RESEARCH = [
@@ -142,7 +140,7 @@ const CORDOBA_RESEARCH = [
     id: "malaysia_macro",
     title: "No One’s Watching Malaysia. Maybe They Should Be",
     url: "https://cordobacapital.co.uk/no-ones-watching-malaysia-maybe-they-should-be/",
-    countries: [],
+    countries: ["MY"],
     regions: ["EM", "Asia"],
     engines: ["growth", "external"],
     tags: ["malaysia", "em", "bonds"]
@@ -151,10 +149,56 @@ const CORDOBA_RESEARCH = [
     id: "malaysia_bonds",
     title: "May 2025 Malaysia Bond Market Outlook",
     url: "https://cordobacapital.co.uk/may-2025-malaysia-bond-market-outlook/",
-    countries: [],
+    countries: ["MY"],
     regions: ["EM", "Asia"],
     engines: ["liquidity", "external"],
     tags: ["rates", "bonds", "malaysia"]
+  },
+  {
+    id: "dutch_pension_reform",
+    title: "Dutch Pension Reform: Implications on the Euro and Gilt Curve",
+    url: "https://cordobacapital.co.uk/dutch-pension-reform-implications-on-the-euro-and-gilt-curve/",
+    countries: ["NL", "GB"],
+    regions: ["Europe"],
+    engines: ["rates", "external"],
+    tags: ["pensions", "rates", "curves", "sovereign"]
+  },
+  {
+    id: "kazatomprom_uranium",
+    title: "What You Need to Know About the World’s Biggest Uranium Producer",
+    url: "https://cordobacapital.co.uk/what-you-need-to-know-about-the-worlds-biggest-uranium-producer/",
+    countries: ["KZ"],
+    regions: ["EM", "Central Asia"],
+    engines: ["growth", "external"],
+    tags: ["uranium", "commodities", "energy"]
+  },
+  {
+    id: "tencent_digital_reset",
+    title: "China’s Digital Reset: Tencent as a Long-Term Compounder in a Post-Crypto Landscape",
+    url: "https://cordobacapital.co.uk/chinas-digital-reset-tencent-as-a-long-term-compounder-in-a-post-crypto-landscape/",
+    countries: ["CN"],
+    regions: ["Asia"],
+    engines: ["growth", "liquidity"],
+    tags: ["china", "equities", "technology"]
+  },
+  {
+    id: "digital_central_asia",
+    title:
+      "The Case for a Digital Central Asia: Financing the Region’s Most Undervalued Growth Story",
+    url: "https://cordobacapital.co.uk/the-case-for-a-digital-central-asia-financing-the-regions-most-undervalued-growth-story/",
+    countries: ["KZ", "UZ"],
+    regions: ["Central Asia", "EM"],
+    engines: ["growth", "external"],
+    tags: ["central asia", "digitalisation", "development"]
+  },
+  {
+    id: "morocco_green_industrial",
+    title: "Will Morocco Be at the Forefront of North Africa’s Green Industrial Take-Off?",
+    url: "https://cordobacapital.co.uk/will-morocco-be-at-the-forefront-of-north-africas-green-industrial-take-off/",
+    countries: ["MA"],
+    regions: ["Africa", "EM"],
+    engines: ["growth", "external"],
+    tags: ["morocco", "green industry", "fdi"]
   }
 ];
 
