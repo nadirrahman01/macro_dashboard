@@ -120,7 +120,7 @@ const CORDOBA_RESEARCH = [
     id: "global_volatility",
     title:
       "Navigating Volatility, Trump’s Second Term, China’s Retaliation, Global Shifts, and Emerging Opportunities",
-    url: "https://cordobacapital.co.uk/navigating-volatility-trumps-second-term-chinas-retaliation-global-shifts-and-emerging-opportunities/",
+    url: "https://cordobarg.com/navigating-volatility-trumps-second-term-chinas-retaliation-global-shifts-and-emerging-opportunities/",
     countries: ["US", "CN"],
     regions: ["Global"],
     engines: ["growth", "inflation", "external"],
@@ -130,7 +130,7 @@ const CORDOBA_RESEARCH = [
     id: "global_change",
     title:
       "Navigating Change, Europe’s Transformation, China’s Challenges, US Debt Struggles, and Emerging Opportunities",
-    url: "https://cordobacapital.co.uk/navigating-change-europes-transformation-chinas-challenges-us-debt-struggles-and-emerging-opportunities/",
+    url: "https://cordobarg.com/navigating-change-europes-transformation-chinas-challenges-us-debt-struggles-and-emerging-opportunities/",
     countries: [],
     regions: ["Europe", "Global"],
     engines: ["growth", "external", "liquidity"],
@@ -139,7 +139,7 @@ const CORDOBA_RESEARCH = [
   {
     id: "malaysia_macro",
     title: "No One’s Watching Malaysia. Maybe They Should Be",
-    url: "https://cordobacapital.co.uk/no-ones-watching-malaysia-maybe-they-should-be/",
+    url: "https://cordobarg.com/no-ones-watching-malaysia-maybe-they-should-be/",
     countries: ["MY"],
     regions: ["EM", "Asia"],
     engines: ["growth", "external"],
@@ -148,7 +148,7 @@ const CORDOBA_RESEARCH = [
   {
     id: "malaysia_bonds",
     title: "May 2025 Malaysia Bond Market Outlook",
-    url: "https://cordobacapital.co.uk/may-2025-malaysia-bond-market-outlook/",
+    url: "https://cordobarg.com/may-2025-malaysia-bond-market-outlook/",
     countries: ["MY"],
     regions: ["EM", "Asia"],
     engines: ["liquidity", "external"],
@@ -157,7 +157,7 @@ const CORDOBA_RESEARCH = [
   {
     id: "dutch_pension_reform",
     title: "Dutch Pension Reform: Implications on the Euro and Gilt Curve",
-    url: "https://cordobacapital.co.uk/dutch-pension-reform-implications-on-the-euro-and-gilt-curve/",
+    url: "https://cordobarg.com/dutch-pension-reform-implications-on-the-euro-and-gilt-curve/",
     countries: ["NL", "GB"],
     regions: ["Europe"],
     engines: ["rates", "external"],
@@ -166,7 +166,7 @@ const CORDOBA_RESEARCH = [
   {
     id: "kazatomprom_uranium",
     title: "What You Need to Know About the World’s Biggest Uranium Producer",
-    url: "https://cordobacapital.co.uk/what-you-need-to-know-about-the-worlds-biggest-uranium-producer/",
+    url: "https://cordobarg.com/what-you-need-to-know-about-the-worlds-biggest-uranium-producer/",
     countries: ["KZ"],
     regions: ["EM", "Central Asia"],
     engines: ["growth", "external"],
@@ -175,7 +175,7 @@ const CORDOBA_RESEARCH = [
   {
     id: "tencent_digital_reset",
     title: "China’s Digital Reset: Tencent as a Long-Term Compounder in a Post-Crypto Landscape",
-    url: "https://cordobacapital.co.uk/chinas-digital-reset-tencent-as-a-long-term-compounder-in-a-post-crypto-landscape/",
+    url: "https://cordobarg.com/chinas-digital-reset-tencent-as-a-long-term-compounder-in-a-post-crypto-landscape/",
     countries: ["CN"],
     regions: ["Asia"],
     engines: ["growth", "liquidity"],
@@ -185,7 +185,7 @@ const CORDOBA_RESEARCH = [
     id: "digital_central_asia",
     title:
       "The Case for a Digital Central Asia: Financing the Region’s Most Undervalued Growth Story",
-    url: "https://cordobacapital.co.uk/the-case-for-a-digital-central-asia-financing-the-regions-most-undervalued-growth-story/",
+    url: "https://cordobarg.com/the-case-for-a-digital-central-asia-financing-the-regions-most-undervalued-growth-story/",
     countries: ["KZ", "UZ"],
     regions: ["Central Asia", "EM"],
     engines: ["growth", "external"],
@@ -194,7 +194,7 @@ const CORDOBA_RESEARCH = [
   {
     id: "morocco_green_industrial",
     title: "Will Morocco Be at the Forefront of North Africa’s Green Industrial Take-Off?",
-    url: "https://cordobacapital.co.uk/will-morocco-be-at-the-forefront-of-north-africas-green-industrial-take-off/",
+    url: "https://cordobarg.com/will-morocco-be-at-the-forefront-of-north-africas-green-industrial-take-off/",
     countries: ["MA"],
     regions: ["Africa", "EM"],
     engines: ["growth", "external"],
