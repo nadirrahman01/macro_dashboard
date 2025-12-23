@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Cordoba Research Group — Weather Pricing Engine</title>
+
+  <!-- If your main site already loads Tailwind + Cordoba styles globally, you can remove this and rely on shared CSS. -->
+  <!-- Otherwise, include your compiled Tailwind/Cordoba CSS bundle here: -->
+  <link rel="stylesheet" href="./styles.css" />
+
+  <style>
+    /* Minimal fallbacks so it still looks “institutional” if styles.css isn't present */
+    :root { --cordobaGold: #9A690F; --cordobaSoft: #FFF7F0; }
+    .shadow-subtle { box-shadow: 0 10px 30px rgba(0,0,0,.06); }
+    .bg-cordobaGold { background: var(--cordobaGold); }
+    .bg-cordobaSoft { background: var(--cordobaSoft); }
+    .font-times { font-family: ui-serif, Georgia, "Times New Roman", Times, serif; }
+  </style>
+</head>
+
+<body class="bg-neutral-50 text-neutral-900">
+  <!-- Top bar (optional, remove if your site has a shared header) -->
+  <header class="sticky top-0 z-30 bg-white/90 backdrop-blur border-b border-neutral-200">
+    <div class="max-w-7xl mx-auto px-5 py-3 flex items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <div class="h-9 w-9 rounded-xl bg-cordobaSoft border border-neutral-200 flex items-center justify-center">
+          <span class="text-sm font-semibold" style="color: var(--cordobaGold);">CRG</span>
+        </div>
+        <div>
+          <div class="text-[10px] uppercase tracking-[0.22em] text-neutral-500">Cordoba Research Group</div>
+          <div class="font-times text-lg">Weather Pricing Engine</div>
+        </div>
+      </div>
+
+      <nav class="flex items-center gap-2">
+        <!-- Change hrefs to your real routes -->
+        <a href="./index.html"
+          class="inline-flex items-center justify-center h-10 px-4 rounded-xl bg-white border border-neutral-200 text-sm font-medium text-neutral-700 shadow-subtle hover:bg-cordobaSoft hover:text-neutral-900 transition">
+          Back to Global Macro Engine
+        </a>
+        <a href="./gme-feedback.html"
+          class="inline-flex items-center justify-center h-10 px-4 rounded-xl bg-cordobaGold text-white text-sm font-medium shadow-subtle hover:opacity-90 transition">
+          Feedback
+        </a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-5 py-6">
+    <!-- Page intro -->
+    <section class="mb-6">
+      <div class="rounded-2xl border border-neutral-200 bg-white shadow-subtle p-5">
+        <div class="text-[10px] uppercase tracking-[0.22em] text-neutral-500">Commodities • Weather</div>
+        <h1 class="mt-1 font-times text-2xl">Weather Pricing Engine</h1>
+        <p class="mt-2 text-sm text-neutral-600 max-w-4xl">
+          A weather-to-price indicator system for spot and futures. It converts forecast paths, ensemble dispersion, and anomaly regimes into
+          interpretable signals, with regional attribution, driver decomposition, and scenario bands.
+        </p>
+      </div>
+    </section>
+
+    <!-- The full engine panel -->
+    <section id="cc-commodities-weather">
+      <div class="rounded-2xl border border-neutral-200 bg-white shadow-subtle overflow-hidden">
+        <div class="flex items-start justify-between gap-4 p-5 border-b border-neutral-200">
+          <div>
+            <div class="text-[10px] uppercase tracking-[0.22em] text-neutral-500">Commodities</div>
+            <h2 class="mt-1 font-times text-xl text-neutral-900">Weather Pricing Engine</h2>
+            <p class="mt-1 text-sm text-neutral-600 max-w-3xl">
+              Weather-driven signals for spot & futures. Forecast, ensemble dispersion, anomaly scores, and model-led price direction indicators.
+            </p>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <button id="cwe-refresh"
+              class="inline-flex items-center justify-center h-10 px-4 rounded-xl bg-cordobaGold text-white text-sm font-medium shadow-subtle hover:opacity-90 transition">
+              Refresh
+            </button>
+            <button id="cwe-settings"
+              class="inline-flex items-center justify-center h-10 px-4 rounded-xl bg-white border border-neutral-200 text-sm font-medium text-neutral-700 shadow-subtle hover:bg-cordobaSoft hover:text-neutral-900 transition">
+              Settings
+            </button>
+          </div>
+        </div>
+
+        <!-- Top controls -->
+        <div class="p-5 border-b border-neutral-200">
+          <div class="grid grid-cols-12 gap-3">
+            <div class="col-span-12 md:col-span-3">
+              <label class="text-[11px] uppercase tracking-[0.22em] text-neutral-500">Commodity</label>
+              <select id="cwe-commodity" class="mt-1 w-full h-10 rounded-xl border border-neutral-200 bg-white px-3 text-sm"></select>
+            </div>
+
+            <div class="col-span-6 md:col-span-2">
+              <label class="text-[11px] uppercase tracking-[0.22em] text-neutral-500">Horizon</label>
+              <select id="cwe-horizon" class="mt-1 w-full h-10 rounded-xl border border-neutral-200 bg-white px-3 text-sm">
+                <option value="7">7D</option>
+                <option value="16">16D</option>
+                <option value="46">46D (Seasonal / EC46)</option>
+              </select>
+            </div>
+
+            <div class="col-span-6 md:col-span-2">
+              <label class="text-[11px] uppercase tracking-[0.22em] text-neutral-500">Model</label>
+              <select id="cwe-model" class="mt-1 w-full h-10 rounded-xl border border-neutral-200 bg-white px-3 text-sm">
+                <option value="best">Best blend</option>
+                <option value="ecmwf">ECMWF deterministic</option>
+                <option value="ensemble">Ensemble (probabilistic)</option>
+                <option value="seasonal">Seasonal / EC46</option>
+              </select>
+            </div>
+
+            <div class="col-span-12 md:col-span-5">
+              <label class="text-[11px] uppercase tracking-[0.22em] text-neutral-500">Region basket (auto-mapped)</label>
+              <div id="cwe-region-tags" class="mt-1 flex flex-wrap gap-2"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Dense stats grid -->
+        <div class="p-5">
+          <div class="grid grid-cols-12 gap-3">
+            <div class="col-span-12 lg:col-span-4 rounded-2xl border border-neutral-200 bg-white shadow-subtle p-4">
+              <div class="text-[10px] uppercase tracking-[0.22em] text-neutral-500">Signal Summary</div>
+              <div class="mt-3 grid grid-cols-2 gap-3">
+                <div class="rounded-xl border border-neutral-200 p-3">
+                  <div class="text-xs text-neutral-500">Weather Impact (Z)</div>
+                  <div id="cwe-impact-z" class="mt-1 font-times text-2xl text-neutral-900">—</div>
+                  <div id="cwe-impact-note" class="mt-1 text-xs text-neutral-600">—</div>
+                </div>
+                <div class="rounded-xl border border-neutral-200 p-3">
+                  <div class="text-xs text-neutral-500">Price Direction (Score)</div>
+                  <div id="cwe-price-score" class="mt-1 font-times text-2xl text-neutral-900">—</div>
+                  <div id="cwe-price-note" class="mt-1 text-xs text-neutral-600">—</div>
+                </div>
+                <div class="rounded-xl border border-neutral-200 p-3">
+                  <div class="text-xs text-neutral-500">Ensemble Dispersion</div>
+                  <div id="cwe-dispersion" class="mt-1 font-times text-2xl text-neutral-900">—</div>
+                  <div class="mt-1 text-xs text-neutral-600">Std / IQR across members</div>
+                </div>
+                <div class="rounded-xl border border-neutral-200 p-3">
+                  <div class="text-xs text-neutral-500">Confidence</div>
+                  <div id="cwe-confidence" class="mt-1 font-times text-2xl text-neutral-900">—</div>
+                  <div class="mt-1 text-xs text-neutral-600">Signal / uncertainty ratio</div>
+                </div>
+              </div>
+
+              <div class="mt-4">
+                <div class="text-[10px] uppercase tracking-[0.22em] text-neutral-500">Model Card</div>
+                <div id="cwe-model-card" class="mt-2 text-xs text-neutral-700 leading-relaxed">—</div>
+              </div>
+            </div>
+
+            <div class="col-span-12 lg:col-span-8 rounded-2xl border border-neutral-200 bg-white shadow-subtle p-4">
+              <div class="flex items-center justify-between gap-3">
+                <div>
+                  <div class="text-[10px] uppercase tracking-[0.22em] text-neutral-500">Weather Feature Heatmap</div>
+                  <div class="mt-1 text-sm text-neutral-600">Anomalies vs baseline + lead-time weighting</div>
+                </div>
+                <div class="flex items-center gap-2">
+                  <label class="text-xs text-neutral-600">Dense</label>
+                  <input id="cwe-dense" type="checkbox" class="h-4 w-4" checked />
+                </div>
+              </div>
+
+              <div class="mt-3 overflow-auto">
+                <canvas id="cwe-heatmap" width="1400" height="520" class="min-w-[1100px] rounded-xl border border-neutral-200"></canvas>
+              </div>
+
+              <div class="mt-3 grid grid-cols-12 gap-3">
+                <div class="col-span-12 md:col-span-6 rounded-xl border border-neutral-200 p-3">
+                  <div class="text-xs text-neutral-500">Top Drivers (|contribution|)</div>
+                  <div id="cwe-top-drivers" class="mt-2 text-xs text-neutral-800 whitespace-pre-wrap">—</div>
+                </div>
+                <div class="col-span-12 md:col-span-6 rounded-xl border border-neutral-200 p-3">
+                  <div class="text-xs text-neutral-500">Scenario Range (P10 / P50 / P90)</div>
+                  <div id="cwe-scenarios" class="mt-2 text-xs text-neutral-800 whitespace-pre-wrap">—</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-span-12 rounded-2xl border border-neutral-200 bg-white shadow-subtle p-4">
+              <div class="flex items-center justify-between gap-3">
+                <div>
+                  <div class="text-[10px] uppercase tracking-[0.22em] text-neutral-500">Raw Weather Tape</div>
+                  <div class="mt-1 text-sm text-neutral-600">Hourly aggregates, extremes, tails, and regime flags</div>
+                </div>
+                <div class="text-xs text-neutral-500">Source: Open-Meteo models + ensembles</div>
+              </div>
+              <div id="cwe-tape"
+                class="mt-3 font-mono text-[11px] leading-relaxed text-neutral-800 whitespace-pre overflow-auto max-h-[320px] rounded-xl border border-neutral-200 p-3 bg-neutral-50">Loading…</div>
+            </div>
+
+            <div class="col-span-12 p-4 rounded-2xl bg-neutral-50 border border-neutral-200">
+              <div class="text-xs text-neutral-700">
+                © Cordoba Research Group — Weather Pricing Engine (Beta). This tool is for research and educational use only. Outputs are model-driven indicators, not investment advice. Data may be incomplete, delayed, or revised.
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="./commodities_weather_engine.js"></script>
+</body>
+</html>
