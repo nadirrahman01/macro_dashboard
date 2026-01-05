@@ -1,4 +1,5 @@
 /* Cordoba Capital – Global Macro Engine custom styles */
+
 :root {
   --cordoba-gold: #845F0F;
   --cordoba-soft: #FFF7F0;
@@ -8,6 +9,7 @@
 .bg-cordobaSoft {
   background-color: var(--cordoba-soft);
 }
+
 .text-cordobaGold {
   color: var(--cordoba-gold);
 }
@@ -16,18 +18,11 @@
 body.cc-loading {
   cursor: progress;
 }
+
 body.cc-loading * {
   transition: opacity 0.15s ease-out;
 }
+
 body.cc-loading main {
   opacity: 0.7;
-}
-
-.cc-canvas {
-  width: 100%;
-  height: auto;
-  display: block;
-  border-radius: 14px;
-  border: 1px solid rgba(15,15,15,0.10);
-  background: #FFFCF9;
 }
