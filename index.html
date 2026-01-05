@@ -5,8 +5,6 @@
   <title>Cordoba Research Group – GME</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-  <link rel="stylesheet" href="assets/style.css" />
-
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -33,7 +31,9 @@
 
   <div class="flex-1 flex flex-col lg:flex-row">
 
-    <!-- SIDEBAR -->
+    <!-- ============================= -->
+    <!-- Sidebar -->
+    <!-- ============================= -->
     <aside class="w-full lg:w-72 border-b lg:border-b-0 lg:border-r border-neutral-200 bg-white/80 backdrop-blur px-5 py-3 flex flex-col gap-3">
       <div class="flex flex-col">
         <a
@@ -61,58 +61,38 @@
         </div>
       </div>
 
-      <!-- NAV: FIXED + WIRED -->
-      <nav class="text-sm text-neutral-700 space-y-1" id="cc-view-nav">
+      <!-- Views nav (FIXED + matches your screenshot layout) -->
+      <nav class="text-sm text-neutral-700 space-y-1">
         <div class="text-[10px] uppercase tracking-[0.25em] text-neutral-500 mb-1">
           Views
         </div>
 
-        <a
-          href="#"
-          data-view="snapshot"
-          class="cc-view-link w-full flex items-center justify-between px-2.5 py-2 rounded-xl bg-cordobaSoft text-neutral-900"
-        >
+        <a href="#" data-view="snapshot" class="cc-view-link w-full flex items-center justify-between px-3 py-2 rounded-xl transition">
           <span class="flex items-center gap-2">
-            <span class="h-1.5 w-1.5 rounded-full bg-cordobaGold"></span>
-            Country snapshot
+            <span class="h-2 w-2 rounded-full bg-cordobaGold"></span>
+            <span class="font-semibold">Country snapshot</span>
           </span>
-          <span class="text-[10px] uppercase text-neutral-500">Live</span>
+          <span class="cc-live-pill hidden text-[10px] uppercase text-neutral-500">Live</span>
         </a>
 
-        <a
-          href="#"
-          data-view="growth"
-          class="cc-view-link w-full flex items-center gap-2 px-2.5 py-2 rounded-xl hover:bg-neutral-100 transition"
-        >
-          <span class="h-1.5 w-1.5 rounded-full bg-emerald-400"></span>
-          Growth &amp; cycle
+        <a href="#" data-view="growth" class="cc-view-link w-full flex items-center gap-2 px-3 py-2 rounded-xl transition">
+          <span class="h-2 w-2 rounded-full bg-emerald-400"></span>
+          <span class="font-semibold">Growth &amp; cycle</span>
         </a>
 
-        <a
-          href="#"
-          data-view="inflation"
-          class="cc-view-link w-full flex items-center gap-2 px-2.5 py-2 rounded-xl hover:bg-neutral-100 transition"
-        >
-          <span class="h-1.5 w-1.5 rounded-full bg-rose-400"></span>
-          Inflation lens
+        <a href="#" data-view="inflation" class="cc-view-link w-full flex items-center gap-2 px-3 py-2 rounded-xl transition">
+          <span class="h-2 w-2 rounded-full bg-rose-400"></span>
+          <span class="font-semibold">Inflation lens</span>
         </a>
 
-        <a
-          href="#"
-          data-view="liquidity"
-          class="cc-view-link w-full flex items-center gap-2 px-2.5 py-2 rounded-xl hover:bg-neutral-100 transition"
-        >
-          <span class="h-1.5 w-1.5 rounded-full bg-sky-400"></span>
-          Liquidity &amp; money
+        <a href="#" data-view="liquidity" class="cc-view-link w-full flex items-center gap-2 px-3 py-2 rounded-xl transition">
+          <span class="h-2 w-2 rounded-full bg-sky-400"></span>
+          <span class="font-semibold">Liquidity &amp; money</span>
         </a>
 
-        <a
-          href="#"
-          data-view="external"
-          class="cc-view-link w-full flex items-center gap-2 px-2.5 py-2 rounded-xl hover:bg-neutral-100 transition"
-        >
-          <span class="h-1.5 w-1.5 rounded-full bg-amber-400"></span>
-          External balance
+        <a href="#" data-view="external" class="cc-view-link w-full flex items-center gap-2 px-3 py-2 rounded-xl transition">
+          <span class="h-2 w-2 rounded-full bg-amber-400"></span>
+          <span class="font-semibold">External balance</span>
         </a>
       </nav>
 
@@ -126,26 +106,28 @@
       </div>
     </aside>
 
-    <!-- MAIN -->
+    <!-- ============================= -->
+    <!-- Main -->
+    <!-- ============================= -->
     <main class="flex-1 px-4 sm:px-6 lg:px-8 py-5 space-y-5" id="cc-export-root">
 
-      <!-- HEADER (ALWAYS VISIBLE) -->
       <header class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
         <div class="space-y-1">
           <div class="text-xs uppercase tracking-[0.28em] text-neutral-500">
             Global Macro Dashboard
           </div>
+
           <div class="flex flex-wrap items-center gap-2 text-sm text-neutral-600">
             <span id="cc-country-current-label" class="font-semibold text-neutral-900">United States</span>
             <span class="text-neutral-400">·</span>
             <span id="cc-country-current-region" class="text-neutral-600">G-20 · DM</span>
             <span class="text-neutral-400">·</span>
-            <!-- FIXED: shows data through + WB updated -->
-            <span id="cc-data-as-of" class="text-neutral-500">data through: n/a · WB updated: n/a</span>
+            <span id="cc-data-stamp" class="text-neutral-500">data through: Dec-2024 · WB updated: December 2025</span>
           </div>
         </div>
 
         <div class="flex flex-wrap items-center gap-3">
+          <!-- Country dropdown -->
           <div class="relative">
             <button
               id="cc-country-toggle"
@@ -162,47 +144,25 @@
               id="cc-country-menu"
               class="hidden absolute z-20 mt-1 w-64 rounded-xl border border-neutral-200 bg-white shadow-subtle text-sm max-h-72 overflow-y-auto"
             >
-              <!-- (your menu unchanged) -->
-              <div class="px-3 py-2 text-[10px] uppercase tracking-[0.22em] text-neutral-500">G-20 · Developed</div>
+              <div class="px-3 py-2 text-[10px] uppercase tracking-[0.22em] text-neutral-500">
+                G-20 · Developed
+              </div>
               <button class="w-full text-left px-3 py-1.5 hover:bg-cordobaSoft" data-cc-country="US" data-cc-region="G-20 · DM">United States</button>
               <button class="w-full text-left px-3 py-1.5 hover:bg-cordobaSoft" data-cc-country="UK" data-cc-region="G-20 · DM">United Kingdom</button>
               <button class="w-full text-left px-3 py-1.5 hover:bg-cordobaSoft" data-cc-country="DE" data-cc-region="G-20 · DM">Germany</button>
-              <button class="w-full text-left px-3 py-1.5 hover:bg-cordobaSoft" data-cc-country="FR" data-cc-region="G-20 · DM">France</button>
               <button class="w-full text-left px-3 py-1.5 hover:bg-cordobaSoft" data-cc-country="JP" data-cc-region="G-20 · DM">Japan</button>
 
-              <div class="px-3 py-2 text-[10px] uppercase tracking-[0.22em] text-neutral-500">G-20 · Emerging</div>
-              <button class="w-full text-left px-3 py-1.5 hover:bg-cordobaSoft" data-cc-country="CN" data-cc-region="G-20 · EM">China</button>
+              <div class="px-3 py-2 text-[10px] uppercase tracking-[0.22em] text-neutral-500">
+                G-20 · Emerging
+              </div>
               <button class="w-full text-left px-3 py-1.5 hover:bg-cordobaSoft" data-cc-country="IN" data-cc-region="G-20 · EM">India</button>
               <button class="w-full text-left px-3 py-1.5 hover:bg-cordobaSoft" data-cc-country="BR" data-cc-region="G-20 · EM">Brazil</button>
 
-              <div class="px-3 py-2 text-[10px] uppercase tracking-[0.22em] text-neutral-500">Central Asia</div>
+              <div class="px-3 py-2 text-[10px] uppercase tracking-[0.22em] text-neutral-500">
+                Central Asia
+              </div>
               <button class="w-full text-left px-3 py-1.5 hover:bg-cordobaSoft" data-cc-country="KZ" data-cc-region="Central Asia · EM">Kazakhstan</button>
               <button class="w-full text-left px-3 py-1.5 hover:bg-cordobaSoft" data-cc-country="UZ" data-cc-region="Central Asia · EM">Uzbekistan</button>
-              <button class="w-full text-left px-3 py-1.5 hover:bg-cordobaSoft" data-cc-country="KG" data-cc-region="Central Asia · EM">Kyrgyzstan</button>
-              <button class="w-full text-left px-3 py-1.5 hover:bg-cordobaSoft" data-cc-country="TJ" data-cc-region="Central Asia · EM">Tajikistan</button>
-              <button class="w-full text-left px-3 py-1.5 hover:bg-cordobaSoft" data-cc-country="TM" data-cc-region="Central Asia · EM">Turkmenistan</button>
-
-              <div class="px-3 py-2 text-[10px] uppercase tracking-[0.22em] text-neutral-500">South Asia</div>
-              <button class="w-full text-left px-3 py-1.5 hover:bg-cordobaSoft" data-cc-country="PK" data-cc-region="South Asia · EM">Pakistan</button>
-              <button class="w-full text-left px-3 py-1.5 hover:bg-cordobaSoft" data-cc-country="BD" data-cc-region="South Asia · EM">Bangladesh</button>
-              <button class="w-full text-left px-3 py-1.5 hover:bg-cordobaSoft" data-cc-country="LK" data-cc-region="South Asia · EM">Sri Lanka</button>
-              <button class="w-full text-left px-3 py-1.5 hover:bg-cordobaSoft" data-cc-country="NP" data-cc-region="South Asia · EM">Nepal</button>
-              <button class="w-full text-left px-3 py-1.5 hover:bg-cordobaSoft" data-cc-country="BT" data-cc-region="South Asia · EM">Bhutan</button>
-              <button class="w-full text-left px-3 py-1.5 hover:bg-cordobaSoft" data-cc-country="MV" data-cc-region="South Asia · EM">Maldives</button>
-              <button class="w-full text-left px-3 py-1.5 hover:bg-cordobaSoft" data-cc-country="AF" data-cc-region="South Asia · EM">Afghanistan</button>
-
-              <div class="px-3 py-2 text-[10px] uppercase tracking-[0.22em] text-neutral-500">South-East Asia</div>
-              <button class="w-full text-left px-3 py-1.5 hover:bg-cordobaSoft" data-cc-country="ID" data-cc-region="South-East Asia · EM">Indonesia</button>
-              <button class="w-full text-left px-3 py-1.5 hover:bg-cordobaSoft" data-cc-country="VN" data-cc-region="South-East Asia · EM">Vietnam</button>
-              <button class="w-full text-left px-3 py-1.5 hover:bg-cordobaSoft" data-cc-country="TH" data-cc-region="South-East Asia · EM">Thailand</button>
-              <button class="w-full text-left px-3 py-1.5 hover:bg-cordobaSoft" data-cc-country="MY" data-cc-region="South-East Asia · EM">Malaysia</button>
-              <button class="w-full text-left px-3 py-1.5 hover:bg-cordobaSoft" data-cc-country="PH" data-cc-region="South-East Asia · EM">Philippines</button>
-              <button class="w-full text-left px-3 py-1.5 hover:bg-cordobaSoft" data-cc-country="SG" data-cc-region="South-East Asia · DM">Singapore</button>
-              <button class="w-full text-left px-3 py-1.5 hover:bg-cordobaSoft" data-cc-country="KH" data-cc-region="South-East Asia · EM">Cambodia</button>
-              <button class="w-full text-left px-3 py-1.5 hover:bg-cordobaSoft" data-cc-country="LA" data-cc-region="South-East Asia · EM">Laos</button>
-              <button class="w-full text-left px-3 py-1.5 hover:bg-cordobaSoft" data-cc-country="MM" data-cc-region="South-East Asia · EM">Myanmar</button>
-              <button class="w-full text-left px-3 py-1.5 hover:bg-cordobaSoft" data-cc-country="BN" data-cc-region="South-East Asia · EM">Brunei</button>
-              <button class="w-full text-left px-3 py-1.5 hover:bg-cordobaSoft" data-cc-country="TL" data-cc-region="South-East Asia · EM">Timor-Leste</button>
             </div>
           </div>
 
@@ -228,21 +188,17 @@
         </div>
       </header>
 
-      <!-- ========================= -->
-      <!-- VIEW PANELS (TAB SYSTEM) -->
-      <!-- ========================= -->
-
-      <!-- SNAPSHOT (YOUR FULL ORIGINAL CONTENT LIVES HERE) -->
-      <div data-view-panel="snapshot" class="cc-view-panel space-y-5">
-
-        <!-- (everything you already had stays here, unchanged) -->
+      <!-- ============================= -->
+      <!-- VIEW: Country snapshot (FULL) -->
+      <!-- ============================= -->
+      <div data-cc-view-panel="snapshot" class="space-y-5">
 
         <section class="grid grid-cols-1 lg:grid-cols-3 gap-4">
           <div class="lg:col-span-2 rounded-2xl border border-neutral-200 bg-white shadow-subtle px-4 py-4 flex flex-col gap-3">
             <div class="flex items-center justify-between">
               <div>
                 <div class="text-[11px] uppercase tracking-[0.2em] text-neutral-500">Macro Regime</div>
-                <div id="cc-regime-title" class="mt-1 text-sm font-semibold text-neutral-900">Loading regime...</div>
+                <div id="cc-regime-title" class="mt-1 text-sm font-semibold text-neutral-900">Loading…</div>
               </div>
               <div class="text-right">
                 <div class="text-[11px] uppercase tracking-[0.18em] text-neutral-500">Data coverage</div>
@@ -252,7 +208,9 @@
               </div>
             </div>
 
-            <p id="cc-regime-body" class="text-sm text-neutral-700 leading-relaxed">Pulling in latest macro data...</p>
+            <p id="cc-regime-body" class="text-sm text-neutral-700 leading-relaxed">
+              Pulling in latest macro data…
+            </p>
 
             <div class="flex flex-wrap items-center gap-2 text-xs text-neutral-500">
               <span class="uppercase tracking-[0.18em] text-[10px]">Closest analogue periods:</span>
@@ -283,14 +241,18 @@
         <section class="rounded-2xl border border-neutral-200 bg-white shadow-subtle px-4 py-4">
           <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-3">
             <div>
-              <div class="text-[11px] uppercase tracking-[0.2em] text-neutral-500">Composite Engine Decomposition</div>
+              <div class="text-[11px] uppercase tracking-[0.2em] text-neutral-500">
+                Composite Engine Decomposition
+              </div>
               <div class="text-sm text-neutral-700 mt-1">
                 Each engine is a weighted combination of indicator z-scores. Z-scores are computed on a rolling history window, then mapped to a 10 to 90 score.
               </div>
             </div>
             <div class="text-[11px] text-neutral-500 md:text-right">
               Score mapping: score = round(50 + clamp(z, −2.5, 2.5) ÷ 2.5 × 40)
-              <div class="text-[10px] text-neutral-400 mt-1">Heatmap shows direction and magnitude at a glance</div>
+              <div class="text-[10px] text-neutral-400 mt-1">
+                Heatmap shows direction and magnitude at a glance
+              </div>
             </div>
           </div>
 
@@ -308,11 +270,7 @@
                   <th class="py-2 text-left">Interpretation</th>
                 </tr>
               </thead>
-              <tbody id="cc-engine-breakdown" class="divide-y divide-neutral-100">
-                <tr>
-                  <td colspan="8" class="py-3 text-center text-neutral-400">Loading decomposition...</td>
-                </tr>
-              </tbody>
+              <tbody id="cc-engine-breakdown" class="divide-y divide-neutral-100"></tbody>
             </table>
           </div>
 
@@ -325,14 +283,14 @@
           <div class="flex items-center justify-between">
             <div>
               <div class="text-[11px] uppercase tracking-[0.2em] text-neutral-500">Growth Engine Heatmap</div>
-              <div class="text-sm text-neutral-700">Summary of what is elevated, what is normal, and what is likely to break first.</div>
+              <div class="text-sm text-neutral-700">
+                Summary of what is elevated, what is normal, and what is likely to break first.
+              </div>
             </div>
             <div class="text-[11px] text-neutral-500">Scale: z clamped to −2.5 to 2.5</div>
           </div>
 
-          <div id="cc-meaningful-heatmap" class="mt-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
-            <div class="rounded-xl border border-neutral-200 bg-cordobaSoft px-3 py-3 text-neutral-500">Loading heatmap...</div>
-          </div>
+          <div id="cc-meaningful-heatmap" class="mt-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 text-xs"></div>
 
           <div class="mt-3 text-[11px] text-neutral-500 leading-relaxed">
             How to read: the cell colour intensity is the only point. It tells you what is unusual enough to matter, even if the level looks boring. That is usually where the market gets surprised.
@@ -343,7 +301,9 @@
           <div class="rounded-2xl border border-neutral-200 bg-white shadow-subtle px-5 py-4">
             <div class="flex items-start justify-between gap-3">
               <div>
-                <div class="text-[11px] uppercase tracking-[0.28em] text-neutral-500">Regime implication mapper</div>
+                <div class="text-[11px] uppercase tracking-[0.28em] text-neutral-500">
+                  Regime implication mapper
+                </div>
                 <div class="mt-2 text-base font-semibold text-neutral-900">
                   Conditional market implications derived from the current engine configuration
                 </div>
@@ -362,7 +322,9 @@
 
             <div class="mt-4 rounded-xl border border-neutral-200 bg-[#FFFCF9] px-4 py-3">
               <div class="flex items-center justify-between gap-3">
-                <div class="text-[11px] uppercase tracking-[0.2em] text-neutral-500">Repricing channels, probability proxy</div>
+                <div class="text-[11px] uppercase tracking-[0.2em] text-neutral-500">
+                  Repricing channels, probability proxy
+                </div>
                 <div id="cc-implication-graphic-stamp" class="text-[10px] text-neutral-400"></div>
               </div>
 
@@ -378,14 +340,22 @@
 
           <div class="rounded-2xl border border-neutral-200 bg-white shadow-subtle px-5 py-4">
             <div>
-              <div class="text-[11px] uppercase tracking-[0.28em] text-neutral-500">Where would the first warning signs appear?</div>
-              <div class="mt-2 text-base font-semibold text-neutral-900">Early warning checklist that tells you what to watch, and why</div>
-              <div class="mt-1 text-xs text-neutral-600 leading-relaxed">Ordered by current tension based on engine configuration.</div>
+              <div class="text-[11px] uppercase tracking-[0.28em] text-neutral-500">
+                Where would the first warning signs appear?
+              </div>
+              <div class="mt-2 text-base font-semibold text-neutral-900">
+                Early warning checklist that tells you what to watch, and why
+              </div>
+              <div class="mt-1 text-xs text-neutral-600 leading-relaxed">
+                Built from the same engine tensions. If two lanes flash together, treat the narrative as unstable.
+              </div>
             </div>
 
             <div class="mt-4 rounded-xl border border-neutral-200 bg-[#FFFCF9] px-4 py-3">
               <div class="flex items-center justify-between gap-3">
-                <div class="text-[11px] uppercase tracking-[0.2em] text-neutral-500">Failure map, which channel breaks first</div>
+                <div class="text-[11px] uppercase tracking-[0.2em] text-neutral-500">
+                  Failure map, which channel breaks first
+                </div>
                 <div id="cc-stress-graphic-stamp" class="text-[10px] text-neutral-400"></div>
               </div>
 
@@ -404,31 +374,40 @@
           <div class="xl:col-span-2 rounded-2xl border border-neutral-200 bg-white shadow-subtle px-4 py-4">
             <div class="flex items-center justify-between mb-3">
               <div>
-                <div class="text-[11px] uppercase tracking-[0.2em] text-neutral-500">Headline Macro Indicators</div>
-                <div class="text-sm text-neutral-700">Latest readings (mixed frequency, normalised)</div>
+                <div class="text-[11px] uppercase tracking-[0.2em] text-neutral-500">
+                  Headline Macro Indicators
+                </div>
+                <div class="text-sm text-neutral-700">
+                  Latest readings (normalised / mixed frequency)
+                </div>
               </div>
             </div>
+
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 text-sm">
               <div class="p-3 rounded-xl border border-neutral-200 bg-cordobaSoft">
                 <div class="text-[11px] uppercase tracking-[0.18em] text-neutral-500">GDP growth</div>
                 <div id="cc-gdp-latest" class="mt-1 text-lg font-semibold text-neutral-900">–</div>
-                <div class="text-xs text-neutral-600 mt-1" id="cc-gdp-extra">Real GDP growth (annualised where applicable).</div>
+                <div class="text-xs text-neutral-600 mt-1" id="cc-gdp-extra">Real GDP growth (% y/y).</div>
               </div>
+
               <div class="p-3 rounded-xl border border-neutral-200 bg-cordobaSoft">
                 <div class="text-[11px] uppercase tracking-[0.18em] text-neutral-500">Inflation (CPI)</div>
                 <div id="cc-inflation-latest" class="mt-1 text-lg font-semibold text-neutral-900">–</div>
-                <div class="text-xs text-neutral-600 mt-1" id="cc-inflation-extra">Headline CPI (annual % change).</div>
+                <div class="text-xs text-neutral-600 mt-1" id="cc-inflation-extra">Headline CPI (% y/y).</div>
               </div>
+
               <div class="p-3 rounded-xl border border-neutral-200 bg-cordobaSoft">
                 <div class="text-[11px] uppercase tracking-[0.18em] text-neutral-500">Unemployment</div>
                 <div id="cc-unemployment-latest" class="mt-1 text-lg font-semibold text-neutral-900">–</div>
                 <div class="text-xs text-neutral-600 mt-1" id="cc-unemployment-extra">% of labour force.</div>
               </div>
+
               <div class="p-3 rounded-xl border border-neutral-200 bg-cordobaSoft">
                 <div class="text-[11px] uppercase tracking-[0.18em] text-neutral-500">Broad money growth</div>
                 <div id="cc-money-latest" class="mt-1 text-lg font-semibold text-neutral-900">–</div>
-                <div class="text-xs text-neutral-600 mt-1" id="cc-money-extra">M2 (or nearest equivalent) growth.</div>
+                <div class="text-xs text-neutral-600 mt-1" id="cc-money-extra">M2 / broad money (% y/y).</div>
               </div>
+
               <div class="p-3 rounded-xl border border-neutral-200 bg-cordobaSoft">
                 <div class="text-[11px] uppercase tracking-[0.18em] text-neutral-500">Current account / GDP</div>
                 <div id="cc-ca-latest" class="mt-1 text-lg font-semibold text-neutral-900">–</div>
@@ -470,7 +449,7 @@
                 <tr class="text-[11px] uppercase tracking-[0.16em] text-neutral-500 border-b border-neutral-200">
                   <th class="py-2 text-left">Indicator</th>
                   <th class="py-2 text-left">Signal</th>
-                  <th class="py-2 text-left">Trend (10yr)</th>
+                  <th class="py-2 text-left">Trend (proxy)</th>
                   <th class="py-2 text-left"></th>
                   <th class="py-2 text-right">Last</th>
                   <th class="py-2 text-right">ZS</th>
@@ -482,117 +461,123 @@
           </div>
         </section>
 
-        <!-- ✅ THIS IS WHAT YOU SAID “DISAPPEARED” — IT’S BACK, INSIDE SNAPSHOT -->
-        <section class="rounded-2xl border border-neutral-200 bg-white shadow-subtle px-4 py-4">
-          <div class="grid grid-cols-1 xl:grid-cols-3 gap-4">
-
-            <div class="xl:col-span-2 flex flex-col gap-3">
-              <div class="flex items-center justify-between">
-                <div>
-                  <div class="text-[11px] uppercase tracking-[0.2em] text-neutral-500">Analyst Note Helper</div>
-                  <div class="text-sm text-neutral-700">Draft macro commentary for the selected country</div>
-                </div>
-                <div class="text-[11px] text-neutral-500">Auto-generated from current engine configuration</div>
-              </div>
-
-              <div class="flex flex-wrap items-center gap-2 text-[11px]">
-                <button id="cc-copy-note" type="button" class="px-3 py-1.5 rounded-full border border-neutral-200 bg-white hover:bg-cordobaSoft">Copy note</button>
-                <button id="cc-copy-questions" type="button" class="px-3 py-1.5 rounded-full border border-neutral-200 bg-white hover:bg-cordobaSoft">Copy questions</button>
-                <button id="cc-copy-implications" type="button" class="px-3 py-1.5 rounded-full border border-neutral-200 bg-white hover:bg-cordobaSoft">Copy implications</button>
-                <button id="cc-export-png" type="button" class="px-3 py-1.5 rounded-full border border-neutral-200 bg-white hover:bg-cordobaSoft">Export PNG</button>
-                <button id="cc-export-pdf" type="button" class="px-3 py-1.5 rounded-full border border-neutral-200 bg-white hover:bg-cordobaSoft">Export PDF</button>
-                <span id="cc-workflow-status" class="text-neutral-400 ml-2"></span>
-              </div>
-
-              <textarea
-                id="cc-note-draft"
-                class="mt-2 w-full h-48 rounded-xl border border-neutral-200 bg-[#FFFCF9] px-3 py-2 text-xs leading-relaxed text-neutral-800 focus:outline-none focus:ring-1 focus:ring-cordobaGold focus:border-cordobaGold"
-                placeholder="A short macro note will appear here once the data has loaded. You can edit freely before sending."
-              ></textarea>
-
-              <div class="mt-2">
-                <div class="text-[11px] uppercase tracking-[0.18em] text-neutral-500 mb-1">Pointers to structure your note</div>
-                <ul id="cc-note-bullets" class="list-disc list-inside space-y-1 text-xs text-neutral-700"></ul>
-              </div>
-
-              <div class="mt-4 rounded-xl border border-neutral-200 bg-[#FFFCF9] px-3 py-3">
-                <div class="text-[11px] uppercase tracking-[0.18em] text-neutral-500 mb-1">Next 3 questions to ask</div>
-                <ul id="cc-question-list" class="list-disc list-inside space-y-1 text-xs text-neutral-700"></ul>
-              </div>
-            </div>
-
-            <div class="flex flex-col gap-3">
-              <div>
-                <div class="text-[11px] uppercase tracking-[0.2em] text-neutral-500">Cordoba Research Matches</div>
-                <div class="text-sm text-neutral-700">Notes most relevant to this regime</div>
-                <div class="text-[11px] text-neutral-600 mt-1">
-                  Suggested directly from the main Cordoba Capital site based on current engine scores.
-                </div>
-              </div>
-              <div id="cc-research-list" class="mt-2 space-y-2 text-xs"></div>
-              <div class="mt-2 text-[11px] text-neutral-500">
-                Full library:&nbsp;
-                <a
-                  href="https://cordobarg.com/insights/"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  class="underline decoration-cordobaGold decoration-1 underline-offset-2"
-                >
-                  cordobarg.com/insights/
-                </a>
-              </div>
-            </div>
-
-          </div>
-        </section>
-
       </div>
 
-      <!-- GROWTH VIEW (REAL MODULE TARGET) -->
-      <div data-view-panel="growth" class="cc-view-panel hidden space-y-5">
-        <section class="rounded-2xl border border-neutral-200 bg-white shadow-subtle px-5 py-4">
+      <!-- ============================= -->
+      <!-- VIEW: Growth (Wired + renders) -->
+      <!-- ============================= -->
+      <div data-cc-view-panel="growth" class="hidden space-y-5">
+        <section class="rounded-2xl border border-neutral-200 bg-white shadow-subtle px-5 py-5">
           <div class="text-[11px] uppercase tracking-[0.28em] text-neutral-500">Growth &amp; cycle</div>
-          <div class="mt-2 text-xl font-semibold text-neutral-900">Quant growth-cycle lab</div>
+          <div class="mt-2 text-2xl font-semibold text-neutral-900">Growth &amp; cycle view</div>
           <div class="mt-1 text-sm text-neutral-600 leading-relaxed">
-            Probabilistic regime classification, output-gap proxy, turning-point risk, nowcast gap tracking, and scenario shocks — derived from the same engine inputs.
+            This view is now wired correctly. It pulls from the same engine state and renders a growth-cycle narrative and summary tiles.
           </div>
-        </section>
 
-        <!-- Module renders here -->
-        <div id="cc-growth-quant-root" class="space-y-4"></div>
+          <div id="cc-growth-cycle-root" class="mt-4 grid grid-cols-1 xl:grid-cols-3 gap-4"></div>
+        </section>
       </div>
 
-      <!-- INFLATION VIEW (PLACEHOLDER PANEL - KEEP FOR NOW) -->
-      <div data-view-panel="inflation" class="cc-view-panel hidden space-y-5">
-        <section class="rounded-2xl border border-neutral-200 bg-white shadow-subtle px-5 py-4">
+      <!-- ============================= -->
+      <!-- VIEW: Inflation -->
+      <!-- ============================= -->
+      <div data-cc-view-panel="inflation" class="hidden space-y-5">
+        <section class="rounded-2xl border border-neutral-200 bg-white shadow-subtle px-5 py-5">
           <div class="text-[11px] uppercase tracking-[0.28em] text-neutral-500">Inflation lens</div>
-          <div class="mt-2 text-base font-semibold text-neutral-900">Coming next</div>
-          <div class="mt-1 text-sm text-neutral-600">Wire inflation-specific decompositions here (services vs goods, persistence, reaction function, etc.).</div>
+          <div class="mt-2 text-2xl font-semibold text-neutral-900">Inflation lens view</div>
+          <div id="cc-inflation-panel" class="mt-3 text-sm text-neutral-700 leading-relaxed"></div>
         </section>
       </div>
 
-      <!-- LIQUIDITY VIEW (PLACEHOLDER PANEL - KEEP FOR NOW) -->
-      <div data-view-panel="liquidity" class="cc-view-panel hidden space-y-5">
-        <section class="rounded-2xl border border-neutral-200 bg-white shadow-subtle px-5 py-4">
+      <!-- ============================= -->
+      <!-- VIEW: Liquidity -->
+      <!-- ============================= -->
+      <div data-cc-view-panel="liquidity" class="hidden space-y-5">
+        <section class="rounded-2xl border border-neutral-200 bg-white shadow-subtle px-5 py-5">
           <div class="text-[11px] uppercase tracking-[0.28em] text-neutral-500">Liquidity &amp; money</div>
-          <div class="mt-2 text-base font-semibold text-neutral-900">Coming next</div>
-          <div class="mt-1 text-sm text-neutral-600">Wire credit impulse, money-gap, liquidity stress + lead-lag here.</div>
+          <div class="mt-2 text-2xl font-semibold text-neutral-900">Liquidity &amp; money view</div>
+          <div id="cc-liquidity-panel" class="mt-3 text-sm text-neutral-700 leading-relaxed"></div>
         </section>
       </div>
 
-      <!-- EXTERNAL VIEW (PLACEHOLDER PANEL - KEEP FOR NOW) -->
-      <div data-view-panel="external" class="cc-view-panel hidden space-y-5">
-        <section class="rounded-2xl border border-neutral-200 bg-white shadow-subtle px-5 py-4">
+      <!-- ============================= -->
+      <!-- VIEW: External -->
+      <!-- ============================= -->
+      <div data-cc-view-panel="external" class="hidden space-y-5">
+        <section class="rounded-2xl border border-neutral-200 bg-white shadow-subtle px-5 py-5">
           <div class="text-[11px] uppercase tracking-[0.28em] text-neutral-500">External balance</div>
-          <div class="mt-2 text-base font-semibold text-neutral-900">Coming next</div>
-          <div class="mt-1 text-sm text-neutral-600">Wire external sustainability, funding mix, reserves adequacy proxies, and flow stress mapping here.</div>
+          <div class="mt-2 text-2xl font-semibold text-neutral-900">External balance view</div>
+          <div id="cc-external-panel" class="mt-3 text-sm text-neutral-700 leading-relaxed"></div>
         </section>
       </div>
+
+      <!-- ============================= -->
+      <!-- Always-visible section (FIX) -->
+      <!-- ============================= -->
+      <section class="rounded-2xl border border-neutral-200 bg-white shadow-subtle px-4 py-4">
+        <div class="grid grid-cols-1 xl:grid-cols-3 gap-4">
+
+          <div class="xl:col-span-2 flex flex-col gap-3">
+            <div class="flex items-center justify-between">
+              <div>
+                <div class="text-[11px] uppercase tracking-[0.2em] text-neutral-500">Analyst Note Helper</div>
+                <div class="text-sm text-neutral-700">Draft macro commentary for the selected country</div>
+              </div>
+              <div class="text-[11px] text-neutral-500">Auto-generated from current engine configuration</div>
+            </div>
+
+            <div class="flex flex-wrap items-center gap-2 text-[11px]">
+              <button id="cc-copy-note" type="button" class="px-3 py-1.5 rounded-full border border-neutral-200 bg-white hover:bg-cordobaSoft">Copy note</button>
+              <button id="cc-copy-questions" type="button" class="px-3 py-1.5 rounded-full border border-neutral-200 bg-white hover:bg-cordobaSoft">Copy questions</button>
+              <button id="cc-copy-implications" type="button" class="px-3 py-1.5 rounded-full border border-neutral-200 bg-white hover:bg-cordobaSoft">Copy implications</button>
+              <span id="cc-workflow-status" class="text-neutral-400 ml-2"></span>
+            </div>
+
+            <textarea
+              id="cc-note-draft"
+              class="mt-2 w-full h-48 rounded-xl border border-neutral-200 bg-[#FFFCF9] px-3 py-2 text-xs leading-relaxed text-neutral-800 focus:outline-none focus:ring-1 focus:ring-cordobaGold focus:border-cordobaGold"
+              placeholder="A short macro note will appear here once the data has loaded. You can edit freely before sending."
+            ></textarea>
+
+            <div class="mt-2">
+              <div class="text-[11px] uppercase tracking-[0.18em] text-neutral-500 mb-1">Pointers to structure your note</div>
+              <ul id="cc-note-bullets" class="list-disc list-inside space-y-1 text-xs text-neutral-700"></ul>
+            </div>
+
+            <div class="mt-4 rounded-xl border border-neutral-200 bg-[#FFFCF9] px-3 py-3">
+              <div class="text-[11px] uppercase tracking-[0.18em] text-neutral-500 mb-1">Next 3 questions to ask</div>
+              <ul id="cc-question-list" class="list-disc list-inside space-y-1 text-xs text-neutral-700"></ul>
+            </div>
+          </div>
+
+          <div class="flex flex-col gap-3">
+            <div>
+              <div class="text-[11px] uppercase tracking-[0.2em] text-neutral-500">Cordoba Research Matches</div>
+              <div class="text-sm text-neutral-700">Notes most relevant to this regime</div>
+              <div class="text-[11px] text-neutral-600 mt-1">
+                Suggested directly from the main Cordoba Capital site based on current engine scores.
+              </div>
+            </div>
+            <div id="cc-research-list" class="mt-2 space-y-2 text-xs"></div>
+            <div class="mt-2 text-[11px] text-neutral-500">
+              Full library:&nbsp;
+              <a
+                href="https://cordobarg.com/insights/"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="underline decoration-cordobaGold decoration-1 underline-offset-2"
+              >
+                cordobarg.com/insights/
+              </a>
+            </div>
+          </div>
+
+        </div>
+      </section>
 
     </main>
   </div>
 
-  <!-- FOOTER -->
   <footer class="border-t border-neutral-200 bg-white/95 backdrop-blur text-xs text-neutral-500">
     <div class="w-full px-4 sm:px-6 lg:px-8 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-left">
       <div class="flex flex-wrap items-center gap-2 text-left">
@@ -606,47 +591,11 @@
         <a href="https://cordobarg.com" target="_blank" rel="noopener noreferrer" class="hover:text-neutral-900">
           Cordoba Research Group Website
         </a>
-
-        <button id="cc-methodology-open" type="button" class="underline decoration-neutral-300 underline-offset-2 hover:text-neutral-900">
-          Methodology &amp; data notes
-        </button>
       </div>
     </div>
   </footer>
 
-  <!-- MODAL -->
-  <div id="cc-methodology-modal" class="fixed inset-0 z-40 hidden">
-    <div data-cc-methodology-overlay class="absolute inset-0 bg-black/30"></div>
-    <div class="relative z-10 flex min-h-full items-end sm:items-center justify-center p-4">
-      <div class="w-full max-w-lg rounded-2xl bg-white shadow-subtle border border-neutral-200 px-5 py-4">
-        <div class="flex items-center justify-between mb-2">
-          <div>
-            <div class="text-[11px] uppercase tracking-[0.2em] text-neutral-500">Methodology &amp; Data Notes</div>
-            <div class="text-sm text-neutral-800">How the engine builds scores and narratives</div>
-          </div>
-          <button id="cc-methodology-close" type="button" class="text-xs text-neutral-500 hover:text-neutral-800">
-            Close
-          </button>
-        </div>
-        <div class="text-xs text-neutral-700 space-y-2 max-h-80 overflow-y-auto pr-1">
-          <p>1. <span class="font-semibold">Data frequency.</span> The engine can ingest annual, quarterly, or monthly data. At present, most series are sourced from the World Bank WDI on an annual basis, with scope to plug in fresher national or FRED/OECD feeds over time.</p>
-          <p>2. <span class="font-semibold">History window.</span> For each indicator we work with a rolling history window (up to the last 40 observations). This keeps signals anchored in recent regimes rather than very old cycles.</p>
-          <p>3. <span class="font-semibold">Standardisation.</span> We compute z-scores for the latest observation using (latest − mean) / standard deviation over the history window. This lets us talk about how unusual a level is in standard-deviation terms.</p>
-          <p>4. <span class="font-semibold">Signals.</span> Qualitative labels such as “Strengthening above trend” or “Elevated but cooling” combine the z-score with the direction of change versus the prior observation.</p>
-          <p>5. <span class="font-semibold">Composite engines.</span> The Growth, Inflation, Liquidity, and External engines are simple weighted combinations of indicator z-scores, rescaled to a 10–90 range for ease of interpretation.</p>
-          <p>6. <span class="font-semibold">Analogues.</span> “Closest analogue periods” highlight historical points where the z-score profile is closest to today, as a quick pointer to prior regimes that looked similar.</p>
-          <p>7. <span class="font-semibold">Caveats.</span> All data is subject to revision and publication lag. Some series may be missing or interpolated for certain countries. The dashboard is designed as a qualitative screening tool, not a replacement for detailed country and asset-level work.</p>
-          <p class="text-[11px] text-neutral-500">This tool is for internal and educational use only and does not constitute investment advice or a recommendation to buy or sell any security or asset.</p>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- SCRIPTS -->
   <script src="main.js"></script>
-  <script src="growth_cycle_quant.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-
+  <script src="growth_cycle.js"></script>
 </body>
 </html>
