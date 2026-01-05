@@ -15,9 +15,6 @@ const COUNTRY_META = {
   FR: { name: "France", region: "G-20 · DM", wb: "FRA" },
   JP: { name: "Japan", region: "G-20 · DM", wb: "JPN" },
 
-  // ✅ Added (because your research list references NL)
-  NL: { name: "Netherlands", region: "Europe · DM", wb: "NLD" },
-
   // --------------------
   // G20 Emerging
   // --------------------
@@ -58,10 +55,7 @@ const COUNTRY_META = {
   LA: { name: "Laos", region: "South-East Asia · EM", wb: "LAO" },
   MM: { name: "Myanmar", region: "South-East Asia · EM", wb: "MMR" },
   BN: { name: "Brunei", region: "South-East Asia · EM", wb: "BRN" },
-  TL: { name: "Timor-Leste", region: "South-East Asia · EM", wb: "TLS" },
-
-  // ✅ Added (because your research list references MA)
-  MA: { name: "Morocco", region: "Africa · EM", wb: "MAR" }
+  TL: { name: "Timor-Leste", region: "South-East Asia · EM", wb: "TLS" }
 };
 
 // ---------------------------------------------------------------------------
@@ -119,8 +113,6 @@ const INDICATORS = [
     decimals: 1
   }
 ];
-
-// ---------------------------------------------------------------------------
 // Cordoba research metadata
 // ---------------------------------------------------------------------------
 const CORDOBA_RESEARCH = [
@@ -243,6 +235,7 @@ async function fetchWorldBankSeries(countryKey, indicatorCode) {
   }
 
   const url = `https://api.worldbank.org/v2/country/${wbCode}/indicator/${indicatorCode}?format=json&per_page=200`;
+
   try {
     const res = await fetch(url);
     if (!res.ok) {
@@ -252,6 +245,7 @@ async function fetchWorldBankSeries(countryKey, indicatorCode) {
     const json = await res.json();
     const header = Array.isArray(json) ? json[0] : null;
     const data = Array.isArray(json) ? json[1] : null;
+
     const updatedAt = header && header.lastupdated ? header.lastupdated : null;
 
     if (!Array.isArray(data)) {
@@ -318,19 +312,23 @@ function inferYearFromPoint(p) {
 function inferMonthFromPoint(p) {
   if (!p) return 12;
   if (typeof p.month === "number" && p.month >= 1 && p.month <= 12) return p.month;
+
   if (p.period) {
     const s = String(p.period);
+
     let m = s.match(/^\d{4}(\d{2})$/);
     if (m) {
       const mm = parseInt(m[1], 10);
       if (mm >= 1 && mm <= 12) return mm;
     }
+
     m = s.match(/^\d{4}-(\d{2})/);
     if (m) {
       const mm = parseInt(m[1], 10);
       if (mm >= 1 && mm <= 12) return mm;
     }
   }
+
   return 12;
 }
 
@@ -436,6 +434,7 @@ function classifySignal(stat, cfg) {
       direction: "flat"
     };
   }
+
   const { z, delta } = stat;
   const absZ = Math.abs(z);
   const direction = delta > 0 ? "up" : delta < 0 ? "down" : "flat";
@@ -464,6 +463,7 @@ function classifySignal(stat, cfg) {
     else if (z < -0.5 && direction === "up") label = "Subdued but firming";
     else label = "Close to trend";
   }
+
   return { level, strength, label, direction };
 }
 
@@ -546,8 +546,8 @@ function renderMarketLens(engines) {
   if (!wrap || !noteEl) return;
 
   const { pills, note } = buildMarketLens(engines);
-  wrap.innerHTML = "";
 
+  wrap.innerHTML = "";
   pills.forEach((t) => {
     const span = document.createElement("span");
     span.className =
@@ -583,6 +583,7 @@ function heatStyle(value) {
   if (value == null || isNaN(value)) {
     return { backgroundColor: "transparent" };
   }
+
   const v = Math.max(-2.5, Math.min(2.5, value));
   const abs = Math.abs(v);
 
@@ -599,6 +600,7 @@ function buildEngineInterpretation(engineId, engineZ) {
   if (engineZ == null || isNaN(engineZ)) return "Insufficient data for this engine.";
   const abs = Math.abs(engineZ);
   const side = engineZ > 0 ? "above" : "below";
+
   if (abs < 0.5) return "Close to its own history, low signal unless the slope shifts.";
   if (abs < 1.0) return `Moderately ${side} history, watch persistence and second order effects.`;
   return `Meaningfully ${side} history, this is where pricing often moves faster than narrative.`;
@@ -633,16 +635,17 @@ function renderEngineBreakdown(statsById, engines) {
       const zStyle = heatStyle(zAdj);
       const cStyle = heatStyle(contrib);
       const ezStyle = heatStyle(eZ);
-
       const scoreProxy = eScore != null ? (eScore - 50) / 10 : null;
       const scoreStyle = heatStyle(scoreProxy);
 
       const engineLabel = capitaliseFirst(engineId);
+
       const indicatorCfg = INDICATORS.find((i) => i.id === c.indicator);
       const compLabel = indicatorCfg ? indicatorCfg.label : c.label;
 
       const tr = document.createElement("tr");
       tr.className = "hover:bg-cordobaSoft";
+
       tr.innerHTML = `
         <td class="py-2 pr-3 text-neutral-900 font-medium">${idx === 0 ? engineLabel : ""}</td>
         <td class="py-2 pr-3 text-neutral-700">${compLabel}</td>
@@ -663,6 +666,7 @@ function renderEngineBreakdown(statsById, engines) {
           ${idx === 0 ? interpretation : ""}
         </td>
       `;
+
       tbody.appendChild(tr);
     });
   });
@@ -689,7 +693,6 @@ function buildNoteDraft(countryKey, statsById, engines) {
         return acc;
       }, null)
     : null;
-
   const lastLabel = lastPoint ? formatPeriodLabel(lastPoint.point) : "n/a";
 
   const growthZ = engines.growth?.z || 0;
@@ -704,6 +707,7 @@ function buildNoteDraft(countryKey, statsById, engines) {
   else if (inflZ < -0.5) inflationPhrase = "disinflation";
 
   const lines = [];
+
   lines.push(
     `${meta.name} – Macro snapshot (${lastLabel}, World Bank annual data).`
   );
@@ -761,6 +765,7 @@ function renderNoteHelper(countryKey, statsById, engines) {
 
   if (bulletsEl) {
     bulletsEl.innerHTML = "";
+
     const gdp = statsById.gdp_growth;
     const infl = statsById.inflation;
     const money = statsById.money;
@@ -800,7 +805,7 @@ function renderNoteHelper(countryKey, statsById, engines) {
     ];
 
     const dominant = engineList
-      .map((e) => ({ ...e, z: engines?.[e.id]?.z ?? 0 }))
+      .map((e) => ({ ...e, z: engines[e.id].z }))
       .sort((a, b) => Math.abs(b.z) - Math.abs(a.z))[0];
 
     if (dominant && Math.abs(dominant.z) > 0.5) {
@@ -835,8 +840,6 @@ function buildResearchReason(engines) {
         : obj.z > 0
         ? "stretched high"
         : "stretched low";
-
-    // ✅ FIXED: valid template literal (this line was the common syntax break)
     parts.push(`${name}: z ${z} (${tone})`);
   };
   add("Growth", engines.growth);
@@ -861,17 +864,18 @@ function renderResearchSuggestions(countryKey, statsById, engines) {
     { id: "liquidity", z: engines.liquidity?.z || 0 },
     { id: "external", z: engines.external?.z || 0 }
   ];
+
   const dominant = engineArray.sort((a, b) => Math.abs(b.z) - Math.abs(a.z))[0];
   const domEngineId = dominant ? dominant.id : null;
 
   const scored = CORDOBA_RESEARCH.map((article) => {
     let score = 0;
+
     if (domEngineId && article.engines.includes(domEngineId)) score += 3;
     if (article.countries.includes(countryKey)) score += 3;
 
     const nameLower = countryName.toLowerCase();
     if (article.regions.some((r) => nameLower.includes(r.toLowerCase()))) score += 2;
-
     if (meta.region && article.regions.includes("Global")) score += 1;
     if (Math.abs(dominant?.z || 0) > 0.7) score += 1;
 
@@ -979,12 +983,10 @@ function renderRegimeSummary(countryKey, statsById, engines) {
       .filter(Boolean)
       .map((s) => s.windowYears || 0)
   );
-
   let confidence =
     0.4 * (indicatorsWithData / INDICATORS.length) +
     0.6 * Math.min(avgWindow / 10, 1);
   confidence = Math.round(confidence * 100);
-
   if (confEl) confEl.textContent = `${confidence}%`;
 
   if (analogEl) {
@@ -1006,6 +1008,7 @@ function renderRegimeSummary(countryKey, statsById, engines) {
 
   if (riskEl) {
     riskEl.innerHTML = "";
+
     const growthRisk = riskLevelFromZ(engines.growth.z);
     const inflationRisk = riskLevelFromZ(engines.inflation.z);
     const externalRisk = riskLevelFromZ(engines.external.z);
@@ -1032,7 +1035,6 @@ function renderRegimeSummary(countryKey, statsById, engines) {
 function renderEngineCards(engines) {
   const container = document.getElementById("cc-engine-cards");
   if (!container) return;
-
   container.innerHTML = "";
 
   const meta = [
@@ -1070,7 +1072,6 @@ function renderEngineCards(engines) {
 
     const qualitative =
       Math.abs(z) < 0.5 ? "Near trend" : z > 0 ? "Above trend" : "Below trend";
-
     const labelEl = document.createElement("span");
     labelEl.className =
       "inline-flex items-center justify-center whitespace-nowrap px-3 py-1 rounded-full border text-[11px] font-medium border-neutral-300 bg-white " +
@@ -1105,6 +1106,7 @@ function renderHeadlineTiles(statsById) {
       `History avg ${formatNumber(gdp.mean, 1, "%")}; change vs prior observation ${formatNumber(gdp.delta, 1, "%")}.`
     );
   }
+
   if (infl) {
     setText("cc-inflation-latest", `${formatNumber(infl.latest.value, 1, "%")}`);
     setText(
@@ -1112,6 +1114,7 @@ function renderHeadlineTiles(statsById) {
       `History avg ${formatNumber(infl.mean, 1, "%")}; latest vs target depends on central bank regime.`
     );
   }
+
   if (unemp) {
     setText("cc-unemployment-latest", `${formatNumber(unemp.latest.value, 1, "%")}`);
     setText(
@@ -1119,6 +1122,7 @@ function renderHeadlineTiles(statsById) {
       `History avg ${formatNumber(unemp.mean, 1, "%")}; a proxy for slack vs overheating.`
     );
   }
+
   if (money) {
     setText("cc-money-latest", `${formatNumber(money.latest.value, 1, "%")}`);
     setText(
@@ -1126,6 +1130,7 @@ function renderHeadlineTiles(statsById) {
       `History avg ${formatNumber(money.mean, 1, "%")}; a rough liquidity pulse.`
     );
   }
+
   if (ca) {
     setText("cc-ca-latest", `${formatNumber(ca.latest.value, 1, "% of GDP")}`);
     setText(
@@ -1138,7 +1143,6 @@ function renderHeadlineTiles(statsById) {
 function renderInflectionSignals(statsById) {
   const container = document.getElementById("cc-inflection-list");
   if (!container) return;
-
   container.innerHTML = "";
 
   const ordered = [
@@ -1171,13 +1175,12 @@ function renderInflectionSignals(statsById) {
     const small = document.createElement("div");
     small.className = "text-[11px] text-neutral-600";
     const latest = stat.latest;
-
     const directionText =
       stat.delta > 0 ? "higher than" : stat.delta < 0 ? "lower than" : "similar to";
 
     small.textContent = `Latest reading is ${formatNumber(latest.value, cfg.decimals, cfg.unit)} (${formatPeriodLabel(latest)}), ${directionText} the prior observation and ${signal.label} vs the history average of ${formatNumber(stat.mean, cfg.decimals, cfg.unit)}.`;
-
     left.appendChild(small);
+
     row.appendChild(left);
 
     const right = document.createElement("div");
@@ -1200,6 +1203,7 @@ function renderInflectionSignals(statsById) {
 // ---------------------------------------------------------------------------
 function createSparkline(points) {
   if (!points || !points.length) return null;
+
   const values = points.map((p) => p.value);
   if (!values.length) return null;
 
@@ -1234,12 +1238,12 @@ function createSparkline(points) {
     const y = scaleY(v);
     d += (i === 0 ? "M" : "L") + x + " " + y + " ";
   });
-
   path.setAttribute("d", d.trim());
   path.setAttribute("fill", "none");
   path.setAttribute("stroke", "currentColor");
   path.setAttribute("stroke-width", "1.2");
   svg.appendChild(path);
+
   return svg;
 }
 
@@ -1266,6 +1270,7 @@ function renderIndicatorGrid(statsById, countryKey) {
 
     const lastVal = formatNumber(stat.latest.value, cfg.decimals, cfg.unit, "n/a");
     const zFormatted = stat.z != null && !isNaN(stat.z) ? stat.z.toFixed(1) : "0.0";
+
     const commentText = `Latest reading is ${lastVal} (${formatPeriodLabel(stat.latest)}) vs history average ${formatNumber(stat.mean, cfg.decimals, cfg.unit)}; change vs prior observation ${formatNumber(stat.delta, cfg.decimals, cfg.unit)}.`;
 
     tr.innerHTML = `
@@ -1317,53 +1322,31 @@ function renderIndicatorGrid(statsById, countryKey) {
 }
 
 // ---------------------------------------------------------------------------
-// ✅ Meta – show last OBSERVATION period (not WB "lastupdated")
+// Meta – "latest: Month YYYY" using WB lastupdated
 // ---------------------------------------------------------------------------
-function getLatestObservation(statsById) {
-  const all = Object.values(statsById).filter(Boolean);
-  if (!all.length) return null;
-
-  let best = null;
-  all.forEach((s) => {
-    const p = s.latest;
-    const y = inferYearFromPoint(p) || 0;
-    const m = inferMonthFromPoint(p) || 0;
-    const stamp = y * 100 + m;
-    if (!best || stamp > best.stamp) best = { stamp, point: p };
-  });
-
-  return best ? best.point : null;
-}
-
-function getLatestWorldBankUpdatedAt(statsById) {
-  const dates = Object.values(statsById).filter(Boolean).map((s) => s.updatedAt).filter(Boolean);
-  if (!dates.length) return null;
-  let latest = dates[0];
-  dates.forEach((d) => {
-    if (new Date(d) > new Date(latest)) latest = d;
-  });
-  return latest;
-}
-
 function renderMeta(statsById) {
   const dataAsOf = document.getElementById("cc-data-as-of");
   if (!dataAsOf) return;
 
-  const obs = getLatestObservation(statsById);
-  if (!obs) {
-    dataAsOf.textContent = "data through: n/a";
+  const allStats = Object.values(statsById).filter(Boolean);
+  if (!allStats.length) {
+    dataAsOf.textContent = "latest: n/a";
     return;
   }
 
-  const obsLabel = formatPeriodLabel(obs);
+  const dates = allStats.map((s) => s.updatedAt).filter(Boolean);
+  if (!dates.length) {
+    dataAsOf.textContent = "latest: n/a";
+    return;
+  }
 
-  // Optional: show WB "last updated" month-year (smaller + secondary)
-  const wbUpdated = getLatestWorldBankUpdatedAt(statsById);
-  const wbLabel = formatUpdatedAt(wbUpdated);
+  let latest = dates[0];
+  dates.forEach((d) => {
+    if (new Date(d) > new Date(latest)) latest = d;
+  });
 
-  dataAsOf.textContent = wbLabel
-    ? `data through: ${obsLabel} · WB updated: ${wbLabel}`
-    : `data through: ${obsLabel}`;
+  const label = formatUpdatedAt(latest) || "n/a";
+  dataAsOf.textContent = `latest: ${label}`;
 }
 
 // ---------------------------------------------------------------------------
@@ -1372,7 +1355,6 @@ function renderMeta(statsById) {
 function renderNextQuestions(statsById, engines) {
   const list = document.getElementById("cc-question-list");
   if (!list) return;
-
   list.innerHTML = "";
 
   const gdp = statsById.gdp_growth;
@@ -1386,16 +1368,19 @@ function renderNextQuestions(statsById, engines) {
       "Why has the current-account balance moved away from its 10-year norm, and is this cyclical or structural?"
     );
   }
+
   if (gdp && infl && Math.sign(gdp.z) !== Math.sign(infl.z)) {
     qs.push(
       "What is driving the divergence between growth and inflation signals, and how might that affect policy and risk premia?"
     );
   }
-  if (engines?.liquidity && engines?.external) {
+
+  if (engines.liquidity && engines.external) {
     qs.push(
       "Is domestic liquidity easing enough to offset any external funding pressure picked up in the external engine?"
     );
   }
+
   if (!qs.length) {
     qs.push(
       "Most engines are close to trend. What catalysts could realistically shift this regime over the next 12–18 months?"
@@ -1458,7 +1443,9 @@ function renderMeaningfulHeatmap(countryKey, statsById, engines) {
   cards.forEach((c) => {
     const z = c.z;
     const s = c.score;
+
     const bg = heatStyle(z).backgroundColor || "transparent";
+
     const div = document.createElement("div");
     div.className = "rounded-2xl border border-neutral-200 bg-white px-3 py-3";
     div.innerHTML = `
@@ -1545,13 +1532,17 @@ async function exportDashboardPDF() {
   const canvas = await html2canvas(root, { scale: 2, backgroundColor: "#FFFCF9" });
   const imgData = canvas.toDataURL("image/png");
   const { jsPDF } = window.jspdf;
+
   const pdf = new jsPDF("p", "pt", "a4");
   const pageWidth = pdf.internal.pageSize.getWidth();
   const pageHeight = pdf.internal.pageSize.getHeight();
+
   const imgWidth = pageWidth;
   const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
   let y = 0;
   pdf.addImage(imgData, "PNG", 0, y, imgWidth, imgHeight);
+
   if (imgHeight > pageHeight) {
     let remaining = imgHeight - pageHeight;
     while (remaining > 0) {
@@ -1561,6 +1552,7 @@ async function exportDashboardPDF() {
       remaining -= pageHeight;
     }
   }
+
   pdf.save("cordoba_gme.pdf");
   setWorkflowStatus("PDF exported.");
 }
@@ -1611,6 +1603,7 @@ function setupWorkflowShortcuts() {
       exportDashboardPNG();
     });
   }
+
   if (exportPdfBtn) {
     exportPdfBtn.addEventListener("click", () => {
       exportDashboardPDF();
@@ -1621,23 +1614,28 @@ function setupWorkflowShortcuts() {
 // ---------------------------------------------------------------------------
 // Regime implication mapper + Stress sentinel (institutional formatting)
 // ---------------------------------------------------------------------------
+
 function clamp01(x) {
   if (x == null || isNaN(x)) return 0;
   return Math.max(0, Math.min(1, x));
 }
+
 function scoreTo01(score) {
   if (score == null || isNaN(score)) return 0.5;
   return clamp01(score / 100);
 }
+
 function zToHeat01(z) {
   const v = Math.max(-2.5, Math.min(2.5, z || 0));
   return clamp01(Math.abs(v) / 2.5);
 }
+
 function qualityLabelFromConfidence(confPct) {
   if (confPct >= 80) return "High";
   if (confPct >= 60) return "Medium";
   return "Low";
 }
+
 function renderPill(el, text, tone) {
   if (!el) return;
   const toneClass =
@@ -1646,13 +1644,17 @@ function renderPill(el, text, tone) {
       : tone === "medium"
       ? "bg-cordobaSoft border-neutral-200 text-neutral-900"
       : "bg-white border-neutral-200 text-neutral-600";
+
   el.className =
     "inline-flex items-center px-2.5 py-1 rounded-full border text-xs " + toneClass;
+
   el.textContent = text;
 }
+
 function barNode({ label, value01, hint }) {
   const wrap = document.createElement("div");
   wrap.className = "rounded-xl border border-neutral-200 bg-white px-3 py-2";
+
   const top = document.createElement("div");
   top.className = "flex items-center justify-between gap-3";
   top.innerHTML = `
@@ -1660,28 +1662,36 @@ function barNode({ label, value01, hint }) {
     <div class="text-[11px] text-neutral-500">${Math.round(value01 * 100)}%</div>
   `;
   wrap.appendChild(top);
+
   const track = document.createElement("div");
   track.className = "mt-2 h-2 rounded-full bg-neutral-100 border border-neutral-200 overflow-hidden";
+
   const fill = document.createElement("div");
   fill.className = "h-full rounded-full bg-cordobaGold";
   fill.style.width = `${Math.round(value01 * 100)}%`;
+
   track.appendChild(fill);
   wrap.appendChild(track);
+
   const sub = document.createElement("div");
   sub.className = "mt-2 text-[11px] text-neutral-600 leading-relaxed";
   sub.textContent = hint || "";
   wrap.appendChild(sub);
+
   return wrap;
 }
+
 function buildImplicationChannels(engines) {
   const gZ = engines?.growth?.z ?? 0;
   const iZ = engines?.inflation?.z ?? 0;
   const lZ = engines?.liquidity?.z ?? 0;
   const eZ = engines?.external?.z ?? 0;
+
   const rates = clamp01(0.45 * zToHeat01(iZ) + 0.35 * clamp01(Math.abs(iZ - gZ) / 2.5) + 0.20 * zToHeat01(lZ));
   const fx = clamp01(0.65 * zToHeat01(eZ) + 0.20 * clamp01(Math.max(0, -eZ) / 2.5) + 0.15 * zToHeat01(iZ));
   const credit = clamp01(0.55 * zToHeat01(lZ) + 0.30 * clamp01(Math.max(0, -gZ) / 2.5) + 0.15 * zToHeat01(eZ));
   const equities = clamp01(0.45 * zToHeat01(gZ) + 0.35 * zToHeat01(lZ) + 0.20 * clamp01(Math.abs(gZ - iZ) / 2.5));
+
   return [
     {
       k: "Rates",
@@ -1725,14 +1735,19 @@ function buildImplicationChannels(engines) {
     }
   ];
 }
+
 function buildRegimeImplications(countryKey, statsById, engines) {
   const meta = COUNTRY_META[countryKey] || { name: countryKey };
+
   const gZ = engines?.growth?.z ?? 0;
   const iZ = engines?.inflation?.z ?? 0;
   const lZ = engines?.liquidity?.z ?? 0;
   const eZ = engines?.external?.z ?? 0;
+
   const name = meta.name || countryKey;
+
   const items = [];
+
   items.push({
     topic: "Rates",
     headline:
@@ -1744,6 +1759,7 @@ function buildRegimeImplications(countryKey, statsById, engines) {
     watch: "Breakevens, 2s10s, term premium proxies",
     confidence: Math.round(50 + 50 * clamp01(zToHeat01(iZ) + clamp01(Math.abs(iZ - gZ) / 2.5)) / 2)
   });
+
   items.push({
     topic: "Risk",
     headline:
@@ -1755,6 +1771,7 @@ function buildRegimeImplications(countryKey, statsById, engines) {
     watch: "Credit spreads, equity breadth, volatility of volatility",
     confidence: Math.round(50 + 50 * clamp01(zToHeat01(gZ) + zToHeat01(lZ)) / 2)
   });
+
   items.push({
     topic: "FX",
     headline:
@@ -1766,6 +1783,7 @@ function buildRegimeImplications(countryKey, statsById, engines) {
     watch: "Reserves, FX basis, capital flow proxies",
     confidence: Math.round(50 + 50 * zToHeat01(eZ))
   });
+
   items.push({
     topic: "Cross asset",
     headline:
@@ -1777,7 +1795,9 @@ function buildRegimeImplications(countryKey, statsById, engines) {
     watch: "FX basis, credit indices, duration convexity stress",
     confidence: Math.round(50 + 50 * clamp01((zToHeat01(eZ) + zToHeat01(lZ) + clamp01(Math.abs(iZ - gZ) / 2.5)) / 3))
   });
+
   const avgConf = Math.round(items.reduce((s, x) => s + (x.confidence || 50), 0) / items.length);
+
   return { name, items, avgConf };
 }
 
@@ -1787,6 +1807,7 @@ function renderRegimeImplicationMapper(countryKey, statsById, engines) {
   const stamp = document.getElementById("cc-implication-graphic-stamp");
   const quality = document.getElementById("cc-implication-quality");
   const out = document.getElementById("cc-implications");
+
   if (!graphic || !out) return;
 
   const built = buildRegimeImplications(countryKey, statsById, engines);
@@ -1797,6 +1818,7 @@ function renderRegimeImplicationMapper(countryKey, statsById, engines) {
     const tone = q === "High" ? "high" : q === "Medium" ? "medium" : "low";
     renderPill(quality, `Quality: ${q}`, tone);
   }
+
   if (stamp) stamp.textContent = "derived from current engine scores";
 
   graphic.innerHTML = "";
@@ -1814,11 +1836,13 @@ function renderRegimeImplicationMapper(countryKey, statsById, engines) {
   built.items.forEach((it, idx) => {
     const row = document.createElement("div");
     row.className = "rounded-xl border border-neutral-200 bg-white px-4 py-3";
+
     row.innerHTML = `
       <div class="flex items-start gap-3">
         <div class="mt-0.5 h-6 w-6 shrink-0 rounded-full bg-cordobaSoft border border-neutral-200 flex items-center justify-center text-[11px] text-neutral-700 font-medium">
           ${idx + 1}
         </div>
+
         <div class="flex-1">
           <div class="flex flex-wrap items-center justify-between gap-2">
             <div class="text-[11px] uppercase tracking-[0.2em] text-neutral-500">
@@ -1828,15 +1852,18 @@ function renderRegimeImplicationMapper(countryKey, statsById, engines) {
               confidence ${it.confidence}%
             </div>
           </div>
+
           <div class="mt-1 text-sm font-medium text-neutral-900 leading-relaxed">
             ${it.headline}
           </div>
+
           <div class="mt-2 inline-flex items-center px-2.5 py-1 rounded-full border border-neutral-200 bg-[#FFFCF9] text-[11px] text-neutral-700">
             Watch: ${it.watch}
           </div>
         </div>
       </div>
     `;
+
     out.appendChild(row);
   });
 }
@@ -1847,10 +1874,13 @@ function buildStressSentinel(countryKey, statsById, engines) {
   const m = statsById.money;
   const ca = statsById.current_account;
   const i = statsById.inflation;
+
   const gZ = engines?.growth?.z ?? 0;
   const lZ = engines?.liquidity?.z ?? 0;
   const eZ = engines?.external?.z ?? 0;
+
   const nodes = [];
+
   nodes.push({
     lane: "External funding",
     trigger:
@@ -1861,6 +1891,7 @@ function buildStressSentinel(countryKey, statsById, engines) {
     watch: "FX pressure, reserves, FX basis, external debt rollover",
     heat: ca ? zToHeat01(ca.z) : zToHeat01(eZ)
   });
+
   nodes.push({
     lane: "Liquidity rollover",
     trigger:
@@ -1871,6 +1902,7 @@ function buildStressSentinel(countryKey, statsById, engines) {
     watch: "Broad money, credit impulse proxies, spread momentum",
     heat: m ? zToHeat01(m.z) : zToHeat01(lZ)
   });
+
   nodes.push({
     lane: "Labour market turn",
     trigger:
@@ -1881,6 +1913,7 @@ function buildStressSentinel(countryKey, statsById, engines) {
     watch: "Unemployment change, participation, wage pressure proxies",
     heat: u ? zToHeat01(u.z) : zToHeat01(Math.max(0, -gZ))
   });
+
   nodes.push({
     lane: "Inflation persistence",
     trigger:
@@ -1891,6 +1924,7 @@ function buildStressSentinel(countryKey, statsById, engines) {
     watch: "Breakevens, services inflation proxies, policy reaction",
     heat: i ? zToHeat01(i.z) : 0.4
   });
+
   return nodes
     .sort((a, b) => (b.heat || 0) - (a.heat || 0))
     .slice(0, 4);
@@ -1903,6 +1937,7 @@ function renderStressSentinel(countryKey, statsById, engines) {
   if (!graphic || !out) return;
 
   const nodes = buildStressSentinel(countryKey, statsById, engines);
+
   if (stamp) stamp.textContent = "ordered by current tension";
 
   graphic.innerHTML = "";
@@ -1920,27 +1955,33 @@ function renderStressSentinel(countryKey, statsById, engines) {
   nodes.forEach((n, idx) => {
     const row = document.createElement("div");
     row.className = "rounded-xl border border-neutral-200 bg-white px-4 py-3";
+
     row.innerHTML = `
       <div class="flex items-start gap-3">
         <div class="mt-0.5 h-6 w-6 shrink-0 rounded-full bg-white border border-neutral-200 flex items-center justify-center text-[11px] text-neutral-700 font-medium">
           ${idx + 1}
         </div>
+
         <div class="flex-1">
           <div class="text-[11px] uppercase tracking-[0.2em] text-neutral-500">
             ${n.lane}
           </div>
+
           <div class="mt-1 text-sm font-medium text-neutral-900 leading-relaxed">
             ${n.trigger}
           </div>
+
           <div class="mt-1 text-[11px] text-neutral-600 leading-relaxed">
             ${n.why}
           </div>
+
           <div class="mt-2 inline-flex items-center px-2.5 py-1 rounded-full border border-neutral-200 bg-[#FFFCF9] text-[11px] text-neutral-700">
             Watch: ${n.watch}
           </div>
         </div>
       </div>
     `;
+
     out.appendChild(row);
   });
 }
@@ -1950,6 +1991,7 @@ function renderStressSentinel(countryKey, statsById, engines) {
 // ---------------------------------------------------------------------------
 async function loadCountry(countryKey) {
   const meta = COUNTRY_META[countryKey] || { name: countryKey, region: "" };
+
   const labelEl = document.getElementById("cc-country-current-label");
   const regionEl = document.getElementById("cc-country-current-region");
   if (labelEl) labelEl.textContent = meta.name;
@@ -1962,9 +2004,11 @@ async function loadCountry(countryKey) {
     renderRegimeSummary(countryKey, statsById, engines);
     renderEngineCards(engines);
     renderEngineBreakdown(statsById, engines);
+
     renderMeaningfulHeatmap(countryKey, statsById, engines);
     renderRegimeImplicationMapper(countryKey, statsById, engines);
     renderStressSentinel(countryKey, statsById, engines);
+
     renderHeadlineTiles(statsById);
     renderInflectionSignals(statsById);
     renderIndicatorGrid(statsById, countryKey);
@@ -1972,16 +2016,11 @@ async function loadCountry(countryKey) {
     renderNoteHelper(countryKey, statsById, engines);
     renderNextQuestions(statsById, engines);
     renderResearchSuggestions(countryKey, statsById, engines);
-
-    // ✅ Optional: advanced Growth & Cycle quant lab (separate file)
-    if (window.CCGrowthCycleQuant && typeof window.CCGrowthCycleQuant.render === "function") {
-      window.CCGrowthCycleQuant.render(countryKey, statsById, engines);
-    }
-
     return;
   }
 
   document.body.classList.add("cc-loading");
+
   try {
     const requests = INDICATORS.map((cfg) =>
       fetchWorldBankSeries(countryKey, cfg.wb).then(({ series, updatedAt }) => ({
@@ -1992,13 +2031,10 @@ async function loadCountry(countryKey) {
     );
 
     const results = await Promise.all(requests);
-    const statsById = {};
 
+    const statsById = {};
     results.forEach(({ cfg, series, updatedAt }) => {
       const stats = series && series.length ? computeStats(series, 10, updatedAt) : null;
-
-      // ✅ Keep raw series for advanced quant work (does not change existing UI)
-      if (stats) stats.series = Array.isArray(series) ? series.slice() : [];
 
       if (stats && series && series.length) {
         const lastN = series.slice(-10);
@@ -2008,6 +2044,7 @@ async function loadCountry(countryKey) {
           month: inferMonthFromPoint(p)
         }));
       }
+
       statsById[cfg.id] = stats;
     });
 
@@ -2018,9 +2055,13 @@ async function loadCountry(countryKey) {
     renderRegimeSummary(countryKey, statsById, engines);
     renderEngineCards(engines);
     renderEngineBreakdown(statsById, engines);
+
     renderMeaningfulHeatmap(countryKey, statsById, engines);
+
+    // ✅ FIX: these were the two calls breaking your mapper section
     renderRegimeImplicationMapper(countryKey, statsById, engines);
     renderStressSentinel(countryKey, statsById, engines);
+
     renderHeadlineTiles(statsById);
     renderInflectionSignals(statsById);
     renderIndicatorGrid(statsById, countryKey);
@@ -2028,12 +2069,6 @@ async function loadCountry(countryKey) {
     renderNoteHelper(countryKey, statsById, engines);
     renderNextQuestions(statsById, engines);
     renderResearchSuggestions(countryKey, statsById, engines);
-
-    // ✅ Optional: advanced Growth & Cycle quant lab (separate file)
-    if (window.CCGrowthCycleQuant && typeof window.CCGrowthCycleQuant.render === "function") {
-      window.CCGrowthCycleQuant.render(countryKey, statsById, engines);
-    }
-
   } catch (err) {
     console.error("Failed to load country data:", err);
   } finally {
@@ -2086,6 +2121,7 @@ function setupMethodologyModal() {
   const closeBtn = document.getElementById("cc-methodology-close");
   const modal = document.getElementById("cc-methodology-modal");
   const overlay = modal ? modal.querySelector("[data-cc-methodology-overlay]") : null;
+
   if (!modal || !openBtn || !closeBtn || !overlay) return;
 
   const open = () => modal.classList.remove("hidden");
