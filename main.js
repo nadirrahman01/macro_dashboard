@@ -1,5 +1,6 @@
 // Cordoba Capital – Global Macro Engine (Beta)
 // Data source: World Bank World Development Indicators (WDI)
+
 // ---------------------------------------------------------------------------
 // Country metadata (2-letter UI code → 3-letter WB code)
 // ---------------------------------------------------------------------------
@@ -13,12 +14,17 @@ const COUNTRY_META = {
   DE: { name: "Germany", region: "G-20 · DM", wb: "DEU" },
   FR: { name: "France", region: "G-20 · DM", wb: "FRA" },
   JP: { name: "Japan", region: "G-20 · DM", wb: "JPN" },
+
+  // ✅ Added (because your research list references NL)
+  NL: { name: "Netherlands", region: "Europe · DM", wb: "NLD" },
+
   // --------------------
   // G20 Emerging
   // --------------------
   CN: { name: "China", region: "G-20 · EM", wb: "CHN" },
   IN: { name: "India", region: "G-20 · EM", wb: "IND" },
   BR: { name: "Brazil", region: "G-20 · EM", wb: "BRA" },
+
   // --------------------
   // Central Asia
   // --------------------
@@ -27,6 +33,7 @@ const COUNTRY_META = {
   KG: { name: "Kyrgyzstan", region: "Central Asia · EM", wb: "KGZ" },
   TJ: { name: "Tajikistan", region: "Central Asia · EM", wb: "TJK" },
   TM: { name: "Turkmenistan", region: "Central Asia · EM", wb: "TKM" },
+
   // --------------------
   // South Asia
   // --------------------
@@ -37,6 +44,7 @@ const COUNTRY_META = {
   BT: { name: "Bhutan", region: "South Asia · EM", wb: "BTN" },
   MV: { name: "Maldives", region: "South Asia · EM", wb: "MDV" },
   AF: { name: "Afghanistan", region: "South Asia · EM", wb: "AFG" },
+
   // --------------------
   // South-East Asia
   // --------------------
@@ -50,7 +58,10 @@ const COUNTRY_META = {
   LA: { name: "Laos", region: "South-East Asia · EM", wb: "LAO" },
   MM: { name: "Myanmar", region: "South-East Asia · EM", wb: "MMR" },
   BN: { name: "Brunei", region: "South-East Asia · EM", wb: "BRN" },
-  TL: { name: "Timor-Leste", region: "South-East Asia · EM", wb: "TLS" }
+  TL: { name: "Timor-Leste", region: "South-East Asia · EM", wb: "TLS" },
+
+  // ✅ Added (because your research list references MA)
+  MA: { name: "Morocco", region: "Africa · EM", wb: "MAR" }
 };
 
 // ---------------------------------------------------------------------------
@@ -109,6 +120,7 @@ const INDICATORS = [
   }
 ];
 
+// ---------------------------------------------------------------------------
 // Cordoba research metadata
 // ---------------------------------------------------------------------------
 const CORDOBA_RESEARCH = [
@@ -788,7 +800,7 @@ function renderNoteHelper(countryKey, statsById, engines) {
     ];
 
     const dominant = engineList
-      .map((e) => ({ ...e, z: engines[e.id].z }))
+      .map((e) => ({ ...e, z: engines?.[e.id]?.z ?? 0 }))
       .sort((a, b) => Math.abs(b.z) - Math.abs(a.z))[0];
 
     if (dominant && Math.abs(dominant.z) > 0.5) {
@@ -823,7 +835,8 @@ function buildResearchReason(engines) {
         : obj.z > 0
         ? "stretched high"
         : "stretched low";
-    // ✅ BUGFIX: your original had a template literal syntax error here
+
+    // ✅ FIXED: valid template literal (this line was the common syntax break)
     parts.push(`${name}: z ${z} (${tone})`);
   };
   add("Growth", engines.growth);
@@ -1338,20 +1351,19 @@ function renderMeta(statsById) {
 
   const obs = getLatestObservation(statsById);
   if (!obs) {
-    dataAsOf.textContent = "WB Last Updated: n/a";
+    dataAsOf.textContent = "data through: n/a";
     return;
   }
 
   const obsLabel = formatPeriodLabel(obs);
-  
-  // Optional: also show WB "last updated" month-year (kept smaller + secondary)
+
+  // Optional: show WB "last updated" month-year (smaller + secondary)
   const wbUpdated = getLatestWorldBankUpdatedAt(statsById);
   const wbLabel = formatUpdatedAt(wbUpdated);
 
   dataAsOf.textContent = wbLabel
     ? `data through: ${obsLabel} · WB updated: ${wbLabel}`
     : `data through: ${obsLabel}`;
-  
 }
 
 // ---------------------------------------------------------------------------
@@ -1379,7 +1391,7 @@ function renderNextQuestions(statsById, engines) {
       "What is driving the divergence between growth and inflation signals, and how might that affect policy and risk premia?"
     );
   }
-  if (engines.liquidity && engines.external) {
+  if (engines?.liquidity && engines?.external) {
     qs.push(
       "Is domestic liquidity easing enough to offset any external funding pressure picked up in the external engine?"
     );
@@ -1768,6 +1780,7 @@ function buildRegimeImplications(countryKey, statsById, engines) {
   const avgConf = Math.round(items.reduce((s, x) => s + (x.confidence || 50), 0) / items.length);
   return { name, items, avgConf };
 }
+
 // ✅ FIX: this is the function your HTML expects (cc-implication-... ids)
 function renderRegimeImplicationMapper(countryKey, statsById, engines) {
   const graphic = document.getElementById("cc-implication-graphic");
@@ -1775,14 +1788,17 @@ function renderRegimeImplicationMapper(countryKey, statsById, engines) {
   const quality = document.getElementById("cc-implication-quality");
   const out = document.getElementById("cc-implications");
   if (!graphic || !out) return;
+
   const built = buildRegimeImplications(countryKey, statsById, engines);
   const channels = buildImplicationChannels(engines);
+
   if (quality) {
     const q = qualityLabelFromConfidence(built.avgConf);
     const tone = q === "High" ? "high" : q === "Medium" ? "medium" : "low";
     renderPill(quality, `Quality: ${q}`, tone);
   }
   if (stamp) stamp.textContent = "derived from current engine scores";
+
   graphic.innerHTML = "";
   channels.forEach((c) => {
     graphic.appendChild(
@@ -1793,6 +1809,7 @@ function renderRegimeImplicationMapper(countryKey, statsById, engines) {
       })
     );
   });
+
   out.innerHTML = "";
   built.items.forEach((it, idx) => {
     const row = document.createElement("div");
@@ -1884,8 +1901,10 @@ function renderStressSentinel(countryKey, statsById, engines) {
   const stamp = document.getElementById("cc-stress-graphic-stamp");
   const out = document.getElementById("cc-stress");
   if (!graphic || !out) return;
+
   const nodes = buildStressSentinel(countryKey, statsById, engines);
   if (stamp) stamp.textContent = "ordered by current tension";
+
   graphic.innerHTML = "";
   nodes.forEach((n) => {
     graphic.appendChild(
@@ -1896,6 +1915,7 @@ function renderStressSentinel(countryKey, statsById, engines) {
       })
     );
   });
+
   out.innerHTML = "";
   nodes.forEach((n, idx) => {
     const row = document.createElement("div");
@@ -1953,7 +1973,7 @@ async function loadCountry(countryKey) {
     renderNextQuestions(statsById, engines);
     renderResearchSuggestions(countryKey, statsById, engines);
 
-    // ✅ NEW: advanced Growth & Cycle quant lab (in separate file)
+    // ✅ Optional: advanced Growth & Cycle quant lab (separate file)
     if (window.CCGrowthCycleQuant && typeof window.CCGrowthCycleQuant.render === "function") {
       window.CCGrowthCycleQuant.render(countryKey, statsById, engines);
     }
@@ -1977,7 +1997,7 @@ async function loadCountry(countryKey) {
     results.forEach(({ cfg, series, updatedAt }) => {
       const stats = series && series.length ? computeStats(series, 10, updatedAt) : null;
 
-      // ✅ NEW: keep raw series for advanced quant work (does not change existing UI)
+      // ✅ Keep raw series for advanced quant work (does not change existing UI)
       if (stats) stats.series = Array.isArray(series) ? series.slice() : [];
 
       if (stats && series && series.length) {
@@ -2009,7 +2029,7 @@ async function loadCountry(countryKey) {
     renderNextQuestions(statsById, engines);
     renderResearchSuggestions(countryKey, statsById, engines);
 
-    // ✅ NEW: advanced Growth & Cycle quant lab (in separate file)
+    // ✅ Optional: advanced Growth & Cycle quant lab (separate file)
     if (window.CCGrowthCycleQuant && typeof window.CCGrowthCycleQuant.render === "function") {
       window.CCGrowthCycleQuant.render(countryKey, statsById, engines);
     }
@@ -2039,6 +2059,7 @@ function setupCountryDropdown() {
     const code = btn.getAttribute("data-cc-country");
     const region = btn.getAttribute("data-cc-region") || "";
     menu.classList.add("hidden");
+
     const meta = COUNTRY_META[code] || { name: code, region };
     const labelSpan =
       document.querySelector("[data-cc-country-label]") ||
@@ -2046,8 +2067,10 @@ function setupCountryDropdown() {
     const regionSpan =
       document.querySelector("[data-cc-country-region]") ||
       document.getElementById("cc-country-current-region");
+
     if (labelSpan) labelSpan.textContent = meta.name;
     if (regionSpan) regionSpan.textContent = meta.region || region;
+
     loadCountry(code);
   });
 
@@ -2064,8 +2087,10 @@ function setupMethodologyModal() {
   const modal = document.getElementById("cc-methodology-modal");
   const overlay = modal ? modal.querySelector("[data-cc-methodology-overlay]") : null;
   if (!modal || !openBtn || !closeBtn || !overlay) return;
+
   const open = () => modal.classList.remove("hidden");
   const close = () => modal.classList.add("hidden");
+
   openBtn.addEventListener("click", open);
   closeBtn.addEventListener("click", close);
   overlay.addEventListener("click", close);
