@@ -1345,13 +1345,6 @@ function renderMeta(statsById) {
   // Example: "data through: Dec-2023"
   const obsLabel = formatPeriodLabel(obs);
 
-  // Optional: also show WB "last updated" month-year (kept smaller + secondary)
-  const wbUpdated = getLatestWorldBankUpdatedAt(statsById);
-  const wbLabel = formatUpdatedAt(wbUpdated);
-
-  dataAsOf.textContent = wbLabel
-    ? `data through: ${obsLabel} · WB updated: ${wbLabel}`
-    : `data through: ${obsLabel}`;
 }
 
 // ---------------------------------------------------------------------------
