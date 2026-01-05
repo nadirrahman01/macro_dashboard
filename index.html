@@ -508,8 +508,46 @@
     </div>
   </div>
 
-  <script src="main.js"></script>
+  <!-- libs needed by export buttons -->
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+  <!-- ✅ REQUIRED: load quant module FIRST, then main -->
+  <script src="assets/js/cc_growth_cycle_quant.js"></script>
+  <script src="assets/js/main.js"></script>
+
+  <!-- ✅ Safety net: if main.js does NOT implement panel switching, this will -->
+  <script>
+    (function () {
+      const nav = document.getElementById("cc-views-nav");
+      if (!nav) return;
+
+      const links = Array.from(nav.querySelectorAll(".cc-view-link"));
+      const panels = Array.from(document.querySelectorAll("[data-cc-view-panel]"));
+
+      function setActive(view) {
+        panels.forEach(p => p.classList.toggle("hidden", p.getAttribute("data-cc-view-panel") !== view));
+        links.forEach(a => {
+          const active = a.getAttribute("data-view") === view;
+          a.classList.toggle("bg-cordobaSoft", active);
+          a.classList.toggle("hover:bg-cordobaSoft", !active);
+          const live = a.querySelector(".cc-live-pill");
+          if (live) live.classList.toggle("hidden", !active);
+        });
+      }
+
+      nav.addEventListener("click", (e) => {
+        const a = e.target.closest(".cc-view-link");
+        if (!a) return;
+        e.preventDefault();
+        const view = a.getAttribute("data-view");
+        if (!view) return;
+        setActive(view);
+      });
+
+      // default
+      setActive("snapshot");
+    })();
+  </script>
 </body>
 </html>
