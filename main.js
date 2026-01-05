@@ -1338,11 +1338,10 @@ function renderMeta(statsById) {
 
   const obs = getLatestObservation(statsById);
   if (!obs) {
-    dataAsOf.textContent = "data through: n/a";
+    dataAsOf.textContent = "WB Last Updated: n/a";
     return;
   }
 
-  // Example: "data through: Dec-2023"
   const obsLabel = formatPeriodLabel(obs);
 
 }
